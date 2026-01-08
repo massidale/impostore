@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Impostore - Gioco</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js';
+        import { getDatabase, ref, onValue, get, set, remove, update } from 'https://www.gstatic.com/firebasejs/10.13.2/firebase-database.js';
+        import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyA6vCGiQmXvynNGVwqf7jVvEemCBWHPUNM",
+            authDomain: "impostore-c0ef1.firebaseapp.com",
+            databaseURL: "https://impostore-c0ef1-default-rtdb.europe-west1.firebasedatabase.app/",
+            projectId: "impostore-c0ef1",
+            storageBucket: "impostore-c0ef1.firebasestorage.app",
+            messagingSenderId: "346509804532",
+            appId: "1:346509804532:web:893a26f3e25f86426fefa1",
+            measurementId: "G-ED7VYPWEF1"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+        const auth = getAuth(app);
+
+        // Ottieni roomId dall'URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomId = urlParams.get('room');
+
+        if (!roomId) {
+            document.body.innerHTML = `
+                <div class="min-h-screen flex items-center justify-center bg-gray-100">
+                    <div class="bg-white rounded-lg shadow-xl p-8 max-w-md w-full mx-4">
+                        <h1 class="text-2xl font-bold text-gray-800 mb-4">Errore</h1>
+                        <p class="text-gray-600">Nessuna stanza specificata nell'URL.</p>
+                        <p class="text-sm text-gray-500 mt-2">Assicurati di aver scansionato il QR code o cliccato sul link corretto.</p>
+                    </div>
+                </div>
+            `;
+        } else {
+            let currentUserId = null;
+            let unsubscribeRoom = null;
+            let playerRevealed = false;
+            let currentRoomId = roomId;
+            let playerName = null;
+            let nameEntered = false;
+
+            // Funzione per marcare il giocatore come "revealed"
+            async function markAsRevealed() {
+                if (!currentRoomId || !currentUserId) {
+                    console.error('markAsRevealed: roomId o userId mancanti');
+                    return;
+                }
+                try {
+                    const playerRef = ref(database, `rooms/${currentRoomId}/players/${currentUserId}`);
+                    await update(playerRef, {
+                        revealed: true
+                    });
+                    playerRevealed = true;
+                } catch (error) {
+                    console.error('Errore nel rivelare il ruolo:', error);
+                    alert('Errore nel rivelare il ruolo. Riprova.');
+                }
+            }
+            
+            // Esponi la funzione globalmente per il bottone
+            window.markAsRevealed = markAsRevealed;
+
+            // Funzione per aggiornare l'UI
+            function updateUI(status, role, word, hint, firstPlayerId, isFirst, hintEnabled, hintOnlyFirst, revealed) {
+                const container = document.getElementById('container');
+                if (!container) {
+                    console.error('Container non trovato!');
+                    return;
+                }
+                
+                if (status === 'waiting') {
+                    container.innerHTML = `
+                        <div class="min-h-screen flex items-center justify-center bg-gray-100">
+                            <div class="bg-white rounded-lg shadow-xl p-8 max-w-md w-full mx-4 text-center">
+                                <div class="mb-6">
+                                    <div class="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-gray-600"></div>
+                                </div>
+                                <h1 class="text-2xl font-bold text-gray-800 mb-4">In attesa...</h1>
+                                <p class="text-gray-600">L'host sta per avviare la partita.</p>
+                                <p class="text-sm text-gray-500 mt-4">Stanza: <span class="font-mono font-semibold">${roomId}</span></p>
+                            </div>
+                        </div>
+                    `;
+                } else if (status === 'active') {
+                    // Se il ruolo non è ancora stato rivelato, mostra la schermata "Tocca per scoprire"
+                    if (!revealed && role) {
+                        container.innerHTML = `
+                            <div class="min-h-screen flex items-center justify-center bg-gray-100">
+                                <div class="bg-white rounded-lg shadow-xl p-12 max-w-md w-full mx-4 text-center">
+                                    <h1 class="text-3xl font-bold text-gray-800 mb-8">Tocca per scoprire la parola</h1>
+                                    <button 
+                                        onclick="markAsRevealed()"
+                                        class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-8 rounded-lg text-xl transition-colors duration-200 w-full"
+                                    >
+                                        Scopri
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    const showHint = hintEnabled && hint && role === 'impostor' && (!hintOnlyFirst || isFirst);
+                    const isFirstPlayer = isFirst;
+                    
+                    if (role === 'civilian') {
+                        container.innerHTML = `
+                            <div class="min-h-screen flex items-center justify-center bg-gray-100">
+                                <div class="bg-white rounded-lg shadow-xl p-12 max-w-md w-full mx-4 text-center">
+                                    <p class="text-2xl font-bold text-gray-800 mb-2">Sei un civile.</p>
+                                    <p class="text-lg text-gray-700 mb-6">La parola è:</p>
+                                    <div class="mb-8">
+                                        <p class="text-5xl font-bold text-gray-800">${word}</p>
+                                        ${isFirstPlayer ? '<p class="text-base text-gray-500 mt-6">Sei il primo giocatore</p>' : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    } else if (role === 'impostor') {
+                        container.innerHTML = `
+                            <div class="min-h-screen flex items-center justify-center bg-gray-100">
+                                <div class="bg-white rounded-lg shadow-xl p-12 max-w-md w-full mx-4 text-center">
+                                    <p class="text-2xl font-bold text-gray-800 mb-2">Sei l'impostore.</p>
+                                    <p class="text-lg text-gray-700 mb-6">Non conosci la parola.</p>
+                                    <div class="mb-8">
+                                        ${showHint ? `
+                                            <p class="text-lg text-gray-600 mt-4 mb-2">Indizio:</p>
+                                            <p class="text-3xl font-bold text-gray-800">${hint}</p>
+                                        ` : ''}
+                                        ${isFirstPlayer ? '<p class="text-base text-gray-500 mt-6">Sei il primo giocatore</p>' : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        container.innerHTML = `
+                            <div class="min-h-screen flex items-center justify-center bg-gray-100">
+                                <div class="bg-white rounded-lg shadow-xl p-8 max-w-md w-full mx-4 text-center">
+                                    <h1 class="text-2xl font-bold text-gray-800 mb-4">Ruolo non assegnato</h1>
+                                    <p class="text-gray-600">Il tuo ruolo non è ancora stato assegnato.</p>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+            }
+
+            // Funzione per mostrare il form del nome
+            function showNameForm() {
+                const container = document.getElementById('container');
+                if (!container) return;
+                
+                container.innerHTML = `
+                    <div class="min-h-screen flex items-center justify-center bg-gray-100">
+                        <div class="bg-white rounded-lg shadow-xl p-8 max-w-md w-full mx-4">
+                            <h1 class="text-2xl font-bold text-gray-800 mb-4">Inserisci il tuo nome</h1>
+                            <p class="text-gray-600 mb-6">Scegli un nome unico per entrare nella stanza.</p>
+                            <input 
+                                type="text" 
+                                id="playerNameInput" 
+                                placeholder="Il tuo nome"
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                maxlength="20"
+                                autocomplete="off"
+                                onkeypress="if(event.key === 'Enter') submitName()"
+                            />
+                            <p id="nameError" class="text-red-500 text-sm mb-4 hidden"></p>
+                            <button 
+                                onclick="submitName()"
+                                class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200"
+                            >
+                                Entra nella stanza
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Funzione per validare e inviare il nome
+            async function submitName() {
+                const nameInput = document.getElementById('playerNameInput');
+                const errorElement = document.getElementById('nameError');
+                
+                if (!nameInput) {
+                    console.error('Input nome non trovato');
+                    return;
+                }
+                
+                const name = nameInput.value.trim();
+                
+                if (!name || name.length === 0) {
+                    if (errorElement) {
+                        errorElement.textContent = 'Inserisci un nome';
+                        errorElement.classList.remove('hidden');
+                    }
+                    return;
+                }
+
+                if (name.length < 2) {
+                    if (errorElement) {
+                        errorElement.textContent = 'Il nome deve essere di almeno 2 caratteri';
+                        errorElement.classList.remove('hidden');
+                    }
+                    return;
+                }
+
+                try {
+                    // Verifica se il nome è disponibile
+                    const roomSnapshot = await get(ref(database, `rooms/${currentRoomId}`));
+                    if (!roomSnapshot.exists()) {
+                        if (errorElement) {
+                            errorElement.textContent = 'Stanza non trovata';
+                            errorElement.classList.remove('hidden');
+                        }
+                        return;
+                    }
+
+                    const roomData = roomSnapshot.val();
+                    if (roomData.players) {
+                        const existingNames = Object.values(roomData.players)
+                            .map((player) => player.name?.toLowerCase().trim())
+                            .filter((n) => n);
+                        
+                        if (existingNames.includes(name.toLowerCase().trim())) {
+                            if (errorElement) {
+                                errorElement.textContent = 'Questo nome è già utilizzato. Scegli un altro nome.';
+                                errorElement.classList.remove('hidden');
+                            }
+                            return;
+                        }
+                    }
+
+                    // Salva il nome e continua
+                    playerName = name;
+                    nameEntered = true;
+                    if (errorElement) {
+                        errorElement.classList.add('hidden');
+                    }
+                    await continueInit();
+                } catch (error) {
+                    console.error('Errore validazione nome:', error);
+                    if (errorElement) {
+                        errorElement.textContent = 'Errore durante la validazione. Riprova.';
+                        errorElement.classList.remove('hidden');
+                    }
+                }
+            }
+
+            // Esponi la funzione globalmente
+            window.submitName = submitName;
+
+            // Funzione per continuare l'inizializzazione dopo l'inserimento del nome
+            async function continueInit() {
+                try {
+                    const container = document.getElementById('container');
+                    if (!container) {
+                        console.error('Container non trovato in continueInit');
+                        return;
+                    }
+                    
+                    // Verifica che abbiamo un nome prima di continuare
+                    if (!playerName || playerName.trim().length === 0) {
+                        console.error('playerName non definito in continueInit');
+                        showNameForm();
+                        return;
+                    }
+
+                    // Verifica che abbiamo un UID
+                    if (!currentUserId) {
+                        console.error('currentUserId non definito in continueInit');
+                        const userCredential = await signInAnonymously(auth);
+                        currentUserId = userCredential.user.uid;
+                    }
+                    
+                    // Mostra loading
+                    container.innerHTML = `
+                        <div class="min-h-screen flex items-center justify-center bg-gray-100">
+                            <div class="bg-white rounded-lg shadow-xl p-8 max-w-md w-full mx-4 text-center">
+                                <div class="mb-6">
+                                    <div class="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-gray-600"></div>
+                                </div>
+                                <h1 class="text-2xl font-bold text-gray-800 mb-4">Caricamento...</h1>
+                                <p class="text-gray-600">Connessione in corso...</p>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Aggiungi il giocatore alla stanza con il nome
+                    const playerRef = ref(database, `rooms/${roomId}/players/${currentUserId}`);
+                    const playerSnapshot = await get(playerRef);
+                    if (!playerSnapshot.exists()) {
+                        // Il giocatore non esiste ancora, aggiungilo con il nome
+                        await set(playerRef, {
+                            role: null,
+                            joinedAt: Date.now(),
+                            revealed: false,
+                            name: playerName.trim()
+                        });
+                    } else {
+                        // Aggiorna il nome se necessario
+                        const playerData = playerSnapshot.val();
+                        const updates = {};
+                        if (playerData.revealed === undefined) {
+                            updates.revealed = false;
+                        }
+                        if (playerName && playerData.name !== playerName.trim()) {
+                            updates.name = playerName.trim();
+                        }
+                        if (Object.keys(updates).length > 0) {
+                            await update(playerRef, updates);
+                        }
+                    }
+
+                    // Ascolta i cambiamenti della stanza
+                    const roomRef = ref(database, `rooms/${roomId}`);
+                    
+                    // Ascolta anche i cambiamenti del giocatore per aggiornare quando revealed cambia
+                    onValue(playerRef, async (playerSnapshot) => {
+                        if (!playerSnapshot.exists()) return;
+                        
+                        const playerData = playerSnapshot.val();
+                        const newRevealed = playerData.revealed || false;
+                        
+                        // Se revealed è cambiato e abbiamo un ruolo, aggiorna l'UI
+                        if (newRevealed !== playerRevealed && playerData.role) {
+                            playerRevealed = newRevealed;
+                            
+                            // Ottieni i dati della stanza per aggiornare l'UI
+                            const roomSnapshot = await get(roomRef);
+                            if (roomSnapshot.exists()) {
+                                const roomData = roomSnapshot.val();
+                                const status = roomData.status || 'waiting';
+                                const word = roomData.word || '';
+                                const hint = roomData.hint || null;
+                                const firstPlayerId = roomData.firstPlayerId || null;
+                                const hintEnabled = roomData.hintEnabled || false;
+                                const hintOnlyFirst = roomData.hintOnlyFirst || false;
+                                const role = playerData.role;
+                                const isFirst = playerData.isFirst || false;
+                                
+                                updateUI(status, role, word, hint, firstPlayerId, isFirst, hintEnabled, hintOnlyFirst, true);
+                            }
+                        }
+                    });
+                    
+                    unsubscribeRoom = onValue(roomRef, async (snapshot) => {
+                        if (!snapshot.exists()) {
+                            document.getElementById('container').innerHTML = `
+                                <div class="min-h-screen flex items-center justify-center bg-gray-100">
+                                    <div class="bg-white rounded-lg shadow-xl p-8 max-w-md w-full mx-4 text-center">
+                                        <h1 class="text-2xl font-bold text-gray-800 mb-4">Stanza chiusa</h1>
+                                        <p class="text-gray-600">L'host ha chiuso la stanza.</p>
+                                        <p class="text-sm text-gray-500 mt-4">La stanza è stata eliminata.</p>
+                                    </div>
+                                </div>
+                            `;
+                            return;
+                        }
+
+                        const roomData = snapshot.val();
+                        const status = roomData.status || 'waiting';
+                        const word = roomData.word || '';
+                        const hint = roomData.hint || null;
+                        const firstPlayerId = roomData.firstPlayerId || null;
+                        const hintEnabled = roomData.hintEnabled || false;
+                        const hintOnlyFirst = roomData.hintOnlyFirst || false;
+
+                        // Leggi il ruolo del giocatore
+                        const playerSnapshot = await get(playerRef);
+                        const playerData = playerSnapshot.exists() ? playerSnapshot.val() : null;
+                        const role = playerData?.role || null;
+                        const isFirst = playerData?.isFirst || false;
+                        const revealed = playerData?.revealed || false;
+                        
+                        // Aggiorna lo stato locale
+                        playerRevealed = revealed;
+
+                        updateUI(status, role, word, hint, firstPlayerId, isFirst, hintEnabled, hintOnlyFirst, revealed);
+                    });
+
+                } catch (error) {
+                    console.error('Errore in continueInit:', error);
+                    const container = document.getElementById('container');
+                    if (container) {
+                        container.innerHTML = `
+                            <div class="min-h-screen flex items-center justify-center bg-gray-100">
+                                <div class="bg-white rounded-lg shadow-xl p-8 max-w-md w-full mx-4">
+                                    <h1 class="text-2xl font-bold text-gray-800 mb-4">Errore</h1>
+                                    <p class="text-gray-600">Si è verificato un errore durante la connessione.</p>
+                                    <p class="text-sm text-gray-500 mt-2">${error?.message || 'Errore sconosciuto'}</p>
+                                    <button 
+                                        onclick="location.reload()"
+                                        class="mt-4 w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg"
+                                    >
+                                        Ricarica pagina
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        document.body.innerHTML = `
+                            <div class="min-h-screen flex items-center justify-center bg-gray-100">
+                                <div class="bg-white rounded-lg shadow-xl p-8 max-w-md w-full mx-4">
+                                    <h1 class="text-2xl font-bold text-gray-800 mb-4">Errore</h1>
+                                    <p class="text-gray-600">Si è verificato un errore durante la connessione.</p>
+                                    <p class="text-sm text-gray-500 mt-2">${error?.message || 'Errore sconosciuto'}</p>
+                                    <button 
+                                        onclick="location.reload()"
+                                        class="mt-4 w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg"
+                                    >
+                                        Ricarica pagina
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+            }
+            
+            // Gestione errori globali
+            window.addEventListener('error', (event) => {
+                console.error('Errore globale:', event.error);
+                const container = document.getElementById('container');
+                if (container) {
+                    container.innerHTML = `
+                        <div class="min-h-screen flex items-center justify-center bg-gray-100">
+                            <div class="bg-white rounded-lg shadow-xl p-8 max-w-md w-full mx-4">
+                                <h1 class="text-2xl font-bold text-gray-800 mb-4">Errore</h1>
+                                <p class="text-gray-600">Si è verificato un errore JavaScript.</p>
+                                <p class="text-sm text-gray-500 mt-2">${event.error?.message || 'Errore sconosciuto'}</p>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+
+            // Funzione per inizializzare e ascoltare i cambiamenti
+            async function init() {
+                try {
+                    // Verifica che il container esista
+                    const container = document.getElementById('container');
+                    if (!container) {
+                        console.error('Container non trovato nel DOM!');
+                        document.body.innerHTML = `
+                            <div class="min-h-screen flex items-center justify-center bg-gray-100">
+                                <div class="bg-white rounded-lg shadow-xl p-8 max-w-md w-full mx-4">
+                                    <h1 class="text-2xl font-bold text-gray-800 mb-4">Errore</h1>
+                                    <p class="text-gray-600">Errore di inizializzazione della pagina.</p>
+                                </div>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    // Autenticazione anonima
+                    const userCredential = await signInAnonymously(auth);
+                    currentUserId = userCredential.user.uid;
+
+                    // Verifica se il giocatore esiste già nella stanza
+                    const playerRef = ref(database, `rooms/${roomId}/players/${currentUserId}`);
+                    const playerSnapshot = await get(playerRef);
+                    
+                    if (playerSnapshot.exists()) {
+                        const playerData = playerSnapshot.val();
+                        if (playerData.name && playerData.name.trim().length > 0) {
+                            // Il giocatore ha già un nome, continua direttamente
+                            playerName = playerData.name;
+                            nameEntered = true;
+                            await continueInit();
+                        } else {
+                            // Il giocatore esiste ma non ha nome, chiedilo
+                            showNameForm();
+                        }
+                    } else {
+                        // Nuovo giocatore, chiedi il nome PRIMA di aggiungerlo
+                        showNameForm();
+                    }
+                } catch (error) {
+                    console.error('Errore in init:', error);
+                    const container = document.getElementById('container');
+                    if (container) {
+                        container.innerHTML = `
+                            <div class="min-h-screen flex items-center justify-center bg-gray-100">
+                                <div class="bg-white rounded-lg shadow-xl p-8 max-w-md w-full mx-4">
+                                    <h1 class="text-2xl font-bold text-gray-800 mb-4">Errore</h1>
+                                    <p class="text-gray-600">Si è verificato un errore durante la connessione.</p>
+                                    <p class="text-sm text-gray-500 mt-2">${error?.message || 'Errore sconosciuto'}</p>
+                                    <button 
+                                        onclick="location.reload()"
+                                        class="mt-4 w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg"
+                                    >
+                                        Ricarica pagina
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        document.body.innerHTML = `
+                            <div class="min-h-screen flex items-center justify-center bg-gray-100">
+                                <div class="bg-white rounded-lg shadow-xl p-8 max-w-md w-full mx-4">
+                                    <h1 class="text-2xl font-bold text-gray-800 mb-4">Errore</h1>
+                                    <p class="text-gray-600">Si è verificato un errore durante la connessione.</p>
+                                    <p class="text-sm text-gray-500 mt-2">${error?.message || 'Errore sconosciuto'}</p>
+                                    <button 
+                                        onclick="location.reload()"
+                                        class="mt-4 w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg"
+                                    >
+                                        Ricarica pagina
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+            }
+
+            // Inizializza quando la pagina è caricata
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
+            } else {
+                init();
+            }
+
+        }
+    </script>
+</head>
+<body>
+    <div id="container" class="min-h-screen flex items-center justify-center">
+        <!-- Il contenuto verrà inserito dinamicamente da JavaScript -->
+    </div>
+</body>
+</html>
+
