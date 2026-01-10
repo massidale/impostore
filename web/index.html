@@ -69,6 +69,102 @@
             // Esponi la funzione globalmente per il bottone
             window.markAsRevealed = markAsRevealed;
 
+            // Funzione per nascondere il ruolo (tornare alla schermata "Tocca per scoprire")
+            function hideRole() {
+                const container = document.getElementById('container');
+                if (!container) return;
+
+                container.innerHTML = `
+                    <div class="min-h-screen flex items-center justify-center bg-gray-900">
+                        <div class="bg-gray-800 rounded-lg shadow-xl p-12 max-w-md w-full mx-4 text-center border border-gray-700 min-h-[400px] flex flex-col justify-center">
+                            <h1 class="text-3xl font-bold text-white mb-8">Tocca per scoprire la parola</h1>
+                            <button
+                                onclick="showRole()"
+                                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-lg text-xl transition-colors duration-200 w-full"
+                            >
+                                Scopri
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Variabili per salvare i dati del ruolo corrente
+            let currentRoleData = null;
+
+            // Funzione per mostrare di nuovo il ruolo
+            function showRole() {
+                if (currentRoleData) {
+                    const { role, word, hint, isFirst, hintEnabled, hintOnlyFirst } = currentRoleData;
+                    renderRole(role, word, hint, isFirst, hintEnabled, hintOnlyFirst);
+                }
+            }
+
+            // Esponi le funzioni globalmente
+            window.hideRole = hideRole;
+            window.showRole = showRole;
+
+            // Funzione per renderizzare il ruolo (usata da updateUI e showRole)
+            function renderRole(role, word, hint, isFirst, hintEnabled, hintOnlyFirst) {
+                const container = document.getElementById('container');
+                if (!container) return;
+
+                const showHint = hintEnabled && hint && role === 'impostor' && (!hintOnlyFirst || isFirst);
+                const isFirstPlayer = isFirst;
+
+                if (role === 'civilian') {
+                    container.innerHTML = `
+                        <div class="min-h-screen flex items-center justify-center bg-gray-900">
+                            <div class="bg-gray-800 rounded-lg shadow-xl p-12 max-w-md w-full mx-4 text-center border border-gray-700 min-h-[400px] flex flex-col justify-center">
+                                <p class="text-2xl font-bold text-white mb-2">Sei un civile</p>
+                                <p class="text-lg text-gray-300 mb-6">La parola è:</p>
+                                <div class="mb-8">
+                                    <p class="text-5xl font-bold text-blue-400">${word}</p>
+                                    ${isFirstPlayer ? '<p class="text-base text-gray-400 mt-6">Sei il primo giocatore</p>' : ''}
+                                </div>
+                                <button
+                                    onclick="hideRole()"
+                                    class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-colors duration-200 w-full"
+                                >
+                                    Nascondi
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                } else if (role === 'impostor') {
+                    container.innerHTML = `
+                        <div class="min-h-screen flex items-center justify-center bg-gray-900">
+                            <div class="bg-gray-800 rounded-lg shadow-xl p-12 max-w-md w-full mx-4 text-center border border-gray-700 min-h-[400px] flex flex-col justify-center">
+                                <p class="text-2xl font-bold text-white mb-2">Sei l'impostore</p>
+                                <p class="text-lg text-gray-300 mb-6">Non conosci la parola.</p>
+                                <div class="mb-8">
+                                    ${showHint ? `
+                                        <p class="text-xl font-bold text-gray-400 mt-4 mb-2">Indizio:</p>
+                                        <p class="text-xl font-bold text-white">${hint}</p>
+                                    ` : ''}
+                                    ${isFirstPlayer ? '<p class="text-base text-gray-400 mt-6">Sei il primo giocatore</p>' : ''}
+                                </div>
+                                <button
+                                    onclick="hideRole()"
+                                    class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-colors duration-200 w-full"
+                                >
+                                    Nascondi
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = `
+                        <div class="min-h-screen flex items-center justify-center bg-gray-900">
+                            <div class="bg-gray-800 rounded-lg shadow-xl p-8 max-w-md w-full mx-4 text-center border border-gray-700">
+                                <h1 class="text-2xl font-bold text-white mb-4">Ruolo non assegnato</h1>
+                                <p class="text-gray-300">Il tuo ruolo non è ancora stato assegnato.</p>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
             // Funzione per aggiornare l'UI
             function updateUI(status, role, word, hint, firstPlayerId, isFirst, hintEnabled, hintOnlyFirst, revealed) {
                 const container = document.getElementById('container');
@@ -76,7 +172,7 @@
                     console.error('Container non trovato!');
                     return;
                 }
-                
+
                 if (status === 'waiting') {
                     container.innerHTML = `
                         <div class="min-h-screen flex items-center justify-center bg-gray-900">
@@ -91,11 +187,14 @@
                         </div>
                     `;
                 } else if (status === 'active') {
+                    // Salva i dati del ruolo per poterli riutilizzare con hideRole/showRole
+                    currentRoleData = { role, word, hint, isFirst, hintEnabled, hintOnlyFirst };
+
                     // Se il ruolo non è ancora stato rivelato, mostra la schermata "Tocca per scoprire"
                     if (!revealed && role) {
                         container.innerHTML = `
                             <div class="min-h-screen flex items-center justify-center bg-gray-900">
-                                <div class="bg-gray-800 rounded-lg shadow-xl p-12 max-w-md w-full mx-4 text-center border border-gray-700">
+                                <div class="bg-gray-800 rounded-lg shadow-xl p-12 max-w-md w-full mx-4 text-center border border-gray-700 min-h-[400px] flex flex-col justify-center">
                                     <h1 class="text-3xl font-bold text-white mb-8">Tocca per scoprire la parola</h1>
                                     <button
                                         onclick="markAsRevealed()"
@@ -109,48 +208,8 @@
                         return;
                     }
 
-                    const showHint = hintEnabled && hint && role === 'impostor' && (!hintOnlyFirst || isFirst);
-                    const isFirstPlayer = isFirst;
-                    
-                    if (role === 'civilian') {
-                        container.innerHTML = `
-                            <div class="min-h-screen flex items-center justify-center bg-gray-900">
-                                <div class="bg-gray-800 rounded-lg shadow-xl p-12 max-w-md w-full mx-4 text-center border border-gray-700">
-                                    <p class="text-2xl font-bold text-white mb-2">Sei un civile</p>
-                                    <p class="text-lg text-gray-300 mb-6">La parola è:</p>
-                                    <div class="mb-8">
-                                        <p class="text-5xl font-bold text-blue-400">${word}</p>
-                                        ${isFirstPlayer ? '<p class="text-base text-gray-400 mt-6">Sei il primo giocatore</p>' : ''}
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    } else if (role === 'impostor') {
-                        container.innerHTML = `
-                            <div class="min-h-screen flex items-center justify-center bg-gray-900">
-                                <div class="bg-gray-800 rounded-lg shadow-xl p-12 max-w-md w-full mx-4 text-center border border-gray-700">
-                                    <p class="text-2xl font-bold text-white mb-2">Sei l'impostore</p>
-                                    <p class="text-lg text-gray-300 mb-6">Non conosci la parola.</p>
-                                    <div class="mb-8">
-                                        ${showHint ? `
-                                            <p class="text-xl font-bold text-gray-400 mt-4 mb-2">Indizio:</p>
-                                            <p class="text-xl font-bold text-white">${hint}</p>
-                                        ` : ''}
-                                        ${isFirstPlayer ? '<p class="text-base text-gray-400 mt-6">Sei il primo giocatore</p>' : ''}
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    } else {
-                        container.innerHTML = `
-                            <div class="min-h-screen flex items-center justify-center bg-gray-900">
-                                <div class="bg-gray-800 rounded-lg shadow-xl p-8 max-w-md w-full mx-4 text-center border border-gray-700">
-                                    <h1 class="text-2xl font-bold text-white mb-4">Ruolo non assegnato</h1>
-                                    <p class="text-gray-300">Il tuo ruolo non è ancora stato assegnato.</p>
-                                </div>
-                            </div>
-                        `;
-                    }
+                    // Mostra il ruolo
+                    renderRole(role, word, hint, isFirst, hintEnabled, hintOnlyFirst);
                 }
             }
 
