@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import wordsData from '../data/words.json';
 
-const API_KEY = "AIzaSyCEEfAavyXQlaUcNWhbF2RM9L2HFq3lGZo";
+const API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || "";
 const genAI = new GoogleGenerativeAI(API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
