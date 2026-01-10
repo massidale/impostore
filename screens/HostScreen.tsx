@@ -41,6 +41,7 @@ export default function HostScreen() {
   const [generatingWords, setGeneratingWords] = useState(false);
   const [usingCustomWords, setUsingCustomWords] = useState(false);
   const [usedFallback, setUsedFallback] = useState(false);
+  const [savedTopic, setSavedTopic] = useState(''); // Topic salvato dopo generazione riuscita
 
   useEffect(() => {
     if (roomId) {
@@ -266,15 +267,17 @@ export default function HostScreen() {
     }
 
     setGeneratingWords(true);
+    const topicToGenerate = customTopic.trim();
     try {
-      const result = await generateWordsForTopic(customTopic.trim());
+      const result = await generateWordsForTopic(topicToGenerate);
       setCustomWords(result.words);
       setUsingCustomWords(true);
       setUsedFallback(result.usedFallback);
       if (result.usedFallback) {
-        Alert.alert('Attenzione', `Non è stato possibile generare parole personalizzate per "${customTopic}". Usando parole di default.`);
+        Alert.alert('Attenzione', `Non è stato possibile generare parole personalizzate per "${topicToGenerate}". Usando parole di default.`);
       } else {
-        Alert.alert('Successo', `Generate 20 parole sul tema "${customTopic}"`);
+        setSavedTopic(topicToGenerate); // Salva il topic solo dopo generazione riuscita
+        Alert.alert('Successo', `Generate 20 parole sul tema "${topicToGenerate}"`);
       }
     } catch (error: any) {
       Alert.alert('Errore', error.message || 'Impossibile generare le parole');
@@ -289,6 +292,7 @@ export default function HostScreen() {
     setUsingCustomWords(false);
     setUsedFallback(false);
     setCustomTopic('');
+    setSavedTopic('');
     Alert.alert('Successo', 'Parole ripristinate al dizionario predefinito');
   };
 
@@ -366,76 +370,82 @@ export default function HostScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="light" />
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        <Text style={styles.title}>{roomId ? `Stanza: ${roomId}` : 'Crea Stanza'}</Text>
-
       {!roomId ? (
-        <View style={styles.createSection}>
-          <Text style={styles.label}>Numero di Impostori</Text>
-          <View style={styles.numberSelector}>
-            <TouchableOpacity
-              style={[styles.numberButton, parseInt(numImpostors, 10) <= 1 && styles.numberButtonDisabled]}
-              onPress={() => {
-                const current = parseInt(numImpostors, 10) || 1;
-                if (current > 1) setNumImpostors((current - 1).toString());
-              }}
-              disabled={parseInt(numImpostors, 10) <= 1}
-            >
-              <Text style={styles.numberButtonText}>−</Text>
-            </TouchableOpacity>
-            <Text style={styles.numberValue}>{numImpostors}</Text>
-            <TouchableOpacity
-              style={styles.numberButton}
-              onPress={() => {
-                const current = parseInt(numImpostors, 10) || 1;
-                setNumImpostors((current + 1).toString());
-              }}
-            >
-              <Text style={styles.numberButtonText}>+</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.switchContainer}>
-            <View style={styles.switchRow}>
-              <Text style={styles.switchLabel}>Abilita indizio per impostore</Text>
-              <Switch
-                value={hintEnabled}
-                onValueChange={setHintEnabled}
-                trackColor={{ false: '#4b5563', true: '#3b82f6' }}
-                thumbColor={hintEnabled ? '#60a5fa' : '#9ca3af'}
-              />
-            </View>
-            
-            {hintEnabled && (
-              <View style={styles.switchRow}>
-                <Text style={styles.switchLabel}>Indizio solo al primo giocatore</Text>
-                <Switch
-                  value={hintOnlyFirst}
-                  onValueChange={setHintOnlyFirst}
-                  trackColor={{ false: '#767577', true: '#81b0ff' }}
-                  thumbColor={hintOnlyFirst ? '#007AFF' : '#f4f3f4'}
-                />
+        <View style={styles.createRoomContainer}>
+          <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+            <Text style={styles.title}>Crea Stanza</Text>
+            <View style={styles.createSection}>
+              <Text style={styles.label}>Numero di Impostori</Text>
+              <View style={styles.numberSelector}>
+                <TouchableOpacity
+                  style={[styles.numberButton, parseInt(numImpostors, 10) <= 1 && styles.numberButtonDisabled]}
+                  onPress={() => {
+                    const current = parseInt(numImpostors, 10) || 1;
+                    if (current > 1) setNumImpostors((current - 1).toString());
+                  }}
+                  disabled={parseInt(numImpostors, 10) <= 1}
+                >
+                  <Text style={styles.numberButtonText}>−</Text>
+                </TouchableOpacity>
+                <Text style={styles.numberValue}>{numImpostors}</Text>
+                <TouchableOpacity
+                  style={styles.numberButton}
+                  onPress={() => {
+                    const current = parseInt(numImpostors, 10) || 1;
+                    setNumImpostors((current + 1).toString());
+                  }}
+                >
+                  <Text style={styles.numberButtonText}>+</Text>
+                </TouchableOpacity>
               </View>
-            )}
-          </View>
 
-          <TouchableOpacity
-            onPress={handleCreateRoom}
-            disabled={loading}
-          >
-            <LinearGradient
-              colors={loading ? ['#4b5563', '#4b5563'] : ['#2563eb', '#1d4ed8']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[styles.button, styles.primaryButton]}
+              <View style={styles.switchContainer}>
+                <View style={styles.switchRow}>
+                  <Text style={styles.switchLabel}>Abilita indizio per impostore</Text>
+                  <Switch
+                    value={hintEnabled}
+                    onValueChange={setHintEnabled}
+                    trackColor={{ false: '#4b5563', true: '#3b82f6' }}
+                    thumbColor={hintEnabled ? '#60a5fa' : '#9ca3af'}
+                  />
+                </View>
+
+                {hintEnabled && (
+                  <View style={styles.switchRow}>
+                    <Text style={styles.switchLabel}>Indizio solo al primo giocatore</Text>
+                    <Switch
+                      value={hintOnlyFirst}
+                      onValueChange={setHintOnlyFirst}
+                      trackColor={{ false: '#767577', true: '#81b0ff' }}
+                      thumbColor={hintOnlyFirst ? '#007AFF' : '#f4f3f4'}
+                    />
+                  </View>
+                )}
+              </View>
+            </View>
+          </ScrollView>
+          <View style={styles.bottomButtonContainer}>
+            <TouchableOpacity
+              onPress={handleCreateRoom}
+              disabled={loading}
+              style={styles.fullWidthButton}
             >
-              <Text style={styles.primaryButtonText}>
-                {loading ? 'Creazione...' : 'Crea Stanza'}
-              </Text>
-            </LinearGradient>
-          </TouchableOpacity>
+              <LinearGradient
+                colors={loading ? ['#4b5563', '#4b5563'] : ['#2563eb', '#1d4ed8']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.button, styles.primaryButton]}
+              >
+                <Text style={styles.primaryButtonText}>
+                  {loading ? 'Creazione...' : 'Crea Stanza'}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         </View>
       ) : (
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <Text style={styles.title}>{`Stanza: ${roomId}`}</Text>
         <View style={styles.roomSection}>
           <Text style={styles.status}>
             Status: {roomData?.status === 'waiting' ? 'In attesa' : 'Attiva'}
@@ -579,6 +589,7 @@ export default function HostScreen() {
             </>
           )}
         </View>
+      </ScrollView>
       )}
 
       {/* Modal per mostrare il ruolo dell'host */}
@@ -722,13 +733,10 @@ export default function HostScreen() {
 
             <View style={styles.settingsModalSection}>
               <Text style={styles.label}>Personalizza Parole (AI)</Text>
-              {usingCustomWords && (
+              {usingCustomWords && !usedFallback && savedTopic && (
                 <View style={styles.customWordsActive}>
                   <Text style={styles.customWordsActiveText}>
-                    {usedFallback
-                      ? `Non è stato possibile generare parole per "${customTopic}". Usando parole di default.`
-                      : `Usando parole personalizzate: "${customTopic}"`
-                    }
+                    {`Usando parole personalizzate: "${savedTopic}"`}
                   </Text>
                 </View>
               )}
@@ -779,7 +787,6 @@ export default function HostScreen() {
           </View>
         </View>
       </Modal>
-      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -787,6 +794,14 @@ export default function HostScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    backgroundColor: '#111827',
+  },
+  createRoomContainer: {
+    flex: 1,
+  },
+  bottomButtonContainer: {
+    padding: 20,
+    paddingTop: 10,
     backgroundColor: '#111827',
   },
   container: {

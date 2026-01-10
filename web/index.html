@@ -71,6 +71,7 @@
 
             // Funzione per nascondere il ruolo (tornare alla schermata "Tocca per scoprire")
             function hideRole() {
+                isHiddenLocally = true; // Marca che l'utente ha nascosto manualmente
                 const container = document.getElementById('container');
                 if (!container) return;
 
@@ -91,9 +92,11 @@
 
             // Variabili per salvare i dati del ruolo corrente
             let currentRoleData = null;
+            let isHiddenLocally = false; // Traccia se l'utente ha nascosto manualmente il ruolo
 
             // Funzione per mostrare di nuovo il ruolo
             function showRole() {
+                isHiddenLocally = false; // Reset quando l'utente vuole vedere il ruolo
                 if (currentRoleData) {
                     const { role, word, hint, isFirst, hintEnabled, hintOnlyFirst } = currentRoleData;
                     renderRole(role, word, hint, isFirst, hintEnabled, hintOnlyFirst);
@@ -174,6 +177,7 @@
                 }
 
                 if (status === 'waiting') {
+                    isHiddenLocally = false; // Reset quando si torna in attesa (nuova partita)
                     container.innerHTML = `
                         <div class="min-h-screen flex items-center justify-center bg-gray-900">
                             <div class="bg-gray-800 rounded-lg shadow-xl p-8 max-w-md w-full mx-4 text-center border border-gray-700">
@@ -189,6 +193,11 @@
                 } else if (status === 'active') {
                     // Salva i dati del ruolo per poterli riutilizzare con hideRole/showRole
                     currentRoleData = { role, word, hint, isFirst, hintEnabled, hintOnlyFirst };
+
+                    // Se l'utente ha nascosto manualmente il ruolo, non mostrarlo di nuovo
+                    if (isHiddenLocally) {
+                        return;
+                    }
 
                     // Se il ruolo non è ancora stato rivelato, mostra la schermata "Tocca per scoprire"
                     if (!revealed && role) {
