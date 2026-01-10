@@ -31,12 +31,9 @@ export async function createRoom(
   hintOnlyFirst: boolean = false
 ): Promise<string> {
   const roomId = generateRoomId();
-  const word = getRandomWord();
-  const hint = hintEnabled ? getHint(word) : null;
 
   const roomData: Room = {
-    word,
-    hint: hint || undefined,
+    word: '', // La parola viene assegnata quando si avvia la partita
     status: 'waiting',
     numImpostors,
     hostId,
@@ -53,11 +50,6 @@ export async function createRoom(
       },
     },
   };
-  
-  // Rimuovi hint se è undefined per evitare errori Firebase
-  if (roomData.hint === undefined) {
-    delete (roomData as any).hint;
-  }
 
   await set(ref(database, `rooms/${roomId}`), roomData);
 
@@ -170,11 +162,23 @@ export async function startGame(roomId: string, hostId?: string): Promise<void> 
   // Seleziona il primo giocatore
   const firstPlayerId = selectFirstPlayer(playerUids);
 
-  // Aggiorna i ruoli dei giocatori, il primo giocatore e cambia lo status
+  // Genera la parola per questa partita
+  const word = getRandomWord();
+  const hint = roomData.hintEnabled ? getHint(word) : null;
+
+  // Aggiorna i ruoli dei giocatori, il primo giocatore, la parola e cambia lo status
   const updates: { [key: string]: any } = {
     [`rooms/${roomId}/status`]: 'active' as RoomStatus,
     [`rooms/${roomId}/firstPlayerId`]: firstPlayerId,
+    [`rooms/${roomId}/word`]: word,
   };
+
+  // Imposta hint solo se abilitato
+  if (hint !== null && hint !== undefined) {
+    updates[`rooms/${roomId}/hint`] = hint;
+  } else {
+    updates[`rooms/${roomId}/hint`] = null;
+  }
 
   roles.forEach((role, uid) => {
     updates[`rooms/${roomId}/players/${uid}/role`] = role;
@@ -300,22 +304,11 @@ export async function updateHintSettings(
     throw new Error('Non puoi modificare le impostazioni dell\'indizio durante la partita');
   }
 
-  const word = roomData.word;
-  const hint = hintEnabled ? getHint(word) : null;
-
-  const updates: { [key: string]: any } = {
+  // L'hint verrà generato quando si avvia la partita
+  await update(ref(database), {
     [`rooms/${roomId}/hintEnabled`]: hintEnabled,
     [`rooms/${roomId}/hintOnlyFirst`]: hintOnlyFirst,
-  };
-
-  // Imposta hint a null se non abilitato, altrimenti usa il valore ottenuto
-  if (hint !== null && hint !== undefined) {
-    updates[`rooms/${roomId}/hint`] = hint;
-  } else {
-    updates[`rooms/${roomId}/hint`] = null;
-  }
-
-  await update(ref(database), updates);
+  });
 }
 
 /**

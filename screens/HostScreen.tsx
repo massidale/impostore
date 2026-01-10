@@ -19,6 +19,8 @@ import QRCode from 'react-native-qrcode-svg';
 import { createRoom, startGame, endGame, subscribeToRoom, updateHeartbeat, updateNumImpostors, deleteRoom, markPlayerAsRevealed, getRoomData, updateHintSettings, removePlayerFromRoom } from '../services/roomService';
 import { generateHostId } from '../utils/uuid';
 import { Room, Player } from '../types/game';
+import { generateWordsForTopic } from '../services/geminiService';
+import { setCustomWords, resetToDefaultWords } from '../services/wordService';
 
 const WEB_PAGE_URL = 'https://impostore-c0ef1.web.app';
 
@@ -35,6 +37,10 @@ export default function HostScreen() {
   const [hostPlayerData, setHostPlayerData] = useState<Player | null>(null);
   const [hostRevealed, setHostRevealed] = useState(false);
   const [updateTimeout, setUpdateTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [customTopic, setCustomTopic] = useState('');
+  const [generatingWords, setGeneratingWords] = useState(false);
+  const [usingCustomWords, setUsingCustomWords] = useState(false);
+  const [usedFallback, setUsedFallback] = useState(false);
 
   useEffect(() => {
     if (roomId) {
@@ -252,6 +258,39 @@ export default function HostScreen() {
       if (timeout) clearTimeout(timeout);
     };
   }, [hintEnabled, hintOnlyFirst, roomId, roomData?.hintEnabled, roomData?.hintOnlyFirst, roomData?.status]);
+
+  const handleGenerateWords = async () => {
+    if (!customTopic.trim()) {
+      Alert.alert('Errore', 'Inserisci un argomento per generare le parole');
+      return;
+    }
+
+    setGeneratingWords(true);
+    try {
+      const result = await generateWordsForTopic(customTopic.trim());
+      setCustomWords(result.words);
+      setUsingCustomWords(true);
+      setUsedFallback(result.usedFallback);
+      if (result.usedFallback) {
+        Alert.alert('Attenzione', `Non è stato possibile generare parole personalizzate per "${customTopic}". Usando parole di default.`);
+      } else {
+        Alert.alert('Successo', `Generate 20 parole sul tema "${customTopic}"`);
+      }
+    } catch (error: any) {
+      Alert.alert('Errore', error.message || 'Impossibile generare le parole');
+      console.error(error);
+    } finally {
+      setGeneratingWords(false);
+    }
+  };
+
+  const handleResetWords = () => {
+    resetToDefaultWords();
+    setUsingCustomWords(false);
+    setUsedFallback(false);
+    setCustomTopic('');
+    Alert.alert('Successo', 'Parole ripristinate al dizionario predefinito');
+  };
 
   const handleRemovePlayer = async (playerUid: string) => {
     if (!roomId) return;
@@ -474,11 +513,11 @@ export default function HostScreen() {
                   </View>
                   <TouchableOpacity
                     onPress={handleStartGame}
-                    disabled={loading || getPlayerCount() < 1}
+                    disabled={loading || getPlayerCount() < 2}
                     style={styles.fullWidthButton}
                   >
                     <LinearGradient
-                      colors={getPlayerCount() < 1 ? ['#4b5563', '#4b5563'] : ['#2563eb', '#1d4ed8']}
+                      colors={getPlayerCount() < 2 ? ['#4b5563', '#4b5563'] : ['#2563eb', '#1d4ed8']}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
                       style={[styles.button, styles.primaryButton]}
@@ -681,6 +720,56 @@ export default function HostScreen() {
               </View>
             </View>
 
+            <View style={styles.settingsModalSection}>
+              <Text style={styles.label}>Personalizza Parole (AI)</Text>
+              {usingCustomWords && (
+                <View style={styles.customWordsActive}>
+                  <Text style={styles.customWordsActiveText}>
+                    {usedFallback
+                      ? `Non è stato possibile generare parole per "${customTopic}". Usando parole di default.`
+                      : `Usando parole personalizzate: "${customTopic}"`
+                    }
+                  </Text>
+                </View>
+              )}
+              <TextInput
+                style={styles.topicInput}
+                placeholder="Es: Film di fantascienza, Cucina italiana..."
+                placeholderTextColor="#6b7280"
+                value={customTopic}
+                onChangeText={setCustomTopic}
+                editable={!generatingWords}
+              />
+              <View style={styles.topicButtonsRow}>
+                <View style={styles.topicButtonFlex}>
+                  <TouchableOpacity
+                    onPress={handleGenerateWords}
+                    disabled={generatingWords || !customTopic.trim()}
+                  >
+                    <LinearGradient
+                      colors={generatingWords || !customTopic.trim() ? ['#4b5563', '#4b5563'] : ['#8b5cf6', '#7c3aed']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.generateButton}
+                    >
+                      <Text style={styles.generateButtonText}>
+                        {generatingWords ? 'Attendi...' : 'Genera'}
+                      </Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.topicButtonFlex}>
+                  <TouchableOpacity
+                    onPress={handleResetWords}
+                    disabled={!usingCustomWords}
+                    style={[styles.resetButton, !usingCustomWords && styles.disabledButton]}
+                  >
+                    <Text style={[styles.resetButtonText, !usingCustomWords && styles.disabledButtonText]}>Ripristina</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+
             <TouchableOpacity
               onPress={() => setShowSettingsModal(false)}
               style={[styles.button, styles.secondaryButton, styles.modalCloseButton]}
@@ -741,7 +830,7 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     width: '100%',
-    paddingVertical: 22,
+    paddingVertical: 18,
     paddingHorizontal: 32,
     borderRadius: 12,
     alignItems: 'center',
@@ -751,8 +840,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderWidth: 1.5,
     borderColor: '#3b82f6',
-    paddingVertical: 22,
+    paddingVertical: 18,
     paddingHorizontal: 20,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -760,7 +850,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   terminateButton: {
-    marginTop: 15,
+    marginTop: 12,
   },
   primaryButtonText: {
     color: 'white',
@@ -848,7 +938,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     width: '100%',
     gap: 10,
-    marginBottom: 10,
+    marginBottom: 12,
   },
   secondaryButtonFlex: {
     flex: 1,
@@ -1053,12 +1143,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   deleteButton: {
-    marginTop: 15,
-    paddingVertical: 16,
+    marginTop: 12,
+    paddingVertical: 18,
     alignItems: 'center',
     borderWidth: 1.5,
     borderColor: '#ef4444',
-    borderRadius: 8,
+    borderRadius: 12,
   },
   deleteButtonText: {
     color: '#ef4444',
@@ -1066,11 +1156,75 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   settingsButton: {
-    marginTop: 15,
+    marginTop: 12,
   },
   settingsModalSection: {
     width: '100%',
     marginBottom: 20,
+  },
+  topicInput: {
+    borderWidth: 1,
+    borderColor: '#374151',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: '#111827',
+    color: '#fff',
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  topicButtonsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  topicButtonFlex: {
+    flex: 1,
+  },
+  generateButton: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  generateButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  resetButton: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#6b7280',
+  },
+  resetButtonText: {
+    color: '#9ca3af',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  customWordsActive: {
+    backgroundColor: '#7c3aed20',
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#7c3aed',
+  },
+  customWordsActiveText: {
+    color: '#a78bfa',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  disabledButton: {
+    borderColor: '#374151',
+    opacity: 0.5,
+  },
+  disabledButtonText: {
+    color: '#6b7280',
   },
 });
 
