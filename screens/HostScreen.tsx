@@ -31,6 +31,7 @@ export default function HostScreen() {
   const [hostId] = useState(() => generateHostId());
   const [loading, setLoading] = useState(false);
   const [showRoleModal, setShowRoleModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [hostPlayerData, setHostPlayerData] = useState<Player | null>(null);
   const [hostRevealed, setHostRevealed] = useState(false);
   const [updateTimeout, setUpdateTimeout] = useState<NodeJS.Timeout | null>(null);
@@ -279,6 +280,38 @@ export default function HostScreen() {
     );
   };
 
+  const handleDeleteRoom = () => {
+    if (!roomId) return;
+
+    Alert.alert(
+      'Elimina Stanza',
+      'Sei sicuro di voler eliminare la stanza? Tutti i giocatori verranno disconnessi.',
+      [
+        {
+          text: 'Annulla',
+          style: 'cancel',
+        },
+        {
+          text: 'Elimina',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteRoom(roomId);
+              setRoomId(null);
+              setRoomData(null);
+              setShowRoleModal(false);
+              setHostPlayerData(null);
+              setHostRevealed(false);
+            } catch (error: any) {
+              Alert.alert('Errore', error.message || 'Impossibile eliminare la stanza');
+              console.error(error);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const getPlayerCount = () => {
     if (!roomData?.players) return 0;
     return Object.keys(roomData.players).length;
@@ -293,29 +326,44 @@ export default function HostScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="auto" />
+      <StatusBar style="light" />
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Crea Stanza</Text>
+        <Text style={styles.title}>{roomId ? `Stanza: ${roomId}` : 'Crea Stanza'}</Text>
 
       {!roomId ? (
         <View style={styles.createSection}>
           <Text style={styles.label}>Numero di Impostori</Text>
-          <TextInput
-            style={styles.input}
-            value={numImpostors}
-            onChangeText={setNumImpostors}
-            keyboardType="number-pad"
-            placeholder="1"
-          />
-          
+          <View style={styles.numberSelector}>
+            <TouchableOpacity
+              style={[styles.numberButton, parseInt(numImpostors, 10) <= 1 && styles.numberButtonDisabled]}
+              onPress={() => {
+                const current = parseInt(numImpostors, 10) || 1;
+                if (current > 1) setNumImpostors((current - 1).toString());
+              }}
+              disabled={parseInt(numImpostors, 10) <= 1}
+            >
+              <Text style={styles.numberButtonText}>−</Text>
+            </TouchableOpacity>
+            <Text style={styles.numberValue}>{numImpostors}</Text>
+            <TouchableOpacity
+              style={styles.numberButton}
+              onPress={() => {
+                const current = parseInt(numImpostors, 10) || 1;
+                setNumImpostors((current + 1).toString());
+              }}
+            >
+              <Text style={styles.numberButtonText}>+</Text>
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.switchContainer}>
             <View style={styles.switchRow}>
               <Text style={styles.switchLabel}>Abilita indizio per impostore</Text>
               <Switch
                 value={hintEnabled}
                 onValueChange={setHintEnabled}
-                trackColor={{ false: '#767577', true: '#81b0ff' }}
-                thumbColor={hintEnabled ? '#007AFF' : '#f4f3f4'}
+                trackColor={{ false: '#4b5563', true: '#3b82f6' }}
+                thumbColor={hintEnabled ? '#60a5fa' : '#9ca3af'}
               />
             </View>
             
@@ -337,7 +385,7 @@ export default function HostScreen() {
             disabled={loading}
           >
             <LinearGradient
-              colors={loading ? ['#ccc', '#ccc'] : ['#007AFF', '#0051D5']}
+              colors={loading ? ['#4b5563', '#4b5563'] : ['#2563eb', '#1d4ed8']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={[styles.button, styles.primaryButton]}
@@ -350,7 +398,6 @@ export default function HostScreen() {
         </View>
       ) : (
         <View style={styles.roomSection}>
-          <Text style={styles.roomId}>Stanza: {roomId}</Text>
           <Text style={styles.status}>
             Status: {roomData?.status === 'waiting' ? 'In attesa' : 'Attiva'}
           </Text>
@@ -360,63 +407,32 @@ export default function HostScreen() {
 
           {roomData?.status === 'waiting' && (
             <>
-              <View style={styles.settingsSection}>
-                <Text style={styles.label}>Numero di Impostori</Text>
-                <TextInput
-                  style={styles.input}
-                  value={numImpostors}
-                  onChangeText={setNumImpostors}
-                  keyboardType="number-pad"
-                  placeholder="1"
-                />
-              </View>
-
-              <View style={styles.settingsSection}>
-                <View style={styles.switchContainer}>
-                  <View style={styles.switchRow}>
-                    <Text style={styles.switchLabel}>Abilita indizio per impostore</Text>
-                    <Switch
-                      value={hintEnabled}
-                      onValueChange={(value) => {
-                        setHintEnabled(value);
-                        if (!value) {
-                          setHintOnlyFirst(false);
-                        }
-                      }}
-                      trackColor={{ false: '#767577', true: '#81b0ff' }}
-                      thumbColor={hintEnabled ? '#007AFF' : '#f4f3f4'}
-                    />
-                  </View>
-                  
-                  {hintEnabled && (
-                    <View style={styles.switchRow}>
-                      <Text style={styles.switchLabel}>Indizio solo al primo giocatore</Text>
-                      <Switch
-                        value={hintOnlyFirst}
-                        onValueChange={setHintOnlyFirst}
-                        trackColor={{ false: '#767577', true: '#81b0ff' }}
-                        thumbColor={hintOnlyFirst ? '#007AFF' : '#f4f3f4'}
-                      />
-                    </View>
-                  )}
-                </View>
-              </View>
-
               {/* Lista giocatori */}
               {roomData?.players && Object.keys(roomData.players).length > 0 && (
                 <View style={styles.playersListSection}>
                   <Text style={styles.label}>Giocatori nella stanza:</Text>
                   {Object.entries(roomData.players).map(([uid, player]) => (
-                    <View key={uid} style={styles.playerRow}>
-                      <Text style={styles.playerName}>
-                        {player.name || 'Giocatore senza nome'} {uid === hostId && '(Host)'}
-                      </Text>
-                      {uid !== hostId && (
+                    <View key={uid} style={styles.playerItemContainer}>
+                      <View style={styles.playerRow}>
+                        <Text style={styles.playerName}>
+                          {uid === hostId ? (
+                            <Text style={styles.youBadge}>Tu</Text>
+                          ) : (
+                            player.name || 'Giocatore senza nome'
+                          )}
+                        </Text>
+                        {uid === hostId && (
+                          <Text style={styles.hostBadge}>Host</Text>
+                        )}
+                      </View>
+                      {uid === hostId ? (
+                        <View style={styles.placeholderButton} />
+                      ) : (
                         <TouchableOpacity
                           onPress={() => handleRemovePlayer(uid)}
                           style={styles.removeButton}
                         >
-                          <Text style={styles.removeButtonText}>Rimuovi</Text>
+                          <Text style={styles.removeButtonText}>✕</Text>
                         </TouchableOpacity>
                       )}
                     </View>
@@ -462,7 +478,7 @@ export default function HostScreen() {
                     style={styles.fullWidthButton}
                   >
                     <LinearGradient
-                      colors={getPlayerCount() < 1 ? ['#ccc', '#ccc'] : ['#007AFF', '#0051D5']}
+                      colors={getPlayerCount() < 1 ? ['#4b5563', '#4b5563'] : ['#2563eb', '#1d4ed8']}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
                       style={[styles.button, styles.primaryButton]}
@@ -471,6 +487,18 @@ export default function HostScreen() {
                         {loading ? 'Avvio...' : 'Avvia Partita'}
                       </Text>
                     </LinearGradient>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => setShowSettingsModal(true)}
+                    style={[styles.button, styles.secondaryButton, styles.fullWidthButton, styles.settingsButton]}
+                  >
+                    <Text style={styles.secondaryButtonText}>Impostazioni Stanza</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleDeleteRoom}
+                    style={[styles.fullWidthButton, styles.deleteButton]}
+                  >
+                    <Text style={styles.deleteButtonText}>Elimina Stanza</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -531,7 +559,7 @@ export default function HostScreen() {
                   style={styles.revealButton}
                 >
                   <LinearGradient
-                    colors={['#007AFF', '#0051D5']}
+                    colors={['#2563eb', '#1d4ed8']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={[styles.button, styles.primaryButton]}
@@ -544,7 +572,7 @@ export default function HostScreen() {
               <>
                 {hostPlayerData.role === 'civilian' ? (
                   <>
-                    <Text style={styles.modalTitle}>Sei un civile.</Text>
+                    <Text style={styles.modalTitle}>Sei un civile</Text>
                     <Text style={styles.modalSubtitle}>La parola è:</Text>
                     <Text style={styles.modalWord}>{roomData?.word}</Text>
                     {hostPlayerData.isFirst && (
@@ -553,7 +581,7 @@ export default function HostScreen() {
                   </>
                 ) : (
                   <>
-                    <Text style={styles.modalTitle}>Sei l'impostore</Text>
+                    <Text style={styles.modalTitle}>Sei l'impostore.</Text>
                     <Text style={styles.modalSubtitle}>
                       Non conosci la parola.
                     </Text>
@@ -583,6 +611,85 @@ export default function HostScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Modal per le impostazioni stanza */}
+      <Modal
+        visible={showSettingsModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowSettingsModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Impostazioni Stanza</Text>
+
+            <View style={styles.settingsModalSection}>
+              <Text style={styles.label}>Numero di Impostori</Text>
+              <View style={styles.numberSelector}>
+                <TouchableOpacity
+                  style={[styles.numberButton, parseInt(numImpostors, 10) <= 1 && styles.numberButtonDisabled]}
+                  onPress={() => {
+                    const current = parseInt(numImpostors, 10) || 1;
+                    if (current > 1) setNumImpostors((current - 1).toString());
+                  }}
+                  disabled={parseInt(numImpostors, 10) <= 1}
+                >
+                  <Text style={styles.numberButtonText}>−</Text>
+                </TouchableOpacity>
+                <Text style={styles.numberValue}>{numImpostors}</Text>
+                <TouchableOpacity
+                  style={[styles.numberButton, parseInt(numImpostors, 10) >= getPlayerCount() && styles.numberButtonDisabled]}
+                  onPress={() => {
+                    const current = parseInt(numImpostors, 10) || 1;
+                    if (current < getPlayerCount()) setNumImpostors((current + 1).toString());
+                  }}
+                  disabled={parseInt(numImpostors, 10) >= getPlayerCount()}
+                >
+                  <Text style={styles.numberButtonText}>+</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.settingsModalSection}>
+              <View style={styles.switchContainer}>
+                <View style={styles.switchRow}>
+                  <Text style={styles.switchLabel}>Abilita indizio per impostore</Text>
+                  <Switch
+                    value={hintEnabled}
+                    onValueChange={(value) => {
+                      setHintEnabled(value);
+                      if (!value) {
+                        setHintOnlyFirst(false);
+                      }
+                    }}
+                    trackColor={{ false: '#4b5563', true: '#3b82f6' }}
+                    thumbColor={hintEnabled ? '#60a5fa' : '#9ca3af'}
+                  />
+                </View>
+
+                {hintEnabled && (
+                  <View style={styles.switchRow}>
+                    <Text style={styles.switchLabel}>Indizio solo al primo giocatore</Text>
+                    <Switch
+                      value={hintOnlyFirst}
+                      onValueChange={setHintOnlyFirst}
+                      trackColor={{ false: '#4b5563', true: '#3b82f6' }}
+                      thumbColor={hintOnlyFirst ? '#60a5fa' : '#9ca3af'}
+                    />
+                  </View>
+                )}
+              </View>
+            </View>
+
+            <TouchableOpacity
+              onPress={() => setShowSettingsModal(false)}
+              style={[styles.button, styles.secondaryButton, styles.modalCloseButton]}
+            >
+              <Text style={styles.secondaryButtonText}>Chiudi</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
       </ScrollView>
     </SafeAreaView>
   );
@@ -591,7 +698,7 @@ export default function HostScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#111827',
   },
   container: {
     flex: 1,
@@ -605,7 +712,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 30,
-    color: '#333',
+    color: '#fff',
   },
   createSection: {
     width: '100%',
@@ -615,16 +722,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 8,
-    color: '#333',
+    color: '#e5e7eb',
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#374151',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    backgroundColor: 'white',
-    marginBottom: 20,
+    backgroundColor: '#1f2937',
+    color: '#fff',
+    marginBottom: 8,
   },
   button: {
     borderRadius: 8,
@@ -642,7 +750,7 @@ const styles = StyleSheet.create({
   secondaryButton: {
     backgroundColor: 'transparent',
     borderWidth: 1.5,
-    borderColor: '#007AFF',
+    borderColor: '#3b82f6',
     paddingVertical: 22,
     paddingHorizontal: 20,
     alignItems: 'center',
@@ -661,7 +769,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   secondaryButtonText: {
-    color: '#007AFF',
+    color: '#3b82f6',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -679,17 +787,17 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 10,
-    color: '#333',
+    color: '#fff',
   },
   status: {
     fontSize: 16,
     marginBottom: 5,
-    color: '#666',
+    color: '#9ca3af',
   },
   playerCount: {
     fontSize: 16,
     marginBottom: 20,
-    color: '#666',
+    color: '#9ca3af',
   },
   settingsSection: {
     width: '100%',
@@ -703,18 +811,13 @@ const styles = StyleSheet.create({
   qrLabel: {
     fontSize: 16,
     marginBottom: 15,
-    color: '#333',
+    color: '#e5e7eb',
     textAlign: 'center',
   },
   qrContainer: {
     padding: 20,
     backgroundColor: 'white',
     borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   linkSection: {
     width: '100%',
@@ -723,17 +826,19 @@ const styles = StyleSheet.create({
   linkLabel: {
     fontSize: 16,
     marginBottom: 10,
-    color: '#333',
+    color: '#e5e7eb',
     textAlign: 'center',
   },
   linkText: {
     fontSize: 14,
-    color: '#007AFF',
+    color: '#60a5fa',
     textAlign: 'center',
     marginBottom: 15,
     padding: 10,
-    backgroundColor: 'white',
+    backgroundColor: '#1f2937',
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#374151',
   },
   buttonsContainer: {
     width: '100%',
@@ -756,25 +861,25 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   activeText: {
-    color: '#666',
+    color: '#9ca3af',
     fontSize: 16,
     textAlign: 'center',
     fontWeight: '600',
   },
   switchContainer: {
     width: '100%',
-    marginVertical: 20,
+    marginVertical: 8,
   },
   switchRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginVertical: 10,
-    paddingVertical: 8,
+    marginVertical: 4,
+    paddingVertical: 6,
   },
   switchLabel: {
     fontSize: 16,
-    color: '#333',
+    color: '#e5e7eb',
     flex: 1,
     marginRight: 10,
   },
@@ -790,69 +895,66 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   firstPlayerText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
+    color: '#9ca3af',
+    fontSize: 16,
+    marginTop: 10,
   },
   readyCount: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#007AFF',
+    color: '#3b82f6',
     marginTop: 10,
     textAlign: 'center',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   modalContent: {
-    backgroundColor: 'white',
+    backgroundColor: '#1f2937',
     borderRadius: 20,
     padding: 30,
     width: '100%',
     maxWidth: 400,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
+    borderWidth: 1,
+    borderColor: '#374151',
   },
   modalTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#fff',
     marginBottom: 20,
     textAlign: 'center',
   },
   modalSubtitle: {
     fontSize: 18,
-    color: '#666',
+    color: '#9ca3af',
     marginBottom: 15,
     textAlign: 'center',
   },
   modalWord: {
     fontSize: 48,
     fontWeight: 'bold',
-    color: '#007AFF',
+    color: '#60a5fa',
     marginBottom: 20,
     textAlign: 'center',
   },
   modalHintLabel: {
-    fontSize: 18,
-    color: '#666',
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#9ca3af',
     marginTop: 15,
     marginBottom: 8,
     textAlign: 'center',
   },
   modalHint: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#fff',
     marginBottom: 20,
     textAlign: 'center',
   },
@@ -866,36 +968,109 @@ const styles = StyleSheet.create({
   },
   playersListSection: {
     width: '100%',
-    marginTop: 20,
+    marginTop: 8,
     marginBottom: 20,
   },
-  playerRow: {
+  playerItemContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    marginBottom: 8,
+    gap: 8,
+  },
+  playerRow: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: 'white',
+    backgroundColor: '#1f2937',
     borderRadius: 8,
-    marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#374151',
   },
   playerName: {
     fontSize: 16,
-    color: '#333',
-    flex: 1,
+    color: '#e5e7eb',
+  },
+  hostBadge: {
+    fontSize: 14,
+    color: '#60a5fa',
+    marginLeft: 8,
+  },
+  youBadge: {
+    fontSize: 16,
+    color: '#e5e7eb',
+    fontWeight: '600',
   },
   removeButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    backgroundColor: '#FF3B30',
-    borderRadius: 6,
+    width: 44,
+    height: 44,
+    backgroundColor: '#dc2626',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   removeButtonText: {
     color: 'white',
-    fontSize: 14,
+    fontSize: 20,
     fontWeight: '600',
+  },
+  placeholderButton: {
+    width: 44,
+    height: 44,
+    backgroundColor: 'transparent',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#374151',
+  },
+  numberSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  numberButton: {
+    width: 48,
+    height: 48,
+    backgroundColor: '#2563eb',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  numberButtonDisabled: {
+    backgroundColor: '#4b5563',
+  },
+  numberButtonText: {
+    color: 'white',
+    fontSize: 24,
+    fontWeight: '600',
+  },
+  numberValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+    minWidth: 60,
+    textAlign: 'center',
+  },
+  deleteButton: {
+    marginTop: 15,
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#ef4444',
+    borderRadius: 8,
+  },
+  deleteButtonText: {
+    color: '#ef4444',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  settingsButton: {
+    marginTop: 15,
+  },
+  settingsModalSection: {
+    width: '100%',
+    marginBottom: 20,
   },
 });
 

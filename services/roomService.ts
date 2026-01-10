@@ -49,7 +49,7 @@ export async function createRoom(
         role: null,
         joinedAt: Date.now(),
         revealed: false,
-        name: 'Host',
+        name: '',
       },
     },
   };
