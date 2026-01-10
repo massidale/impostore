@@ -626,12 +626,12 @@ export default function HostScreen() {
                     <Text style={styles.modalSubtitle}>La parola è:</Text>
                     <Text style={styles.modalWord}>{roomData?.word}</Text>
                     {hostPlayerData.isFirst && (
-                      <Text style={styles.firstPlayerText}>Sei il primo giocatore.</Text>
+                      <Text style={styles.firstPlayerText}>Sei il <Text style={styles.firstPlayerHighlight}>primo</Text> giocatore.</Text>
                     )}
                   </>
                 ) : (
                   <>
-                    <Text style={styles.modalTitle}>Sei l'impostore.</Text>
+                    <Text style={styles.modalTitle}>Sei l'impostore</Text>
                     <Text style={styles.modalSubtitle}>
                       Non conosci la parola.
                     </Text>
@@ -644,7 +644,7 @@ export default function HostScreen() {
                       </>
                     )}
                     {hostPlayerData.isFirst && (
-                      <Text style={styles.firstPlayerText}>Sei il primo giocatore</Text>
+                      <Text style={styles.firstPlayerText}>Sei il <Text style={styles.firstPlayerHighlight}>primo</Text> giocatore</Text>
                     )}
                   </>
                 )}
@@ -1003,6 +1003,10 @@ const styles = StyleSheet.create({
     color: '#9ca3af',
     fontSize: 16,
     marginTop: 10,
+  },
+  firstPlayerHighlight: {
+    color: '#ef4444',
+    fontWeight: 'bold',
   },
   readyCount: {
     fontSize: 18,

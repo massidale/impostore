@@ -123,7 +123,7 @@
                                 <p class="text-lg text-gray-300 mb-6">La parola è:</p>
                                 <div class="mb-8">
                                     <p class="text-5xl font-bold text-blue-400">${word}</p>
-                                    ${isFirstPlayer ? '<p class="text-base text-gray-400 mt-6">Sei il primo giocatore</p>' : ''}
+                                    ${isFirstPlayer ? '<p class="text-base text-gray-400 mt-6">Sei il <span class="text-red-500 font-bold">primo</span> giocatore</p>' : ''}
                                 </div>
                                 <button
                                     onclick="hideRole()"
@@ -145,7 +145,7 @@
                                         <p class="text-xl font-bold text-gray-400 mt-4 mb-2">Indizio:</p>
                                         <p class="text-xl font-bold text-white">${hint}</p>
                                     ` : ''}
-                                    ${isFirstPlayer ? '<p class="text-base text-gray-400 mt-6">Sei il primo giocatore</p>' : ''}
+                                    ${isFirstPlayer ? '<p class="text-base text-gray-400 mt-6">Sei il <span class="text-red-500 font-bold">primo</span> giocatore</p>' : ''}
                                 </div>
                                 <button
                                     onclick="hideRole()"
