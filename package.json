@@ -9,6 +9,7 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "expo": "~54.0.30",
     "expo-clipboard": "~7.0.0",
     "expo-linear-gradient": "~14.0.1",

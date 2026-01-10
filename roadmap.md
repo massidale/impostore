@@ -1,234 +1,200 @@
-# Roadmap - Impostore
+# IMPOSTORE - Roadmap
 
-## 📋 Panoramica del Progetto
+## Funzionalita Gia Implementate
 
-**Impostore** è un gioco party multiplayer ispirato a giochi come "Spyfall" o "Mafia". L'applicazione permette a un host di creare una stanza di gioco dove i giocatori si uniscono tramite QR code o link web. Durante la partita, i giocatori ricevono ruoli casuali (civile o impostore) e devono scoprire chi è l'impostore attraverso il dialogo.
+### Core Game
 
-### Architettura Attuale
+- [x] **Creazione stanze** - ID alfanumerico 6 caratteri
+- [x] **Sistema ruoli** - Civili e Impostori
+- [x] **Parole segrete** - 95+ parole italiane con indizi
+- [x] **Primo giocatore** - Selezione casuale
+- [x] **Avvio/Fine gioco** - Controllo completo host
 
-- **App Mobile (Host)**: React Native/Expo - Interfaccia per creare e gestire stanze
-- **Web App (Giocatori)**: HTML/JavaScript stanådalone - Interfaccia per i giocatori che si uniscono
-- **Backend**: Firebase Realtime Database - Sincronizzazione in tempo reale
-- **Deployment**: Firebase Hosting per la web app
+### Gestione Giocatori
 
----
+- [x] **Ingresso tramite QR code** - Scansione rapida
+- [x] **Ingresso tramite link URL** - Condivisione facile
+- [x] **Validazione nomi** - Unicita e formato
+- [x] **Lista giocatori real-time** - Sincronizzazione Firebase
+- [x] **Rimozione giocatori** - Solo host
+- [x] **Autenticazione anonima** - Firebase Auth
 
-## ✅ Funzionalità Implementate
+### Impostazioni
 
-### Core Gameplay
-- [x] Creazione stanza con ID univoco (6 caratteri alfanumerici)
-- [x] Configurazione numero di impostori
-- [x] Sistema di ruoli (civile/impostore) con assegnazione casuale
-- [x] Selezione casuale del primo giocatore
-- [x] Generazione casuale di parole dal database
-- [x] Sistema di indizi opzionale per impostori
-- [x] Opzione "indizio solo al primo giocatore"
+- [x] **Numero impostori** - Configurabile 1-N
+- [x] **Sistema indizi** - Attivabile/disattivabile
+- [x] **Indizi solo primo** - Restrizione opzionale
+- [x] **Modifica durante attesa** - Lock durante gioco
 
-### Interfaccia Host
-- [x] Creazione stanza con configurazioni
-- [x] QR code per unione rapida
-- [x] Condivisione link stanza
-- [x] Visualizzazione numero giocatori in tempo reale
-- [x] Avvio/terminazione partita
-- [x] Aggiornamento numero impostori durante l'attesa
+### Interfaccia Host (Mobile)
 
-### Interfaccia Giocatori
-- [x] Unione tramite QR code o link
-- [x] Autenticazione anonima Firebase
-- [x] Visualizzazione ruolo e parola/indizio
-- [x] Indicatore primo giocatore
-- [x] UI responsive con Tailwind CSS
+- [x] **Form creazione stanza** - UI intuitiva
+- [x] **Gestione stanza** - Dashboard completa
+- [x] **QR code display** - Generazione automatica
+- [x] **Condivisione link** - Native share + clipboard
+- [x] **Modal impostazioni** - Configurazione rapida
+- [x] **Modal ruolo** - Visualizzazione con tap
+- [x] **Contatore pronti** - Giocatori che hanno visto ruolo
+- [x] **Eliminazione stanza** - Pulizia completa
+
+### Interfaccia Player (Web)
+
+- [x] **Form ingresso** - Nome con validazione
+- [x] **Stato attesa** - Loading spinner
+- [x] **Visualizzazione ruolo** - Civile/Impostore
+- [x] **Visualizzazione parola** - Solo civili
+- [x] **Visualizzazione indizio** - Solo impostori (se abilitato)
+- [x] **Indicatore primo giocatore** - Badge visivo
 
 ### Backend & Infrastruttura
-- [x] Firebase Realtime Database per sincronizzazione
-- [x] Sistema heartbeat per rilevare stanze abbandonate
-- [x] Auto-rimozione giocatori disconnessi (onDisconnect)
-- [x] Cleanup automatico stanze abbandonate
-- [x] Gestione stati stanza (waiting/active)
-- [x] Generazione nuova parola al termine partita
+
+- [x] **Firebase Realtime Database** - Sincronizzazione real-time
+- [x] **Firebase Hosting** - Deploy web automatico
+- [x] **Meccanismo heartbeat** - Pulizia stanze abbandonate (30s)
+- [x] **Debouncing impostazioni** - Ottimizzazione scritture (500ms)
+
+### Design & UX
+
+- [x] **Dark mode** - Tema scuro completo
+- [x] **Design responsive** - Mobile-first
+- [x] **Gradient backgrounds** - UI moderna
+- [x] **Feedback visivo** - Loading states, alerts
+- [x] **Touch targets grandi** - Accessibilita mobile
 
 ---
 
-## 🚀 Funzionalità Future (Priorità Alta)
+## Funzionalita Future (Suggerimenti)
 
-### Miglioramenti UX/UI
-- [ ] **Animazioni e transizioni**: Aggiungere animazioni fluide tra stati
-- [ ] **Tema scuro**: Supporto per dark mode
-- [ ] **Feedback visivo**: Migliorare feedback per azioni (vibrazione, suoni)
-- [ ] **Loading states migliorati**: Skeleton screens invece di spinner generici
-- [ ] **Error handling**: Messaggi di errore più user-friendly
+### Priorita Alta
 
-### Funzionalità Gameplay
-- [ ] **Timer di partita**: Timer configurabile per limitare durata partita
-- [ ] **Sistema votazione**: Votazione in-app per identificare l'impostore
-- [ ] **Statistiche**: Tracciamento vittorie/sconfitte per giocatori
-- [ ] **Categorie parole**: Filtri per categorie (animali, oggetti, luoghi, ecc.)
-- [ ] **Livelli difficoltà**: Parole più facili/difficili
-- [ ] **Sistema round**: Supporto per più round nella stessa stanza
+- [ ] **Sistema votazione** - Vota per eliminare giocatori
+- [ ] **Timer discussione** - Countdown per fasi gioco
+- [ ] **Chat in-game** - Messaggistica real-time
+- [ ] **Notifiche push** - Avvisi inizio gioco
 
-### Funzionalità Social
-- [ ] **Nomi giocatori**: Permettere ai giocatori di inserire un nome
-- [ ] **Chat in-game**: Chat testuale durante la partita
-- [ ] **Storia partite**: Cronologia partite giocate
-- [ ] **Sistema amici**: Inviti diretti ad amici
+### Priorita Media
 
----
+- [ ] **Statistiche giocatore** - Vittorie/sconfitte
+- [ ] **Leaderboard** - Classifica globale
+- [ ] **Parole personalizzate** - Host aggiunge parole
+- [ ] **Categorie parole** - Animali, cibi, luoghi, ecc.
+- [ ] **Livelli difficolta** - Facile/Medio/Difficile
+- [ ] **Modalita spettatore** - Osservare senza giocare
 
-## 🔧 Miglioramenti Tecnici (Priorità Media)
+### Priorita Bassa
 
-### Performance & Scalabilità
-- [ ] **Ottimizzazione Firebase**: Ridurre numero di letture database
-- [ ] **Caching locale**: Cache parole e indizi lato client
-- [ ] **Lazy loading**: Caricare dati solo quando necessario
-- [ ] **Compressione dati**: Ottimizzare payload Firebase
+- [ ] **Supporto multilingua** - Inglese, spagnolo, ecc.
+- [ ] **Effetti sonori** - Audio feedback
+- [ ] **Musica sottofondo** - Ambientazione
+- [ ] **Animazioni** - Transizioni fluide
+- [ ] **Avatar giocatori** - Personalizzazione
+- [ ] **Temi colore** - Scelta tema UI
 
-### Sicurezza
-- [ ] **Validazione input**: Validazione più robusta lato client e server
-- [ ] **Rate limiting**: Prevenire abusi (troppe stanze create)
-- [ ] **Sanitizzazione dati**: Sanitizzare input utente
-- [ ] **Firebase Security Rules**: Implementare regole di sicurezza database
+### Miglioramenti Tecnici
 
-### Code Quality
-- [ ] **Testing**: Unit tests e integration tests
-- [ ] **TypeScript strict mode**: Abilitare strict mode TypeScript
-- [ ] **Linting**: Configurare ESLint/Prettier
-- [ ] **CI/CD**: Pipeline automatica per deploy
-- [ ] **Error tracking**: Integrazione Sentry o simile
-
-### Architettura
-- [ ] **State management**: Considerare Redux/Zustand per stato complesso
-- [ ] **Code splitting**: Split codice per migliorare performance
-- [ ] **Service Worker**: PWA support per web app
-- [ ] **Offline support**: Funzionalità base offline
+- [ ] **Offline support** - Cache locale
+- [ ] **Performance monitoring** - Analytics Firebase
+- [ ] **Error tracking** - Sentry/Crashlytics
+- [ ] **Unit tests** - Copertura servizi
+- [ ] **E2E tests** - Cypress/Detox
+- [ ] **CI/CD pipeline** - Deploy automatico
 
 ---
 
-## 📱 Funzionalità Mobile (Priorità Bassa)
+## Architettura Attuale
 
-### App Mobile
-- [ ] **Notifiche push**: Notifiche quando partita inizia
-- [ ] **Vibrazione**: Feedback tattile per eventi importanti
-- [ ] **Condivisione nativa**: Migliorare condivisione con API native
-- [ ] **Deep linking**: Link diretti per unirsi a stanze
-- [ ] **App icon personalizzata**: Icona più professionale
-
-### Funzionalità Avanzate
-- [ ] **Modalità offline**: Gioco locale senza connessione
-- [ ] **Multi-language**: Supporto multilingua
-- [ ] **Accessibilità**: Migliorare supporto screen reader
-- [ ] **Tablet optimization**: Layout ottimizzato per tablet
-
----
-
-## 🌐 Funzionalità Web (Priorità Bassa)
-
-### Web App
-- [ ] **PWA completa**: Installabile come app
-- [ ] **Service Worker**: Caching intelligente
-- [ ] **Manifest.json**: Configurazione PWA completa
-- [ ] **Ottimizzazione mobile**: Migliorare esperienza mobile web
-
----
-
-## 🎨 Miglioramenti Design (Priorità Bassa)
-
-- [ ] **Design system**: Creare design system consistente
-- [ ] **Illustrazioni**: Aggiungere illustrazioni/icone personalizzate
-- [ ] **Branding**: Logo e identità visiva
-- [ ] **Micro-interactions**: Piccole animazioni per migliorare UX
-
----
-
-## 📊 Analytics & Monitoring (Priorità Media)
-
-- [ ] **Analytics**: Integrare Firebase Analytics
-- [ ] **Performance monitoring**: Monitorare performance app
-- [ ] **Crash reporting**: Tracciamento crash automatico
-- [ ] **User behavior**: Analisi comportamento utenti
-- [ ] **A/B testing**: Testare nuove funzionalità
-
----
-
-## 🔄 Refactoring & Manutenzione
-
-### Codebase
-- [ ] **Separazione logica**: Separare meglio logica business da UI
-- [ ] **Custom hooks**: Estrarre logica in custom hooks riutilizzabili
-- [ ] **Component library**: Creare componenti riutilizzabili
-- [ ] **Documentazione codice**: JSDoc per funzioni principali
-- [ ] **Architettura modulare**: Migliorare organizzazione file
-
-### Database
-- [ ] **Schema versioning**: Sistema versioning per schema database
-- [ ] **Data migration**: Tool per migrazione dati
-- [ ] **Backup automatici**: Backup periodici database
+```
+┌─────────────────────────────────────────────────────────┐
+│                    CLIENT MOBILE                         │
+│                  (React Native/Expo)                     │
+│  ┌─────────────────────────────────────────────────┐    │
+│  │              HostScreen.tsx                      │    │
+│  │  - Creazione stanza    - Gestione giocatori     │    │
+│  │  - Impostazioni        - Avvio/fine gioco       │    │
+│  │  - QR code             - Visualizzazione ruolo  │    │
+│  └─────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────┐
+│                      SERVICES                            │
+│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐    │
+│  │ roomService  │ │ roleService  │ │ wordService  │    │
+│  │ - CRUD stanze│ │ - Assegna    │ │ - Parole     │    │
+│  │ - Giocatori  │ │   ruoli      │ │ - Indizi     │    │
+│  │ - Heartbeat  │ │ - Fisher-    │ │              │    │
+│  │              │ │   Yates      │ │              │    │
+│  └──────────────┘ └──────────────┘ └──────────────┘    │
+└─────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────┐
+│                   FIREBASE RTDB                          │
+│  ┌─────────────────────────────────────────────────┐    │
+│  │  /rooms/{roomId}/                               │    │
+│  │    - word, hint, status                         │    │
+│  │    - numImpostors, hostId                       │    │
+│  │    - hintEnabled, hintOnlyFirst                 │    │
+│  │    - players/{uid}/role, name, revealed         │    │
+│  └─────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────┐
+│                     CLIENT WEB                           │
+│                   (Vanilla HTML/JS)                      │
+│  ┌─────────────────────────────────────────────────┐    │
+│  │              web/index.html                      │    │
+│  │  - Form ingresso       - Visualizzazione ruolo  │    │
+│  │  - Stato attesa        - Parola/Indizio         │    │
+│  └─────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## 🐛 Bug Noti & Fix Necessari
+## Flusso di Gioco
 
-### Da Verificare
-- [ ] **Cleanup stanze**: Verificare che cleanup stanze abbandonate funzioni correttamente
-- [ ] **Edge cases**: Gestire casi limite (es. tutti giocatori disconnessi)
-- [ ] **Concorrenza**: Gestire aggiornamenti concorrenti al database
-- [ ] **Memory leaks**: Verificare che non ci siano memory leaks
+```
+1. HOST CREA STANZA
+   └── Imposta numero impostori e indizi
 
----
+2. GIOCATORI SI UNISCONO
+   └── Tramite QR code o link URL
+   └── Inseriscono nome (validato)
 
-## 📚 Documentazione
+3. HOST AVVIA GIOCO
+   └── Ruoli assegnati casualmente
+   └── Primo giocatore selezionato
 
-- [ ] **README completo**: Documentazione setup e utilizzo
-- [ ] **API documentation**: Documentare API Firebase
-- [ ] **Contributing guide**: Guida per contributori
-- [ ] **Changelog**: Mantenere changelog aggiornato
-- [ ] **Tutorial**: Tutorial per nuovi utenti
+4. GIOCATORI VEDONO RUOLI
+   └── Civili: vedono parola
+   └── Impostori: vedono indizio (se abilitato)
 
----
+5. DISCUSSIONE (fuori app)
+   └── Civili cercano impostore
+   └── Impostori si mimetizzano
 
-## 🎯 Obiettivi a Lungo Termine
-
-1. **Comunità**: Costruire una community attiva di giocatori
-2. **Monetizzazione**: Considerare modello freemium (opzionale)
-3. **Multiplayer avanzato**: Supporto per più stanze simultanee
-4. **Gamification**: Sistema achievement e badge
-5. **Cross-platform**: Supporto per più piattaforme (desktop, console)
-
----
-
-## 📅 Timeline Suggerita
-
-### Fase 1 (1-2 mesi) - Stabilizzazione
-- Fix bug critici
-- Miglioramenti UX/UI base
-- Testing e sicurezza
-- Documentazione base
-
-### Fase 2 (2-3 mesi) - Funzionalità Core
-- Timer partita
-- Sistema votazione
-- Nomi giocatori
-- Categorie parole
-
-### Fase 3 (3-6 mesi) - Espansione
-- Statistiche e storia
-- Chat in-game
-- PWA completa
-- Analytics
-
-### Fase 4 (6+ mesi) - Avanzato
-- Multi-language
-- Gamification
-- Community features
-- Monetizzazione (se necessario)
+6. HOST TERMINA GIOCO
+   └── Nuova parola selezionata
+   └── Ruoli resettati
+   └── Pronto per nuova partita
+```
 
 ---
 
-## 💡 Note Finali
+## Come Contribuire
 
-Questa roadmap è un documento vivente e dovrebbe essere aggiornata regolarmente in base a:
-- Feedback degli utenti
-- Priorità di business
-- Risorse disponibili
-- Tecnologie emergenti
+1. **Fork** del repository
+2. **Crea branch** per la feature (`git checkout -b feature/nome-feature`)
+3. **Commit** modifiche (`git commit -m 'Aggiunge feature'`)
+4. **Push** al branch (`git push origin feature/nome-feature`)
+5. **Apri Pull Request**
 
-**Ultimo aggiornamento**: Gennaio 2025
+---
+
+## Contatti
+
+**Progetto:** Impostore
+**Repository:** [GitHub]
+**Hosting:** https://impostore-c0ef1.web.app

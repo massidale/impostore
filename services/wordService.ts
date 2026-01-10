@@ -1,14 +1,14 @@
 import wordsData from '../data/words.json';
-import hintsData from '../data/hints.json';
+
+const words: { [key: string]: string } = wordsData;
+const wordList: string[] = Object.keys(words);
 
 export function getRandomWord(): string {
-  const words: string[] = wordsData;
-  const randomIndex = Math.floor(Math.random() * words.length);
-  return words[randomIndex];
+  const randomIndex = Math.floor(Math.random() * wordList.length);
+  return wordList[randomIndex];
 }
 
 export function getHint(word: string): string | null {
-  const hints: { [key: string]: string } = hintsData;
-  return hints[word.toLowerCase()] || null;
+  return words[word.toLowerCase()] || null;
 }
 
