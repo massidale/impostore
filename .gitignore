@@ -36,6 +36,9 @@ yarn-error.*
 # Environment variables
 .env
 
+#Claude
+.claude
+
 # typescript
 *.tsbuildinfo
 

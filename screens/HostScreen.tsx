@@ -11,6 +11,7 @@ import {
   SafeAreaView,
   Switch,
   Modal,
+  Platform,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { StatusBar } from 'expo-status-bar';
@@ -22,7 +23,28 @@ import { Room, Player } from '../types/game';
 import { generateWordsForTopic } from '../services/geminiService';
 import { setCustomWords, resetToDefaultWords } from '../services/wordService';
 
-const WEB_PAGE_URL = 'https://impostore-c0ef1.web.app';
+const WEB_PAGE_URL = 'https://impostore-c0ef1.web.app/player';
+
+// Helper per gestire alert su web e mobile
+const showAlert = (
+  title: string,
+  message: string,
+  buttons?: Array<{ text: string; style?: 'default' | 'cancel' | 'destructive'; onPress?: () => void }>
+) => {
+  if (Platform.OS === 'web') {
+    if (buttons && buttons.length > 1) {
+      // Conferma con OK/Annulla
+      const destructiveButton = buttons.find(b => b.style === 'destructive');
+      if (destructiveButton && window.confirm(`${title}\n\n${message}`)) {
+        destructiveButton.onPress?.();
+      }
+    } else {
+      window.alert(`${title}\n\n${message}`);
+    }
+  } else {
+    Alert.alert(title, message, buttons);
+  }
+};
 
 export default function HostScreen() {
   const [numImpostors, setNumImpostors] = useState('1');
@@ -110,7 +132,7 @@ export default function HostScreen() {
   const handleCreateRoom = async () => {
     const impostors = parseInt(numImpostors, 10);
     if (isNaN(impostors) || impostors < 1) {
-      Alert.alert('Errore', 'Inserisci un numero valido di impostori');
+      showAlert('Errore', 'Inserisci un numero valido di impostori');
       return;
     }
 
@@ -119,7 +141,7 @@ export default function HostScreen() {
       const newRoomId = await createRoom(impostors, hostId, hintEnabled, hintOnlyFirst);
       setRoomId(newRoomId);
     } catch (error) {
-      Alert.alert('Errore', 'Impossibile creare la stanza');
+      showAlert('Errore', 'Impossibile creare la stanza');
       console.error(error);
     } finally {
       setLoading(false);
@@ -134,7 +156,7 @@ export default function HostScreen() {
       await startGame(roomId, hostId);
       setShowRoleModal(true);
     } catch (error: any) {
-      Alert.alert('Errore', error.message || 'Impossibile avviare la partita');
+      showAlert('Errore', error.message || 'Impossibile avviare la partita');
       console.error(error);
     } finally {
       setLoading(false);
@@ -155,7 +177,7 @@ export default function HostScreen() {
   const handleEndGame = async () => {
     if (!roomId) return;
 
-    Alert.alert(
+    showAlert(
       'Termina Partita',
       'Sei sicuro di voler terminare la partita? I giocatori torneranno in attesa.',
       [
@@ -172,9 +194,9 @@ export default function HostScreen() {
               await endGame(roomId);
               setShowRoleModal(false);
               setHostRevealed(false);
-              Alert.alert('Successo', 'La partita è stata terminata');
+              showAlert('Successo', 'La partita è stata terminata');
             } catch (error: any) {
-              Alert.alert('Errore', error.message || 'Impossibile terminare la partita');
+              showAlert('Errore', error.message || 'Impossibile terminare la partita');
               console.error(error);
             } finally {
               setLoading(false);
@@ -204,7 +226,7 @@ export default function HostScreen() {
 
     const url = `${WEB_PAGE_URL}?room=${roomId}`;
     Clipboard.setString(url);
-    Alert.alert('Copiato!', 'Link copiato negli appunti');
+    showAlert('Copiato!', 'Link copiato negli appunti');
   };
 
   // Aggiornamento automatico del numero di impostori
@@ -262,7 +284,7 @@ export default function HostScreen() {
 
   const handleGenerateWords = async () => {
     if (!customTopic.trim()) {
-      Alert.alert('Errore', 'Inserisci un argomento per generare le parole');
+      showAlert('Errore', 'Inserisci un argomento per generare le parole');
       return;
     }
 
@@ -274,13 +296,13 @@ export default function HostScreen() {
       setUsingCustomWords(true);
       setUsedFallback(result.usedFallback);
       if (result.usedFallback) {
-        Alert.alert('Attenzione', `Non è stato possibile generare parole personalizzate per "${topicToGenerate}". Usando parole di default.`);
+        showAlert('Attenzione', `Non è stato possibile generare parole personalizzate per "${topicToGenerate}". Usando parole di default.`);
       } else {
         setSavedTopic(topicToGenerate); // Salva il topic solo dopo generazione riuscita
-        Alert.alert('Successo', `Generate 20 parole sul tema "${topicToGenerate}"`);
+        showAlert('Successo', `Generate 20 parole sul tema "${topicToGenerate}"`);
       }
     } catch (error: any) {
-      Alert.alert('Errore', error.message || 'Impossibile generare le parole');
+      showAlert('Errore', error.message || 'Impossibile generare le parole');
       console.error(error);
     } finally {
       setGeneratingWords(false);
@@ -293,13 +315,13 @@ export default function HostScreen() {
     setUsedFallback(false);
     setCustomTopic('');
     setSavedTopic('');
-    Alert.alert('Successo', 'Parole ripristinate al dizionario predefinito');
+    showAlert('Successo', 'Parole ripristinate al dizionario predefinito');
   };
 
   const handleRemovePlayer = async (playerUid: string) => {
     if (!roomId) return;
 
-    Alert.alert(
+    showAlert(
       'Rimuovi Giocatore',
       'Sei sicuro di voler rimuovere questo giocatore dalla stanza?',
       [
@@ -314,7 +336,7 @@ export default function HostScreen() {
             try {
               await removePlayerFromRoom(roomId, playerUid);
             } catch (error: any) {
-              Alert.alert('Errore', error.message || 'Impossibile rimuovere il giocatore');
+              showAlert('Errore', error.message || 'Impossibile rimuovere il giocatore');
               console.error(error);
             }
           },
@@ -326,7 +348,7 @@ export default function HostScreen() {
   const handleDeleteRoom = () => {
     if (!roomId) return;
 
-    Alert.alert(
+    showAlert(
       'Elimina Stanza',
       'Sei sicuro di voler eliminare la stanza? Tutti i giocatori verranno disconnessi.',
       [
@@ -346,7 +368,7 @@ export default function HostScreen() {
               setHostPlayerData(null);
               setHostRevealed(false);
             } catch (error: any) {
-              Alert.alert('Errore', error.message || 'Impossibile eliminare la stanza');
+              showAlert('Errore', error.message || 'Impossibile eliminare la stanza');
               console.error(error);
             }
           },
@@ -822,6 +844,7 @@ const styles = StyleSheet.create({
   bottomButtonContainer: {
     padding: 20,
     paddingTop: 10,
+    paddingBottom: 70,
     backgroundColor: '#111827',
   },
   container: {
