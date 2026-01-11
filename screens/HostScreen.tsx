@@ -444,8 +444,9 @@ export default function HostScreen() {
           </View>
         </View>
       ) : (
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        <Text style={styles.title}>{`Stanza: ${roomId}`}</Text>
+      <View style={styles.createRoomContainer}>
+        <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+          <Text style={styles.title}>{`Stanza: ${roomId}`}</Text>
         <View style={styles.roomSection}>
           <Text style={styles.status}>
             Status: {roomData?.status === 'waiting' ? 'In attesa' : 'Attiva'}
@@ -570,26 +571,45 @@ export default function HostScreen() {
               >
                 <Text style={styles.secondaryButtonText}>Vedi il tuo ruolo</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleEndGame}
-                disabled={loading}
-                style={[styles.fullWidthButton, styles.terminateButton]}
-              >
-                <LinearGradient
-                  colors={['#FF3B30', '#D70015']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={[styles.button, styles.primaryButton, styles.fullWidthButton]}
-                >
-                  <Text style={styles.primaryButtonText}>
-                    {loading ? 'Terminazione...' : 'Termina Partita'}
-                  </Text>
-                </LinearGradient>
-              </TouchableOpacity>
+              {roomData?.players && (() => {
+                const firstPlayer = Object.entries(roomData.players).find(([_, player]) => player.isFirst);
+                if (firstPlayer) {
+                  const [uid, player] = firstPlayer;
+                  const isHost = uid === hostId;
+                  if (isHost) {
+                    return (
+                      <Text style={styles.firstPlayerInfo}>
+                        Il primo giocatore sei <Text style={styles.firstPlayerHighlight}>tu</Text>
+                      </Text>
+                    );
+                  }
+                  const playerName = player.name || 'Giocatore senza nome';
+                  return (
+                    <Text style={styles.firstPlayerInfo}>
+                      Il primo giocatore è <Text style={styles.firstPlayerHighlight}>{playerName}</Text>
+                    </Text>
+                  );
+                }
+                return null;
+              })()}
             </>
           )}
         </View>
       </ScrollView>
+      {roomData?.status === 'active' && (
+        <View style={styles.bottomButtonContainer}>
+          <TouchableOpacity
+            onPress={handleEndGame}
+            disabled={loading}
+            style={[styles.fullWidthButton, styles.terminateButtonOutline]}
+          >
+            <Text style={styles.terminateButtonText}>
+              {loading ? 'Terminazione...' : 'Termina Partita'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      </View>
       )}
 
       {/* Modal per mostrare il ruolo dell'host */}
@@ -1008,6 +1028,12 @@ const styles = StyleSheet.create({
     color: '#ef4444',
     fontWeight: 'bold',
   },
+  firstPlayerInfo: {
+    fontSize: 16,
+    color: '#9ca3af',
+    marginTop: 16,
+    textAlign: 'center',
+  },
   readyCount: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -1244,6 +1270,20 @@ const styles = StyleSheet.create({
   },
   disabledButtonText: {
     color: '#6b7280',
+  },
+  terminateButtonOutline: {
+    paddingVertical: 18,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#ef4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  terminateButtonText: {
+    color: '#ef4444',
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
 });
 
