@@ -5,8 +5,8 @@ npx expo export --platform web
 
 echo "📱 Creating PWA manifest and icons..."
 # Usa icon-square.png (quadrata 1536x1536) e ridimensiona
-sips -z 512 512 assets/icon-square.png --out dist/icon-512.png
-sips -z 192 192 assets/icon-square.png --out dist/icon-192.png
+sips -z 512 512 assets/icon-square.png --out dist/icon-512-v2.png
+sips -z 192 192 assets/icon-square.png --out dist/icon-192-v2.png
 
 # Crea il manifest.json per PWA
 cat > dist/manifest.json << 'MANIFEST'
@@ -21,13 +21,13 @@ cat > dist/manifest.json << 'MANIFEST'
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/icon-192.png",
+      "src": "/icon-192-v2.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/icon-512.png",
+      "src": "/icon-512-v2.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
@@ -44,7 +44,7 @@ sed -i '' 's/<head>/<head>\
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">\
     <meta name="apple-mobile-web-app-title" content="Impostore">\
     <meta name="theme-color" content="#111827">\
-    <link rel="apple-touch-icon" href="\/icon-192.png">\
+    <link rel="apple-touch-icon" href="\/icon-192-v2.png">\
     <style>html, body, #root { background-color: #111827 !important; } body { padding-top: env(safe-area-inset-top); }<\/style>/' dist/index.html
 
 echo "📁 Copying web client to dist/player/..."

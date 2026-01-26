@@ -22,13 +22,15 @@ export function generateRoomId(): string {
  * @param hostId ID dell'host (può essere generato o passato)
  * @param hintEnabled Se l'indizio è abilitato
  * @param hintOnlyFirst Se l'indizio viene dato solo al primo giocatore
+ * @param numClowns Numero di pagliacci nella partita
  * @returns ID della stanza creata
  */
 export async function createRoom(
   numImpostors: number,
   hostId: string,
   hintEnabled: boolean = false,
-  hintOnlyFirst: boolean = false
+  hintOnlyFirst: boolean = false,
+  numClowns: number = 0
 ): Promise<string> {
   const roomId = generateRoomId();
 
@@ -36,6 +38,7 @@ export async function createRoom(
     word: '', // La parola viene assegnata quando si avvia la partita
     status: 'waiting',
     numImpostors,
+    numClowns,
     hostId,
     hintEnabled,
     hintOnlyFirst,
@@ -157,7 +160,7 @@ export async function startGame(roomId: string, hostId?: string): Promise<void> 
   }
 
   // Assegna i ruoli
-  const roles = assignRoles(playerUids, roomData.numImpostors);
+  const roles = assignRoles(playerUids, roomData.numImpostors, roomData.numClowns || 0);
 
   // Seleziona il primo giocatore
   const firstPlayerId = selectFirstPlayer(playerUids);
@@ -281,6 +284,26 @@ export async function updateNumImpostors(roomId: string, numImpostors: number): 
 
   await update(ref(database), {
     [`rooms/${roomId}/numImpostors`]: numImpostors,
+  });
+}
+
+/**
+ * Aggiorna il numero di pagliacci nella stanza
+ * @param roomId ID della stanza
+ * @param numClowns Nuovo numero di pagliacci
+ */
+export async function updateNumClowns(roomId: string, numClowns: number): Promise<void> {
+  const roomData = await getRoomData(roomId);
+  if (!roomData) {
+    throw new Error('Stanza non trovata');
+  }
+
+  if (roomData.status !== 'waiting') {
+    throw new Error('Non puoi modificare il numero di pagliacci durante la partita');
+  }
+
+  await update(ref(database), {
+    [`rooms/${roomId}/numClowns`]: numClowns,
   });
 }
 

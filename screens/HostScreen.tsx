@@ -17,7 +17,7 @@ import * as Clipboard from 'expo-clipboard';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import QRCode from 'react-native-qrcode-svg';
-import { createRoom, startGame, endGame, subscribeToRoom, updateHeartbeat, updateNumImpostors, deleteRoom, markPlayerAsRevealed, getRoomData, updateHintSettings, removePlayerFromRoom } from '../services/roomService';
+import { createRoom, startGame, endGame, subscribeToRoom, updateHeartbeat, updateNumImpostors, updateNumClowns, deleteRoom, markPlayerAsRevealed, getRoomData, updateHintSettings, removePlayerFromRoom } from '../services/roomService';
 import { generateHostId } from '../utils/uuid';
 import { Room, Player } from '../types/game';
 import { generateWordsForTopic } from '../services/geminiService';
@@ -48,6 +48,7 @@ const showAlert = (
 
 export default function HostScreen() {
   const [numImpostors, setNumImpostors] = useState('1');
+  const [numClowns, setNumClowns] = useState('0');
   const [hintEnabled, setHintEnabled] = useState(false);
   const [hintOnlyFirst, setHintOnlyFirst] = useState(false);
   const [roomId, setRoomId] = useState<string | null>(null);
@@ -72,6 +73,10 @@ export default function HostScreen() {
         // Sincronizza il numero di impostori con quello della stanza
         if (room?.numImpostors) {
           setNumImpostors(room.numImpostors.toString());
+        }
+        // Sincronizza il numero di pagliacci con quello della stanza
+        if (room?.numClowns !== undefined) {
+          setNumClowns(room.numClowns.toString());
         }
         // Sincronizza le impostazioni dell'indizio
         if (room?.hintEnabled !== undefined) {
@@ -136,9 +141,11 @@ export default function HostScreen() {
       return;
     }
 
+    const clowns = parseInt(numClowns, 10) || 0;
+
     setLoading(true);
     try {
-      const newRoomId = await createRoom(impostors, hostId, hintEnabled, hintOnlyFirst);
+      const newRoomId = await createRoom(impostors, hostId, hintEnabled, hintOnlyFirst, clowns);
       setRoomId(newRoomId);
     } catch (error) {
       showAlert('Errore', 'Impossibile creare la stanza');
@@ -256,6 +263,34 @@ export default function HostScreen() {
       if (timeout) clearTimeout(timeout);
     };
   }, [numImpostors, roomId, roomData?.numImpostors, roomData?.status]);
+
+  // Aggiornamento automatico del numero di pagliacci
+  useEffect(() => {
+    if (!roomId || !roomData || roomData.status !== 'waiting') return;
+
+    const clowns = parseInt(numClowns, 10);
+    if (isNaN(clowns) || clowns < 0) return;
+    if (clowns === (roomData.numClowns || 0)) return;
+
+    // Debounce: aspetta 500ms dopo l'ultima modifica
+    if (updateTimeout) {
+      clearTimeout(updateTimeout);
+    }
+
+    const timeout = setTimeout(async () => {
+      try {
+        await updateNumClowns(roomId, clowns);
+      } catch (error: any) {
+        console.error('Errore aggiornamento numero pagliacci:', error);
+      }
+    }, 500);
+
+    setUpdateTimeout(timeout);
+
+    return () => {
+      if (timeout) clearTimeout(timeout);
+    };
+  }, [numClowns, roomId, roomData?.numClowns, roomData?.status]);
 
   // Aggiornamento automatico delle impostazioni indizio
   useEffect(() => {
@@ -415,6 +450,30 @@ export default function HostScreen() {
                   onPress={() => {
                     const current = parseInt(numImpostors, 10) || 1;
                     setNumImpostors((current + 1).toString());
+                  }}
+                >
+                  <Text style={styles.numberButtonText}>+</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={[styles.label, { marginTop: 16 }]}>Numero di Pagliacci</Text>
+              <View style={styles.numberSelector}>
+                <TouchableOpacity
+                  style={[styles.numberButton, parseInt(numClowns, 10) <= 0 && styles.numberButtonDisabled]}
+                  onPress={() => {
+                    const current = parseInt(numClowns, 10) || 0;
+                    if (current > 0) setNumClowns((current - 1).toString());
+                  }}
+                  disabled={parseInt(numClowns, 10) <= 0}
+                >
+                  <Text style={styles.numberButtonText}>−</Text>
+                </TouchableOpacity>
+                <Text style={styles.numberValue}>{numClowns}</Text>
+                <TouchableOpacity
+                  style={styles.numberButton}
+                  onPress={() => {
+                    const current = parseInt(numClowns, 10) || 0;
+                    setNumClowns((current + 1).toString());
                   }}
                 >
                   <Text style={styles.numberButtonText}>+</Text>
@@ -671,14 +730,24 @@ export default function HostScreen() {
                       <Text style={styles.firstPlayerText}>Sei il <Text style={styles.firstPlayerHighlight}>primo</Text> giocatore.</Text>
                     )}
                   </>
+                ) : hostPlayerData.role === 'clown' ? (
+                  <>
+                    <Text style={styles.modalTitle}>Sei il pagliaccio</Text>
+                    <Text style={styles.modalSubtitle}>La parola è:</Text>
+                    <Text style={styles.modalWord}>{roomData?.word}</Text>
+                    <Text style={styles.modalClownHint}>Fatti votare per vincere!</Text>
+                    {hostPlayerData.isFirst && (
+                      <Text style={styles.firstPlayerText}>Sei il <Text style={styles.firstPlayerHighlight}>primo</Text> giocatore.</Text>
+                    )}
+                  </>
                 ) : (
                   <>
                     <Text style={styles.modalTitle}>Sei l'impostore</Text>
                     <Text style={styles.modalSubtitle}>
                       Non conosci la parola.
                     </Text>
-                    {roomData?.hintEnabled && 
-                     (!roomData?.hintOnlyFirst || hostPlayerData.isFirst) && 
+                    {roomData?.hintEnabled &&
+                     (!roomData?.hintOnlyFirst || hostPlayerData.isFirst) &&
                      roomData?.hint && (
                       <>
                         <Text style={styles.modalHintLabel}>Indizio:</Text>
@@ -736,6 +805,33 @@ export default function HostScreen() {
                     if (current < getPlayerCount()) setNumImpostors((current + 1).toString());
                   }}
                   disabled={parseInt(numImpostors, 10) >= getPlayerCount()}
+                >
+                  <Text style={styles.numberButtonText}>+</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.settingsModalSection}>
+              <Text style={styles.label}>Numero di Pagliacci</Text>
+              <View style={styles.numberSelector}>
+                <TouchableOpacity
+                  style={[styles.numberButton, parseInt(numClowns, 10) <= 0 && styles.numberButtonDisabled]}
+                  onPress={() => {
+                    const current = parseInt(numClowns, 10) || 0;
+                    if (current > 0) setNumClowns((current - 1).toString());
+                  }}
+                  disabled={parseInt(numClowns, 10) <= 0}
+                >
+                  <Text style={styles.numberButtonText}>−</Text>
+                </TouchableOpacity>
+                <Text style={styles.numberValue}>{numClowns}</Text>
+                <TouchableOpacity
+                  style={[styles.numberButton, parseInt(numClowns, 10) >= getPlayerCount() && styles.numberButtonDisabled]}
+                  onPress={() => {
+                    const current = parseInt(numClowns, 10) || 0;
+                    if (current < getPlayerCount()) setNumClowns((current + 1).toString());
+                  }}
+                  disabled={parseInt(numClowns, 10) >= getPlayerCount()}
                 >
                   <Text style={styles.numberButtonText}>+</Text>
                 </TouchableOpacity>
@@ -1115,6 +1211,14 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginBottom: 20,
     textAlign: 'center',
+  },
+  modalClownHint: {
+    fontSize: 16,
+    color: '#f59e0b',
+    marginTop: 10,
+    marginBottom: 10,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
   revealButton: {
     width: '100%',

@@ -1,6 +1,6 @@
 export type RoomStatus = 'waiting' | 'active';
 
-export type PlayerRole = 'civilian' | 'impostor' | null;
+export type PlayerRole = 'civilian' | 'impostor' | 'clown' | null;
 
 export interface Player {
   role: PlayerRole;
@@ -15,6 +15,7 @@ export interface Room {
   hint?: string;
   status: RoomStatus;
   numImpostors: number;
+  numClowns: number;
   hostId: string;
   createdAt: number;
   hintEnabled?: boolean;
