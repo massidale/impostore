@@ -1,4 +1,6 @@
-export type RoomStatus = 'waiting' | 'active';
+export type RoomStatus = 'waiting' | 'active' | 'voting' | 'results' | 'impostor_guess';
+
+export type Winner = 'civilians' | 'impostor' | 'clown' | null;
 
 export type PlayerRole = 'civilian' | 'impostor' | 'clown' | null;
 
@@ -25,5 +27,13 @@ export interface Room {
   players?: {
     [uid: string]: Player;
   };
+  // Voting system
+  votes?: {
+    [voterUid: string]: string; // voterUid -> votedUid
+  };
+  eliminatedPlayer?: string;
+  eliminatedRole?: PlayerRole;
+  winner?: Winner;
+  impostorGuess?: string;
 }
 

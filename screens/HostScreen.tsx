@@ -17,7 +17,7 @@ import * as Clipboard from 'expo-clipboard';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import QRCode from 'react-native-qrcode-svg';
-import { createRoom, startGame, endGame, subscribeToRoom, updateHeartbeat, updateNumImpostors, updateNumClowns, deleteRoom, markPlayerAsRevealed, getRoomData, updateHintSettings, removePlayerFromRoom } from '../services/roomService';
+import { createRoom, startGame, endGame, subscribeToRoom, updateHeartbeat, updateNumImpostors, updateNumClowns, deleteRoom, markPlayerAsRevealed, getRoomData, updateHintSettings, removePlayerFromRoom, startVoting, castVote, getPlayerName } from '../services/roomService';
 import { generateHostId } from '../utils/uuid';
 import { Room, Player } from '../types/game';
 import { generateWordsForTopic } from '../services/geminiService';
@@ -212,6 +212,63 @@ export default function HostScreen() {
         },
       ]
     );
+  };
+
+  const handleStartVoting = async () => {
+    if (!roomId) return;
+
+    setLoading(true);
+    try {
+      await startVoting(roomId);
+    } catch (error: any) {
+      showAlert('Errore', error.message || 'Impossibile avviare la votazione');
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleHostVote = async (votedUid: string) => {
+    if (!roomId) return;
+
+    setLoading(true);
+    try {
+      await castVote(roomId, hostId, votedUid);
+    } catch (error: any) {
+      showAlert('Errore', error.message || 'Impossibile registrare il voto');
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getVoteCount = (playerUid: string): number => {
+    if (!roomData?.votes) return 0;
+    return Object.values(roomData.votes).filter(v => v === playerUid).length;
+  };
+
+  const hasVoted = (): boolean => {
+    return roomData?.votes ? hostId in roomData.votes : false;
+  };
+
+  const getEliminatedPlayerName = (): string => {
+    if (!roomData?.eliminatedPlayer || !roomData?.players) return 'Sconosciuto';
+    const player = roomData.players[roomData.eliminatedPlayer];
+    if (roomData.eliminatedPlayer === hostId) return 'Tu';
+    return player?.name || 'Giocatore';
+  };
+
+  const getWinnerText = (): string => {
+    switch (roomData?.winner) {
+      case 'clown':
+        return 'Ha vinto il Pagliaccio!';
+      case 'impostor':
+        return 'Ha vinto l\'Impostore!';
+      case 'civilians':
+        return 'Hanno vinto i Civili!';
+      default:
+        return '';
+    }
   };
 
   const handleShareLink = async () => {
@@ -680,14 +737,136 @@ export default function HostScreen() {
       {roomData?.status === 'active' && (
         <View style={styles.bottomButtonContainer}>
           <TouchableOpacity
+            onPress={handleStartVoting}
+            disabled={loading}
+            style={styles.fullWidthButton}
+          >
+            <LinearGradient
+              colors={loading ? ['#4b5563', '#4b5563'] : ['#f59e0b', '#d97706']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.button, styles.primaryButton]}
+            >
+              <Text style={styles.primaryButtonText}>
+                {loading ? 'Avvio...' : 'Vai alle Votazioni'}
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
+          <TouchableOpacity
             onPress={handleEndGame}
             disabled={loading}
-            style={[styles.fullWidthButton, styles.terminateButtonOutline]}
+            style={[styles.fullWidthButton, styles.terminateButtonOutline, { marginTop: 12 }]}
           >
             <Text style={styles.terminateButtonText}>
               {loading ? 'Terminazione...' : 'Termina Partita'}
             </Text>
           </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Sezione Votazione */}
+      {roomData?.status === 'voting' && (
+        <View style={styles.bottomButtonContainer}>
+          <View style={styles.votingSection}>
+            <Text style={styles.votingTitle}>Fase di Votazione</Text>
+            <Text style={styles.votingSubtitle}>
+              {hasVoted() ? 'Hai votato! Attendi gli altri giocatori...' : 'Vota chi vuoi eliminare'}
+            </Text>
+
+            {!hasVoted() && roomData?.players && (
+              <View style={styles.votingList}>
+                {Object.entries(roomData.players).map(([uid, player]) => {
+                  if (uid === hostId) return null; // Non puoi votare te stesso
+                  return (
+                    <TouchableOpacity
+                      key={uid}
+                      onPress={() => handleHostVote(uid)}
+                      disabled={loading}
+                      style={styles.voteButton}
+                    >
+                      <Text style={styles.voteButtonText}>{player.name || 'Giocatore'}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+
+            {hasVoted() && roomData?.players && (
+              <View style={styles.votingList}>
+                {Object.entries(roomData.players).map(([uid, player]) => (
+                  <View key={uid} style={styles.voteResultRow}>
+                    <Text style={styles.voteResultName}>
+                      {uid === hostId ? 'Tu' : (player.name || 'Giocatore')}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            <Text style={styles.voteProgress}>
+              Voti: {roomData?.votes ? Object.keys(roomData.votes).length : 0}/{getPlayerCount()}
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={handleEndGame}
+            disabled={loading}
+            style={[styles.fullWidthButton, styles.terminateButtonOutline, { marginTop: 12 }]}
+          >
+            <Text style={styles.terminateButtonText}>
+              {loading ? 'Terminazione...' : 'Termina Partita'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Sezione Risultati */}
+      {(roomData?.status === 'results' || roomData?.status === 'impostor_guess') && (
+        <View style={styles.bottomButtonContainer}>
+          <View style={styles.resultsSection}>
+            <Text style={styles.resultsTitle}>
+              {roomData?.eliminatedPlayer === hostId ? 'Sei stato eliminato!' : `${getEliminatedPlayerName()} è stato eliminato!`}
+            </Text>
+            <Text style={styles.eliminatedRoleText}>
+              Era: {roomData?.eliminatedRole === 'impostor' ? 'Impostore' : roomData?.eliminatedRole === 'clown' ? 'Pagliaccio' : 'Civile'}
+            </Text>
+
+            {roomData?.status === 'impostor_guess' && (
+              <Text style={styles.waitingGuess}>
+                L'impostore sta provando a indovinare la parola...
+              </Text>
+            )}
+
+            {roomData?.status === 'results' && roomData?.winner && (
+              <>
+                <Text style={styles.winnerText}>{getWinnerText()}</Text>
+                {roomData?.impostorGuess && (
+                  <Text style={styles.guessResult}>
+                    L'impostore ha provato: "{roomData.impostorGuess}"
+                    {'\n'}La parola era: "{roomData.word}"
+                  </Text>
+                )}
+              </>
+            )}
+
+            {roomData?.status === 'results' && (
+              <TouchableOpacity
+                onPress={handleEndGame}
+                disabled={loading}
+                style={styles.fullWidthButton}
+              >
+                <LinearGradient
+                  colors={loading ? ['#4b5563', '#4b5563'] : ['#2563eb', '#1d4ed8']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[styles.button, styles.primaryButton]}
+                >
+                  <Text style={styles.primaryButtonText}>
+                    {loading ? 'Avvio...' : 'Nuova Partita'}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       )}
       </View>
@@ -733,9 +912,12 @@ export default function HostScreen() {
                 ) : hostPlayerData.role === 'clown' ? (
                   <>
                     <Text style={styles.modalTitle}>Sei il pagliaccio</Text>
-                    <Text style={styles.modalSubtitle}>La parola è:</Text>
-                    <Text style={styles.modalWord}>{roomData?.word}</Text>
-                    <Text style={styles.modalClownHint}>Fatti votare per vincere!</Text>
+                    <Text style={styles.modalSubtitle}>
+                      Conosci la parola.
+                    </Text>
+                    <Text style={styles.modalHintLabel}>Parola:</Text>
+                    <Text style={styles.modalHint}>{roomData?.word}</Text>
+                    <Text style={styles.modalClownSubtitle}>Fatti votare per vincere!</Text>
                     {hostPlayerData.isFirst && (
                       <Text style={styles.firstPlayerText}>Sei il <Text style={styles.firstPlayerHighlight}>primo</Text> giocatore.</Text>
                     )}
@@ -1220,6 +1402,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontStyle: 'italic',
   },
+  modalClownSubtitle: {
+    fontSize: 16,
+    color: '#9ca3af',
+    marginTop: 10,
+    marginBottom: 10,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
   revealButton: {
     width: '100%',
     marginTop: 20,
@@ -1411,6 +1601,112 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     letterSpacing: 0.5,
+  },
+  // Voting styles
+  votingSection: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  votingTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#f59e0b',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  votingSubtitle: {
+    fontSize: 16,
+    color: '#9ca3af',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  votingList: {
+    width: '100%',
+    marginBottom: 16,
+  },
+  voteButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#1f2937',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#374151',
+  },
+  voteButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  voteCount: {
+    fontSize: 14,
+    color: '#9ca3af',
+  },
+  voteResultRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#1f2937',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 6,
+  },
+  voteResultName: {
+    fontSize: 16,
+    color: '#e5e7eb',
+  },
+  voteResultCount: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#f59e0b',
+  },
+  voteProgress: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#60a5fa',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  // Results styles
+  resultsSection: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  resultsTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#ef4444',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  eliminatedRoleText: {
+    fontSize: 16,
+    color: '#9ca3af',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  waitingGuess: {
+    fontSize: 16,
+    color: '#f59e0b',
+    marginVertical: 16,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  winnerText: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#10b981',
+    marginVertical: 16,
+    textAlign: 'center',
+  },
+  guessResult: {
+    fontSize: 14,
+    color: '#9ca3af',
+    marginBottom: 16,
+    textAlign: 'center',
+    lineHeight: 22,
   },
 });
 

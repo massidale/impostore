@@ -2,7 +2,7 @@ import { ref, set, get, onValue, off, update, remove } from 'firebase/database';
 import { database } from '../config/firebase';
 import { getRandomWord, getHint } from './wordService';
 import { assignRoles, selectFirstPlayer } from './roleService';
-import { Room, RoomStatus } from '../types/game';
+import { Room, RoomStatus, Winner, PlayerRole } from '../types/game';
 
 /**
  * Genera un ID stanza casuale (6 caratteri alfanumerici)
@@ -381,7 +381,7 @@ export function subscribeToRoom(
   callback: (room: Room | null) => void
 ): () => void {
   const roomRef = ref(database, `rooms/${roomId}`);
-  
+
   const unsubscribe = onValue(roomRef, (snapshot) => {
     if (snapshot.exists()) {
       callback(snapshot.val() as Room);
@@ -394,5 +394,174 @@ export function subscribeToRoom(
   return () => {
     off(roomRef);
   };
+}
+
+/**
+ * Avvia la fase di votazione
+ * @param roomId ID della stanza
+ */
+export async function startVoting(roomId: string): Promise<void> {
+  const roomData = await getRoomData(roomId);
+  if (!roomData) {
+    throw new Error('Stanza non trovata');
+  }
+
+  if (roomData.status !== 'active') {
+    throw new Error('La partita non è attiva');
+  }
+
+  // Resetta i voti e i dati di eliminazione, cambia lo status a 'voting'
+  await update(ref(database), {
+    [`rooms/${roomId}/status`]: 'voting' as RoomStatus,
+    [`rooms/${roomId}/votes`]: null,
+    [`rooms/${roomId}/eliminatedPlayer`]: null,
+    [`rooms/${roomId}/eliminatedRole`]: null,
+    [`rooms/${roomId}/winner`]: null,
+    [`rooms/${roomId}/impostorGuess`]: null,
+  });
+}
+
+/**
+ * Registra un voto di un giocatore
+ * @param roomId ID della stanza
+ * @param voterUid UID di chi vota
+ * @param votedUid UID di chi viene votato
+ */
+export async function castVote(
+  roomId: string,
+  voterUid: string,
+  votedUid: string
+): Promise<void> {
+  const roomData = await getRoomData(roomId);
+  if (!roomData) {
+    throw new Error('Stanza non trovata');
+  }
+
+  if (roomData.status !== 'voting') {
+    throw new Error('Non è il momento di votare');
+  }
+
+  if (!roomData.players || !roomData.players[voterUid]) {
+    throw new Error('Giocatore non trovato');
+  }
+
+  if (!roomData.players[votedUid]) {
+    throw new Error('Giocatore votato non trovato');
+  }
+
+  // Registra il voto
+  await update(ref(database), {
+    [`rooms/${roomId}/votes/${voterUid}`]: votedUid,
+  });
+
+  // Ricarica i dati per verificare se tutti hanno votato
+  const updatedRoomData = await getRoomData(roomId);
+  if (!updatedRoomData || !updatedRoomData.players) {
+    return;
+  }
+
+  const playerCount = Object.keys(updatedRoomData.players).length;
+  const voteCount = updatedRoomData.votes ? Object.keys(updatedRoomData.votes).length : 0;
+
+  // Se tutti hanno votato, calcola i risultati
+  if (voteCount >= playerCount) {
+    await calculateVotingResults(roomId);
+  }
+}
+
+/**
+ * Calcola i risultati della votazione e determina il prossimo stato
+ * @param roomId ID della stanza
+ */
+async function calculateVotingResults(roomId: string): Promise<void> {
+  const roomData = await getRoomData(roomId);
+  if (!roomData || !roomData.votes || !roomData.players) {
+    throw new Error('Dati mancanti per calcolare i risultati');
+  }
+
+  // Conta i voti per ogni giocatore
+  const voteCounts: { [uid: string]: number } = {};
+  for (const votedUid of Object.values(roomData.votes)) {
+    voteCounts[votedUid] = (voteCounts[votedUid] || 0) + 1;
+  }
+
+  // Trova il massimo numero di voti
+  const maxVotes = Math.max(...Object.values(voteCounts));
+
+  // Trova tutti i giocatori con il massimo numero di voti
+  const topVoted = Object.entries(voteCounts)
+    .filter(([_, count]) => count === maxVotes)
+    .map(([uid, _]) => uid);
+
+  // Se c'è un pareggio, sceglie casualmente
+  const eliminatedUid = topVoted[Math.floor(Math.random() * topVoted.length)];
+  const eliminatedRole = roomData.players[eliminatedUid]?.role;
+
+  // Determina il prossimo stato in base al ruolo eliminato
+  let nextStatus: RoomStatus;
+  let winner: Winner = null;
+
+  if (eliminatedRole === 'clown') {
+    // Pagliaccio eliminato: vince il pagliaccio
+    nextStatus = 'results';
+    winner = 'clown';
+  } else if (eliminatedRole === 'impostor') {
+    // Impostore eliminato: può provare a indovinare la parola
+    nextStatus = 'impostor_guess';
+    winner = null;
+  } else {
+    // Civile eliminato: vince l'impostore
+    nextStatus = 'results';
+    winner = 'impostor';
+  }
+
+  await update(ref(database), {
+    [`rooms/${roomId}/status`]: nextStatus,
+    [`rooms/${roomId}/eliminatedPlayer`]: eliminatedUid,
+    [`rooms/${roomId}/eliminatedRole`]: eliminatedRole,
+    [`rooms/${roomId}/winner`]: winner,
+  });
+}
+
+/**
+ * L'impostore eliminato tenta di indovinare la parola
+ * @param roomId ID della stanza
+ * @param guess Il tentativo di indovinare
+ */
+export async function submitImpostorGuess(
+  roomId: string,
+  guess: string
+): Promise<void> {
+  const roomData = await getRoomData(roomId);
+  if (!roomData) {
+    throw new Error('Stanza non trovata');
+  }
+
+  if (roomData.status !== 'impostor_guess') {
+    throw new Error('Non è il momento di indovinare');
+  }
+
+  // Confronta il tentativo con la parola (case-insensitive)
+  const isCorrect = guess.toLowerCase().trim() === roomData.word.toLowerCase().trim();
+  const winner: Winner = isCorrect ? 'impostor' : 'civilians';
+
+  await update(ref(database), {
+    [`rooms/${roomId}/status`]: 'results' as RoomStatus,
+    [`rooms/${roomId}/impostorGuess`]: guess,
+    [`rooms/${roomId}/winner`]: winner,
+  });
+}
+
+/**
+ * Ottiene il nome di un giocatore dalla stanza
+ * @param roomData Dati della stanza
+ * @param playerUid UID del giocatore
+ * @returns Nome del giocatore o "Giocatore" se non trovato
+ */
+export function getPlayerName(roomData: Room, playerUid: string): string {
+  if (!roomData.players || !roomData.players[playerUid]) {
+    return 'Giocatore';
+  }
+  return roomData.players[playerUid].name || 'Giocatore';
 }
 

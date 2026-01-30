@@ -69,6 +69,50 @@
             // Esponi la funzione globalmente per il bottone
             window.markAsRevealed = markAsRevealed;
 
+            // Variabili per la votazione
+            let currentVotedUid = null;
+            let currentRoomDataCache = null;
+
+            // Funzione per votare un giocatore
+            async function votePlayer(votedUid) {
+                if (!currentRoomId || !currentUserId || currentVotedUid) {
+                    return;
+                }
+                try {
+                    const voteRef = ref(database, `rooms/${currentRoomId}/votes/${currentUserId}`);
+                    await set(voteRef, votedUid);
+                    currentVotedUid = votedUid;
+                } catch (error) {
+                    console.error('Errore nel votare:', error);
+                    alert('Errore nel votare. Riprova.');
+                }
+            }
+            window.votePlayer = votePlayer;
+
+            // Funzione per l'impostore che prova a indovinare la parola
+            async function submitGuess() {
+                const guessInput = document.getElementById('guessInput');
+                if (!guessInput) return;
+
+                const guess = guessInput.value.trim();
+                if (!guess) {
+                    alert('Inserisci una parola');
+                    return;
+                }
+
+                try {
+                    await update(ref(database), {
+                        [`rooms/${currentRoomId}/status`]: 'results',
+                        [`rooms/${currentRoomId}/impostorGuess`]: guess,
+                        [`rooms/${currentRoomId}/winner`]: guess.toLowerCase() === currentRoomDataCache?.word?.toLowerCase() ? 'impostor' : 'civilians',
+                    });
+                } catch (error) {
+                    console.error('Errore nel tentativo:', error);
+                    alert('Errore. Riprova.');
+                }
+            }
+            window.submitGuess = submitGuess;
+
             // Funzione per nascondere il ruolo (tornare alla schermata "Tocca per scoprire")
             function hideRole() {
                 isHiddenLocally = true; // Marca che l'utente ha nascosto manualmente
@@ -139,10 +183,11 @@
                         <div class="min-h-screen flex items-center justify-center bg-gray-900">
                             <div class="bg-gray-800 rounded-lg shadow-xl p-12 max-w-md w-full mx-4 text-center border border-gray-700 min-h-[400px] flex flex-col justify-center">
                                 <p class="text-2xl font-bold text-white mb-2">Sei il pagliaccio</p>
-                                <p class="text-lg text-gray-300 mb-6">La parola è:</p>
+                                <p class="text-lg text-gray-300 mb-6">Conosci la parola.</p>
                                 <div class="mb-8">
-                                    <p class="text-5xl font-bold text-blue-400">${word}</p>
-                                    <p class="text-base text-yellow-500 mt-4 italic">Fatti votare per vincere!</p>
+                                    <p class="text-xl font-bold text-gray-400 mt-4 mb-2">Parola:</p>
+                                    <p class="text-xl font-bold text-white">${word}</p>
+                                    <p class="text-base text-gray-400 mt-4 italic">Fatti votare per vincere!</p>
                                     ${isFirstPlayer ? '<p class="text-base text-gray-400 mt-6">Sei il <span class="text-red-500 font-bold">primo</span> giocatore</p>' : ''}
                                 </div>
                                 <button
@@ -189,15 +234,19 @@
             }
 
             // Funzione per aggiornare l'UI
-            function updateUI(status, role, word, hint, firstPlayerId, isFirst, hintEnabled, hintOnlyFirst, revealed) {
+            function updateUI(status, role, word, hint, firstPlayerId, isFirst, hintEnabled, hintOnlyFirst, revealed, roomData) {
                 const container = document.getElementById('container');
                 if (!container) {
                     console.error('Container non trovato!');
                     return;
                 }
 
+                // Salva roomData per altre funzioni
+                currentRoomDataCache = roomData;
+
                 if (status === 'waiting') {
                     isHiddenLocally = false; // Reset quando si torna in attesa (nuova partita)
+                    currentVotedUid = null; // Reset voto
                     container.innerHTML = `
                         <div class="min-h-screen flex items-center justify-center bg-gray-900">
                             <div class="bg-gray-800 rounded-lg shadow-xl p-8 max-w-md w-full mx-4 text-center border border-gray-700">
@@ -239,6 +288,158 @@
 
                     // Mostra il ruolo
                     renderRole(role, word, hint, isFirst, hintEnabled, hintOnlyFirst);
+                } else if (status === 'voting') {
+                    // Fase di votazione - reset stato nascosto
+                    isHiddenLocally = false;
+                    const players = roomData?.players || {};
+                    const votes = roomData?.votes || {};
+                    const hasVoted = currentUserId in votes;
+                    currentVotedUid = hasVoted ? votes[currentUserId] : null;
+                    const totalPlayers = Object.keys(players).length;
+                    const totalVotes = Object.keys(votes).length;
+                    const allVoted = totalVotes >= totalPlayers;
+
+                    // Conta voti per ogni giocatore (solo se tutti hanno votato)
+                    const voteCounts = {};
+                    if (allVoted) {
+                        for (const votedUid of Object.values(votes)) {
+                            voteCounts[votedUid] = (voteCounts[votedUid] || 0) + 1;
+                        }
+                    }
+
+                    let playersHtml = '';
+                    for (const [uid, player] of Object.entries(players)) {
+                        if (uid === currentUserId) continue; // Non puoi votare te stesso
+                        const voteCount = voteCounts[uid] || 0;
+                        if (hasVoted) {
+                            // Mostra i voti solo se tutti hanno votato
+                            playersHtml += `
+                                <div class="flex justify-between items-center bg-gray-700 rounded-lg p-4 mb-2">
+                                    <span class="text-white">${player.name || 'Giocatore'}</span>
+                                    ${allVoted ? `<span class="text-yellow-500 font-bold">Voti: ${voteCount}</span>` : ''}
+                                </div>
+                            `;
+                        } else {
+                            playersHtml += `
+                                <button
+                                    onclick="votePlayer('${uid}')"
+                                    class="w-full flex justify-between items-center bg-gray-700 hover:bg-gray-600 rounded-lg p-4 mb-2 transition-colors"
+                                >
+                                    <span class="text-white">${player.name || 'Giocatore'}</span>
+                                </button>
+                            `;
+                        }
+                    }
+
+                    container.innerHTML = `
+                        <div class="min-h-screen flex items-center justify-center bg-gray-900">
+                            <div class="bg-gray-800 rounded-lg shadow-xl p-8 max-w-md w-full mx-4 border border-gray-700">
+                                <h1 class="text-2xl font-bold text-yellow-500 mb-2 text-center">Fase di Votazione</h1>
+                                <p class="text-gray-300 mb-6 text-center">
+                                    ${hasVoted ? 'Hai votato! Attendi gli altri...' : 'Vota chi vuoi eliminare'}
+                                </p>
+                                <div class="mb-4">
+                                    ${playersHtml}
+                                </div>
+                                <p class="text-blue-400 text-center font-semibold">Voti: ${totalVotes}/${totalPlayers}</p>
+                            </div>
+                        </div>
+                    `;
+                } else if (status === 'impostor_guess') {
+                    // L'impostore deve indovinare - reset stato nascosto
+                    isHiddenLocally = false;
+                    const eliminatedPlayer = roomData?.eliminatedPlayer;
+                    const players = roomData?.players || {};
+                    const eliminatedName = eliminatedPlayer === currentUserId ? 'Tu' : (players[eliminatedPlayer]?.name || 'Giocatore');
+                    const eliminatedRole = roomData?.eliminatedRole;
+                    const roleText = eliminatedRole === 'impostor' ? 'Impostore' : eliminatedRole === 'clown' ? 'Pagliaccio' : 'Civile';
+
+                    // Sono io l'impostore eliminato?
+                    const isEliminatedImpostor = eliminatedPlayer === currentUserId && eliminatedRole === 'impostor';
+
+                    if (isEliminatedImpostor) {
+                        container.innerHTML = `
+                            <div class="min-h-screen flex items-center justify-center bg-gray-900">
+                                <div class="bg-gray-800 rounded-lg shadow-xl p-8 max-w-md w-full mx-4 border border-gray-700 text-center">
+                                    <h1 class="text-2xl font-bold text-red-500 mb-4">Sei stato eliminato!</h1>
+                                    <p class="text-gray-300 mb-6">Prova a indovinare la parola per vincere!</p>
+                                    <input
+                                        type="text"
+                                        id="guessInput"
+                                        placeholder="La parola è..."
+                                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-yellow-500 text-white placeholder-gray-400"
+                                        autocomplete="off"
+                                        onkeypress="if(event.key === 'Enter') submitGuess()"
+                                    />
+                                    <button
+                                        onclick="submitGuess()"
+                                        class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+                                    >
+                                        Indovina
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        container.innerHTML = `
+                            <div class="min-h-screen flex items-center justify-center bg-gray-900">
+                                <div class="bg-gray-800 rounded-lg shadow-xl p-8 max-w-md w-full mx-4 border border-gray-700 text-center">
+                                    <h1 class="text-2xl font-bold text-red-500 mb-4">${eliminatedName} è stato eliminato!</h1>
+                                    <p class="text-gray-400 mb-4">Era: ${roleText}</p>
+                                    <div class="animate-pulse">
+                                        <p class="text-yellow-500 italic">L'impostore sta provando a indovinare la parola...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                } else if (status === 'results') {
+                    // Risultati finali - reset stato nascosto
+                    isHiddenLocally = false;
+                    const eliminatedPlayer = roomData?.eliminatedPlayer;
+                    const players = roomData?.players || {};
+                    const eliminatedName = eliminatedPlayer === currentUserId ? 'Tu' : (players[eliminatedPlayer]?.name || 'Giocatore');
+                    const eliminatedRole = roomData?.eliminatedRole;
+                    const roleText = eliminatedRole === 'impostor' ? 'Impostore' : eliminatedRole === 'clown' ? 'Pagliaccio' : 'Civile';
+                    const winner = roomData?.winner;
+                    const impostorGuess = roomData?.impostorGuess;
+
+                    let winnerText = '';
+                    let winnerColor = 'text-green-500';
+                    if (winner === 'clown') {
+                        winnerText = 'Ha vinto il Pagliaccio!';
+                        winnerColor = 'text-purple-500';
+                    } else if (winner === 'impostor') {
+                        winnerText = 'Ha vinto l\'Impostore!';
+                        winnerColor = 'text-red-500';
+                    } else if (winner === 'civilians') {
+                        winnerText = 'Hanno vinto i Civili!';
+                        winnerColor = 'text-green-500';
+                    }
+
+                    let guessHtml = '';
+                    if (impostorGuess) {
+                        guessHtml = `
+                            <p class="text-gray-400 mt-4">
+                                L'impostore ha provato: "${impostorGuess}"<br/>
+                                La parola era: "${word}"
+                            </p>
+                        `;
+                    }
+
+                    container.innerHTML = `
+                        <div class="min-h-screen flex items-center justify-center bg-gray-900">
+                            <div class="bg-gray-800 rounded-lg shadow-xl p-8 max-w-md w-full mx-4 border border-gray-700 text-center">
+                                <h1 class="text-2xl font-bold text-red-500 mb-2">
+                                    ${eliminatedPlayer === currentUserId ? 'Sei stato eliminato!' : `${eliminatedName} è stato eliminato!`}
+                                </h1>
+                                <p class="text-gray-400 mb-6">Era: ${roleText}</p>
+                                <h2 class="text-3xl font-bold ${winnerColor} mb-4">${winnerText}</h2>
+                                ${guessHtml}
+                                <p class="text-gray-500 mt-6 text-sm">In attesa che l'host avvii una nuova partita...</p>
+                            </div>
+                        </div>
+                    `;
                 }
             }
 
@@ -435,11 +636,11 @@
                                 const role = playerData.role;
                                 const isFirst = playerData.isFirst || false;
                                 
-                                updateUI(status, role, word, hint, firstPlayerId, isFirst, hintEnabled, hintOnlyFirst, true);
+                                updateUI(status, role, word, hint, firstPlayerId, isFirst, hintEnabled, hintOnlyFirst, true, roomData);
                             }
                         }
                     });
-                    
+
                     unsubscribeRoom = onValue(roomRef, async (snapshot) => {
                         if (!snapshot.exists()) {
                             document.getElementById('container').innerHTML = `
@@ -468,11 +669,11 @@
                         const role = playerData?.role || null;
                         const isFirst = playerData?.isFirst || false;
                         const revealed = playerData?.revealed || false;
-                        
+
                         // Aggiorna lo stato locale
                         playerRevealed = revealed;
 
-                        updateUI(status, role, word, hint, firstPlayerId, isFirst, hintEnabled, hintOnlyFirst, revealed);
+                        updateUI(status, role, word, hint, firstPlayerId, isFirst, hintEnabled, hintOnlyFirst, revealed, roomData);
                     });
 
                 } catch (error) {
