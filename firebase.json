@@ -1,4 +1,7 @@
 {
+  "database": {
+    "rules": "database.rules.json"
+  },
   "hosting": {
     "public": "dist",
     "ignore": [
@@ -7,10 +10,6 @@
       "**/node_modules/**"
     ],
     "rewrites": [
-      {
-        "source": "/player",
-        "destination": "/player/index.html"
-      },
       {
         "source": "**",
         "destination": "/index.html"

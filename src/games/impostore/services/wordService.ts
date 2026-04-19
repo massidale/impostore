@@ -17,10 +17,6 @@ export function setCustomWords(words: GeneratedWords): void {
 
 export function resetToDefaultWords(): void {
   activeWords = defaultWords;
-  usedWords.clear(); // Reset parole usate
-}
-
-export function resetUsedWords(): void {
   usedWords.clear();
 }
 
@@ -54,8 +50,3 @@ export function getRandomWord(excludeWord?: string): string {
 export function getHint(word: string): string | null {
   return activeWords[word.toLowerCase()] || activeWords[word] || null;
 }
-
-export function isUsingCustomWords(): boolean {
-  return activeWords !== defaultWords;
-}
-

@@ -1,6 +1,6 @@
 import React from 'react';
-import HostScreen from './screens/HostScreen';
+import MainScreen from './src/screens/MainScreen';
 
 export default function App() {
-  return <HostScreen />;
+  return <MainScreen />;
 }

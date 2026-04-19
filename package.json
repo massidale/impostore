@@ -6,11 +6,13 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "cleanup:rooms": "node scripts/cleanup-stale-rooms.js"
   },
   "dependencies": {
     "@expo/ngrok": "^4.1.3",
     "@google/generative-ai": "^0.24.1",
+    "@react-native-async-storage/async-storage": "2.2.0",
     "expo": "~54.0.32",
     "expo-clipboard": "~8.0.8",
     "expo-linear-gradient": "~15.0.8",

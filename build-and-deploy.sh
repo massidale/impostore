@@ -47,15 +47,11 @@ sed -i '' 's/<head>/<head>\
     <link rel="apple-touch-icon" href="\/icon-192-v2.png">\
     <style>html, body, #root { background-color: #111827 !important; } body { padding-top: env(safe-area-inset-top); }<\/style>/' dist/index.html
 
-echo "📁 Copying web client to dist/player/..."
-mkdir -p dist/player
-cp web/index.html dist/player/index.html
-
 echo "🚀 Deploying to Firebase..."
 firebase deploy
 
 echo "✅ Done!"
 echo ""
 echo "URLs:"
-echo "  - PWA (app principale): https://impostore-c0ef1.web.app"
-echo "  - Client giocatori:     https://impostore-c0ef1.web.app/player"
+echo "  - App (host + player): https://impostore-c0ef1.web.app"
+echo "  - Link player:         https://impostore-c0ef1.web.app?room=<ROOM_ID>"
