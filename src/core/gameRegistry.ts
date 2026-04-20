@@ -1,6 +1,6 @@
 import { GamePlugin } from './types/gamePlugin';
 import ImpostorePlugin from '../games/impostore';
-import BigliettiniPlugin from '../games/bigliettini';
+import IndovinaPlugin from '../games/indovina';
 
 // ── Game Registry ──
 // Central map of all available games. To add a new game:
@@ -9,7 +9,7 @@ import BigliettiniPlugin from '../games/bigliettini';
 
 const registry: Record<string, GamePlugin> = {
   [ImpostorePlugin.id]: ImpostorePlugin,
-  [BigliettiniPlugin.id]: BigliettiniPlugin,
+  [IndovinaPlugin.id]: IndovinaPlugin,
 };
 
 /**

@@ -30,6 +30,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
     borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.textMuted,
     fontSize: fontSize.md,
   },
 });

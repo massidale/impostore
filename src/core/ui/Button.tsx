@@ -16,9 +16,12 @@ export type ButtonVariant =
   | 'secondary'
   | 'success'
   | 'warning'
+  | 'warningMuted'
   | 'danger'
+  | 'dangerMuted'
   | 'dangerOutline'
-  | 'accent';
+  | 'accent'
+  | 'accentOutline';
 
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
@@ -37,9 +40,12 @@ const gradientFor: Record<ButtonVariant, [string, string]> = {
   success: [colors.success, colors.successDark],
   secondary: [colors.surfaceAlt, colors.surfaceAlt],
   warning: [colors.warning, colors.warning],
+  warningMuted: [colors.warningMuted, colors.warningMuted],
   danger: [colors.danger, colors.danger],
+  dangerMuted: [colors.dangerMuted, colors.dangerMuted],
   accent: [colors.accent, colors.accent],
   dangerOutline: ['transparent', 'transparent'],
+  accentOutline: ['transparent', 'transparent'],
 };
 
 const paddingFor: Record<ButtonSize, number> = {
@@ -69,10 +75,13 @@ export function Button({
   style,
   textStyle,
 }: ButtonProps) {
-  const grad = disabled
+  const isDangerOutline = variant === 'dangerOutline';
+  const isAccentOutline = variant === 'accentOutline';
+  const isOutline = isDangerOutline || isAccentOutline;
+  const grad = disabled && !isOutline
     ? ([colors.disabled, colors.disabled] as [string, string])
     : gradientFor[variant];
-  const isOutline = variant === 'dangerOutline';
+  const outlineColor = isAccentOutline ? colors.accent : colors.danger;
 
   return (
     <TouchableOpacity
@@ -85,14 +94,15 @@ export function Button({
         style={[
           styles.base,
           { paddingVertical: paddingFor[size], borderRadius: radiusFor[size] },
-          isOutline && styles.outline,
+          isOutline && { borderWidth: 1, borderColor: outlineColor, backgroundColor: 'transparent' },
+          disabled && isOutline && { opacity: 0.5 },
         ]}
       >
         <Text
           style={[
             styles.text,
             { fontSize: fontFor[size] },
-            isOutline && styles.outlineText,
+            isOutline && { color: outlineColor },
             textStyle,
           ]}
         >
@@ -112,16 +122,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     alignItems: 'center',
   },
-  outline: {
-    borderWidth: 1,
-    borderColor: colors.danger,
-    backgroundColor: 'transparent',
-  },
   text: {
     color: colors.textPrimary,
     fontWeight: 'bold',
-  },
-  outlineText: {
-    color: colors.danger,
   },
 });

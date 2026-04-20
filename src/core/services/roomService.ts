@@ -28,7 +28,8 @@ export async function touchRoom(
 
 export async function createRoom(
   hostId: string,
-  currentGameId: string
+  currentGameId: string,
+  hostName: string
 ): Promise<string> {
   const roomId = generateRoomId();
   const now = Date.now();
@@ -43,7 +44,7 @@ export async function createRoom(
     players: {
       [hostId]: {
         joinedAt: now,
-        name: '',
+        name: hostName.trim(),
         isHost: true,
       },
     },

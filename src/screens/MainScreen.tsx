@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { SafeAreaView, StyleSheet, Platform, ActivityIndicator } from 'react-native';
+import { SafeAreaView, StyleSheet, Platform, ActivityIndicator, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
 import { createRoom } from '../core/services/roomService';
@@ -57,11 +57,11 @@ export default function MainScreen() {
     );
   }
 
-  const handleCreateRoom = async (gameId: string, settings: unknown) => {
+  const handleCreateRoom = async (gameId: string, settings: unknown, hostName: string) => {
     setLoading(true);
     try {
       const plugin = getGame(gameId);
-      const newRoomId = await createRoom(uid, gameId);
+      const newRoomId = await createRoom(uid, gameId, hostName);
       await plugin.initGameState(newRoomId, settings);
       setGameSettings(settings);
       setRoomId(newRoomId);
@@ -142,8 +142,12 @@ export default function MainScreen() {
       return (
         <SafeAreaView style={styles.safeArea}>
           <StatusBar style="light" />
-          <HostDashboard roomData={roomData} hostId={uid} />
-          <PlayerGamepad roomData={roomData} playerId={uid} />
+          <View style={styles.gameLayout}>
+            <View style={styles.gameContent}>
+              <PlayerGamepad roomData={roomData} playerId={uid} />
+            </View>
+            <HostDashboard roomData={roomData} hostId={uid} />
+          </View>
         </SafeAreaView>
       );
     } catch {
@@ -161,4 +165,6 @@ export default function MainScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#111827' },
   centered: { justifyContent: 'center', alignItems: 'center' },
+  gameLayout: { flex: 1 },
+  gameContent: { flex: 1 },
 });

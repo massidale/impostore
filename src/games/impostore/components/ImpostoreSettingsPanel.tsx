@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Switch, Platform, Alert } from 'react-native';
 import { SettingsPanelProps } from '../../../core/types/gamePlugin';
-import { Button, Input, NumberSelector, colors, spacing, fontSize } from '../../../core/ui';
+import { Button, Input, NumberSelector, colors, radius, spacing, fontSize } from '../../../core/ui';
 import { generateWordsForTopic } from '../services/geminiService';
 import { setCustomWords, resetToDefaultWords } from '../services/wordService';
 
@@ -79,7 +79,7 @@ export default function ImpostoreSettingsPanel({ settings, onSettingsChange }: S
         value={s.numClowns}
         onChange={(v) => update({ numClowns: v })}
         min={0}
-        style={{ marginTop: spacing.xl }}
+        style={{ marginTop: spacing.lg }}
       />
 
       <View style={styles.switchRow}>
@@ -88,14 +88,21 @@ export default function ImpostoreSettingsPanel({ settings, onSettingsChange }: S
       </View>
 
       {s.hintEnabled && (
-        <View style={[styles.switchRow, { marginTop: spacing.sm + 2 }]}>
-          <Text style={styles.switchLabel}>Indizio solo al primo giocatore</Text>
-          <Switch value={s.hintOnlyFirst} onValueChange={(v) => update({ hintOnlyFirst: v })} />
+        <View style={styles.nestedContainer}>
+          <View style={styles.nestedRow}>
+            <Text style={styles.nestedLabel}>Indizio solo al primo giocatore</Text>
+            <Switch value={s.hintOnlyFirst} onValueChange={(v) => update({ hintOnlyFirst: v })} />
+          </View>
         </View>
       )}
 
-      <View style={styles.aiSection}>
-        <Text style={styles.label}>Tema Personalizzato (AI)</Text>
+      <View style={styles.aiCard}>
+        <View style={styles.aiHeader}>
+          <Text style={styles.aiTitle}>Tema Personalizzato</Text>
+          <Text style={styles.aiOptional}>opzionale</Text>
+        </View>
+        <Text style={styles.aiHint}>Genera un dizionario su misura con l'AI</Text>
+
         <Input
           placeholder="Es. Film di Fantascienza"
           value={customTopic}
@@ -114,7 +121,7 @@ export default function ImpostoreSettingsPanel({ settings, onSettingsChange }: S
           <Button
             onPress={handleGenerateWords}
             disabled={generatingWords}
-            variant="accent"
+            variant="accentOutline"
             size="sm"
           >
             {generatingWords ? 'Generazione...' : 'Genera Parole con AI'}
@@ -126,24 +133,59 @@ export default function ImpostoreSettingsPanel({ settings, onSettingsChange }: S
 }
 
 const styles = StyleSheet.create({
-  label: {
-    color: colors.textPrimary,
-    fontSize: fontSize.md,
-    marginBottom: spacing.sm + 2,
-    marginTop: spacing.lg,
-  },
   switchRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: spacing.xl,
+    marginTop: spacing.lg,
   },
   switchLabel: { color: colors.textPrimary, fontSize: fontSize.md },
-  aiSection: {
-    marginTop: 25,
-    paddingTop: 15,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+  nestedContainer: {
+    marginTop: spacing.xs,
+    marginLeft: spacing.sm,
+    paddingLeft: spacing.md,
+    borderLeftWidth: 2,
+    borderLeftColor: colors.border,
+  },
+  nestedRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+  },
+  nestedLabel: {
+    color: colors.textSecondary,
+    fontSize: fontSize.sm,
+    flexShrink: 1,
+    marginRight: spacing.sm,
+  },
+  aiCard: {
+    marginTop: spacing.xxl,
+    padding: spacing.lg,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.sm,
+  },
+  aiHeader: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: spacing.xs,
+  },
+  aiTitle: {
+    color: colors.textPrimary,
+    fontSize: fontSize.md,
+    fontWeight: '600',
+  },
+  aiOptional: {
+    color: colors.textMuted,
+    fontSize: fontSize.xs,
+    marginLeft: spacing.sm,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  aiHint: {
+    color: colors.textSecondary,
+    fontSize: fontSize.sm,
+    marginBottom: spacing.md,
   },
   activeTopicText: {
     color: colors.success,

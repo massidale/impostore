@@ -9,7 +9,9 @@ export const colors = {
   success: '#10b981',
   successDark: '#047857',
   danger: '#ef4444',
+  dangerMuted: '#9a3434',
   warning: '#f59e0b',
+  warningMuted: '#a16c1e',
   accent: '#8b5cf6',
 
   textPrimary: '#ffffff',

@@ -2,18 +2,18 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { HostDashboardProps } from '../../../core/types/gamePlugin';
 import { Button, Card, colors, spacing, fontSize } from '../../../core/ui';
-import { BigliettiniGameState } from '../types';
-import { endBigliettiniGame } from '../services/bigliettiniLogic';
+import { IndovinaGameState } from '../types';
+import { endIndovinaGame } from '../services/indovinaLogic';
 
-export default function BigliettiniHostDashboard({ roomData }: HostDashboardProps) {
-  const state = roomData.gameState as BigliettiniGameState;
+export default function IndovinaHostDashboard({ roomData }: HostDashboardProps) {
+  const state = roomData.gameState as IndovinaGameState;
   const roomId = roomData.id;
 
-  const handleEnd = () => endBigliettiniGame(roomId);
+  const handleEnd = () => endIndovinaGame(roomId);
 
   return (
     <Card style={{ padding: 15 }}>
-      <Text style={styles.title}>Pannello Host: Bigliettini</Text>
+      <Text style={styles.title}>Pannello Host: Indovina la parola</Text>
 
       <View style={styles.statusBox}>
         <Text style={styles.statusText}>Fase Attuale: {state.phase}</Text>

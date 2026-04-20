@@ -69,7 +69,7 @@ export default function WebPlayerScreen({ roomData, roomId, playerUid }: WebPlay
           <Button
             onPress={handleJoin}
             disabled={loading || !playerName.trim()}
-            variant="success"
+            variant="primary"
             size="lg"
           >
             {loading ? 'Entrando...' : 'Entra'}

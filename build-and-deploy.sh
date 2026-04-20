@@ -41,11 +41,11 @@ echo "📱 Adding PWA meta tags and styles..."
 sed -i '' 's/<head>/<head>\
     <link rel="manifest" href="\/manifest.json">\
     <meta name="apple-mobile-web-app-capable" content="yes">\
+    <meta name="mobile-web-app-capable" content="yes">\
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">\
     <meta name="apple-mobile-web-app-title" content="Impostore">\
-    <meta name="theme-color" content="#111827">\
     <link rel="apple-touch-icon" href="\/icon-192-v2.png">\
-    <style>html, body, #root { background-color: #111827 !important; } body { padding-top: env(safe-area-inset-top); }<\/style>/' dist/index.html
+    <style>html, body, #root { background-color: #111827 !important; box-sizing: border-box; } body { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }<\/style>/' dist/index.html
 
 echo "🚀 Deploying to Firebase..."
 firebase deploy

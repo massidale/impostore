@@ -2,14 +2,14 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { PlayerGamepadProps } from '../../../core/types/gamePlugin';
 import { colors, radius, spacing, fontSize } from '../../../core/ui';
-import { BigliettiniGameState } from '../types';
+import { IndovinaGameState } from '../types';
 
-export default function BigliettiniPlayerGamepad({ roomData }: PlayerGamepadProps) {
-  const state = roomData.gameState as BigliettiniGameState;
+export default function IndovinaPlayerGamepad({ roomData }: PlayerGamepadProps) {
+  const state = roomData.gameState as IndovinaGameState;
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Bigliettini</Text>
+      <Text style={styles.title}>Indovina la parola</Text>
       <View style={styles.card}>
         <Text style={styles.text}>Gioco in sviluppo 🚧</Text>
         <Text style={styles.subtext}>Fase: {state.phase}</Text>

@@ -1,22 +1,22 @@
 import { touchRoom } from '../../../core/services/roomService';
-import { BigliettiniGameState } from '../types';
+import { IndovinaGameState } from '../types';
 
-export async function initBigliettiniGame(roomId: string): Promise<void> {
-  const initialState: BigliettiniGameState = { phase: 'setup' };
+export async function initIndovinaGame(roomId: string): Promise<void> {
+  const initialState: IndovinaGameState = { phase: 'setup' };
   await touchRoom(roomId, {
-    [`rooms/${roomId}/currentGameId`]: 'bigliettini',
+    [`rooms/${roomId}/currentGameId`]: 'indovina',
     [`rooms/${roomId}/gameState`]: initialState,
   });
 }
 
-export async function startBigliettiniGame(roomId: string): Promise<void> {
+export async function startIndovinaGame(roomId: string): Promise<void> {
   await touchRoom(roomId, {
     [`rooms/${roomId}/status`]: 'active',
     [`rooms/${roomId}/gameState/phase`]: 'playing',
   });
 }
 
-export async function endBigliettiniGame(roomId: string): Promise<void> {
+export async function endIndovinaGame(roomId: string): Promise<void> {
   await touchRoom(roomId, {
     [`rooms/${roomId}/status`]: 'lobby',
     [`rooms/${roomId}/gameState/phase`]: 'setup',

@@ -35,17 +35,19 @@ export function NumberSelector({
   const inc = () => onChange(Math.min(max, value + step));
 
   return (
-    <View style={style}>
+    <View style={[styles.row, style]}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
-      <View style={styles.selector}>
+      <View style={styles.stepper}>
         <TouchableOpacity
           onPress={dec}
           disabled={atMin}
           style={[styles.button, atMin && styles.buttonDisabled]}
         >
-          <Text style={styles.buttonText}>-</Text>
+          <Text style={styles.buttonText}>−</Text>
         </TouchableOpacity>
-        <Text style={styles.value}>{value}</Text>
+        <View style={styles.valueContainer}>
+          <Text style={styles.value}>{value}</Text>
+        </View>
         <TouchableOpacity
           onPress={inc}
           disabled={atMax}
@@ -59,35 +61,48 @@ export function NumberSelector({
 }
 
 const styles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   label: {
     color: colors.textPrimary,
     fontSize: fontSize.md,
-    marginBottom: spacing.sm + 2,
+    flexShrink: 1,
+    marginRight: spacing.md,
   },
-  selector: {
+  stepper: {
     flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.sm,
+    overflow: 'hidden',
+  },
+  button: {
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  button: {
-    backgroundColor: colors.surfaceAlt,
-    padding: 15,
-    borderRadius: radius.sm,
-    width: 50,
-    alignItems: 'center',
-  },
   buttonDisabled: {
-    opacity: 0.4,
+    opacity: 0.35,
   },
   buttonText: {
     color: colors.textPrimary,
     fontSize: fontSize.lg + 2,
     fontWeight: 'bold',
+    lineHeight: fontSize.lg + 2,
+  },
+  valueContainer: {
+    minWidth: 36,
+    paddingHorizontal: spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   value: {
     color: colors.textPrimary,
-    fontSize: fontSize.xl,
+    fontSize: fontSize.lg,
     fontWeight: 'bold',
-    marginHorizontal: spacing.xl,
   },
 });
