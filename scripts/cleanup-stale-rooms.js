@@ -7,18 +7,26 @@
 const admin = require('firebase-admin');
 
 const DATABASE_URL =
-  'https://impostore-c0ef1-default-rtdb.europe-west1.firebasedatabase.app';
+  'https://gameshub-6b1ce-default-rtdb.europe-west1.firebasedatabase.app';
 const STALENESS_MS = 60 * 60 * 1000; // 1 hour
 
 function parseServiceAccount() {
-  const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
+  // Prefer base64-encoded variant — robust against GitHub's multi-line secret
+  // mangling that strips \n inside the private_key field.
+  const b64 = process.env.FIREBASE_SERVICE_ACCOUNT_B64;
+  let raw;
+  if (b64) {
+    raw = Buffer.from(b64, 'base64').toString('utf8');
+  } else {
+    raw = process.env.FIREBASE_SERVICE_ACCOUNT;
+  }
   if (!raw) {
-    throw new Error('Missing FIREBASE_SERVICE_ACCOUNT env var');
+    throw new Error('Missing FIREBASE_SERVICE_ACCOUNT_B64 (or FIREBASE_SERVICE_ACCOUNT) env var');
   }
   try {
     return JSON.parse(raw);
   } catch (e) {
-    throw new Error(`FIREBASE_SERVICE_ACCOUNT is not valid JSON: ${e.message}`);
+    throw new Error(`Service account is not valid JSON: ${e.message}`);
   }
 }
 
