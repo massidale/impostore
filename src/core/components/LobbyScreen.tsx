@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Alert, useWindowDimensions } from 'react-native';
 import Svg, { Path, Rect } from 'react-native-svg';
 import QRCode from 'react-native-qrcode-svg';
@@ -9,9 +9,9 @@ import { removePlayerFromRoom, deleteRoom, resetPlayersToCore } from '../service
 import { getGame } from '../gameRegistry';
 import { GamePlugin } from '../types/gamePlugin';
 import { Button, Card, colors, radius, spacing, fontSize } from '../ui';
-import GameSelector from './GameSelector';
+import GamePickerModal from './GamePickerModal';
 
-const WEB_PAGE_URL = 'https://impostore-c0ef1.web.app';
+const WEB_PAGE_URL = 'https://gameshub-6b1ce.web.app';
 
 interface LobbyScreenProps {
   roomData: CoreRoom;
@@ -75,6 +75,14 @@ export default function LobbyScreen({
   const roomUrl = `${WEB_PAGE_URL}?room=${roomId}`;
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
+  const [showGamePickerModal, setShowGamePickerModal] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  useEffect(() => {
+    if (!linkCopied) return;
+    const t = setTimeout(() => setLinkCopied(false), 2000);
+    return () => clearTimeout(t);
+  }, [linkCopied]);
   const { width: screenWidth } = useWindowDimensions();
   const qrBoxWidth = Math.min(screenWidth - spacing.xl * 2, 400);
   const qrSize = qrBoxWidth - spacing.lg * 2;
@@ -85,8 +93,9 @@ export default function LobbyScreen({
 
   const getPlayerCount = () => Object.keys(roomData.players || {}).length;
 
-  const handleCopyLink = () => {
-    Clipboard.setStringAsync(roomUrl);
+  const handleCopyLink = async () => {
+    await Clipboard.setStringAsync(roomUrl);
+    setLinkCopied(true);
   };
 
   const handleShareLink = async () => {
@@ -246,11 +255,30 @@ export default function LobbyScreen({
             <Card>
               <Text style={styles.modalTitle}>Modifica Impostazioni</Text>
 
-              <GameSelector
-                selectedId={roomData.currentGameId}
-                onSelect={handleChangeGame}
-                label="Cambia Gioco"
-              />
+              <Text style={styles.settingsSectionLabel}>Gioco</Text>
+              <View style={styles.currentGamePreview}>
+                <Text style={styles.currentGameEmoji}>
+                  {gamePlugin.icon || '🎲'}
+                </Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.currentGameName}>{gamePlugin.name}</Text>
+                  {gamePlugin.description ? (
+                    <Text style={styles.currentGameDescription}>
+                      {gamePlugin.description}
+                    </Text>
+                  ) : null}
+                  <Text style={styles.currentGameMeta}>
+                    {gamePlugin.minPlayers}+ giocatori
+                  </Text>
+                </View>
+              </View>
+              <Button
+                onPress={() => setShowGamePickerModal(true)}
+                variant="secondary"
+                style={{ marginBottom: spacing.xl }}
+              >
+                Cambia gioco
+              </Button>
 
               <SettingsPanel settings={gameSettings} onSettingsChange={handleSettingsChange} />
 
@@ -263,6 +291,22 @@ export default function LobbyScreen({
               </Button>
             </Card>
           </ScrollView>
+        </View>
+      )}
+
+      <GamePickerModal
+        visible={showGamePickerModal}
+        selectedId={roomData.currentGameId}
+        onSelect={handleChangeGame}
+        onClose={() => setShowGamePickerModal(false)}
+        helperText="Tocca un gioco per cambiarlo. Le impostazioni verranno reinizializzate."
+      />
+
+      {linkCopied && (
+        <View pointerEvents="none" style={styles.toastContainer}>
+          <View style={styles.toast}>
+            <Text style={styles.toastText}>Link copiato negli appunti</Text>
+          </View>
         </View>
       )}
     </View>
@@ -383,5 +427,64 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     backgroundColor: 'white',
     borderRadius: radius.sm,
+  },
+  settingsSectionLabel: {
+    color: colors.textMuted,
+    fontSize: fontSize.xs,
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+    fontWeight: '700',
+    marginBottom: spacing.sm,
+  },
+  currentGamePreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.sm,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+    gap: spacing.md,
+  },
+  currentGameEmoji: {
+    fontSize: 32,
+  },
+  currentGameName: {
+    color: colors.textPrimary,
+    fontSize: fontSize.md,
+    fontWeight: '700',
+  },
+  currentGameDescription: {
+    color: colors.textSecondary,
+    fontSize: fontSize.sm,
+    lineHeight: 18,
+    marginTop: 4,
+  },
+  currentGameMeta: {
+    color: colors.textMuted,
+    fontSize: fontSize.xs,
+    marginTop: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  toastContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: spacing.xxl,
+    alignItems: 'center',
+  },
+  toast: {
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.sm,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  toastText: {
+    color: colors.textPrimary,
+    fontSize: fontSize.sm,
+    fontWeight: '600',
   },
 });

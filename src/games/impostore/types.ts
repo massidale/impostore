@@ -10,6 +10,7 @@ export interface ImpostorePlayerState extends CorePlayer {
   role: PlayerRole;
   isFirst?: boolean;
   revealed?: boolean;
+  eliminated?: boolean;
 }
 
 export interface ImpostoreGameState {

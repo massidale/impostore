@@ -5,12 +5,12 @@ import IndovinaPlayerGamepad from './components/IndovinaPlayerGamepad';
 import { initIndovinaGame, startIndovinaGame } from './services/indovinaLogic';
 import { IndovinaSettings } from './types';
 
-/**
- * Indovina la parola — empty scaffold plugin. Mechanics to be defined.
- */
 const IndovinaPlugin: GamePlugin = {
   id: 'indovina',
   name: 'Indovina la parola',
+  description:
+    "Ogni giocatore riceve una parola visibile solo agli altri. A turno fa domande a voce per scoprire la propria.",
+  icon: '🤔',
   minPlayers: 2,
   maxPlayers: 0, // unlimited
 
@@ -18,15 +18,15 @@ const IndovinaPlugin: GamePlugin = {
   HostDashboard: IndovinaHostDashboard,
   PlayerGamepad: IndovinaPlayerGamepad,
 
-  initGameState: async (roomId: string, _settings: unknown) => {
-    await initIndovinaGame(roomId);
+  initGameState: async (roomId: string, settings: unknown) => {
+    await initIndovinaGame(roomId, settings as IndovinaSettings);
   },
 
   startGame: async (roomId: string) => {
     await startIndovinaGame(roomId);
   },
 
-  getDefaultSettings: (): IndovinaSettings => ({}),
+  getDefaultSettings: (): IndovinaSettings => ({ wordSource: 'random' }),
 };
 
 export default IndovinaPlugin;

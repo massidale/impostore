@@ -1,5 +1,5 @@
 import wordsData from '../data/words.json';
-import { GeneratedWords } from './geminiService';
+import { GeneratedWords } from '../../../core/services/geminiService';
 
 // Parole statiche di default
 const defaultWords: { [key: string]: string } = wordsData;

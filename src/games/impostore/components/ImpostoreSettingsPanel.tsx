@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, Switch, Platform, Alert } from 'react-native';
 import { SettingsPanelProps } from '../../../core/types/gamePlugin';
 import { Button, Input, NumberSelector, colors, radius, spacing, fontSize } from '../../../core/ui';
-import { generateWordsForTopic } from '../services/geminiService';
+import { generateWordsForTopic } from '../../../core/services/geminiService';
 import { setCustomWords, resetToDefaultWords } from '../services/wordService';
 
 export interface ImpostoreSettings {
@@ -41,11 +41,14 @@ export default function ImpostoreSettingsPanel({ settings, onSettingsChange }: S
     const topicToGenerate = customTopic.trim();
     try {
       const result = await generateWordsForTopic(topicToGenerate);
-      setCustomWords(result.words);
-      setUsingCustomWords(true);
       if (result.usedFallback) {
+        resetToDefaultWords();
+        setUsingCustomWords(false);
+        setSavedTopic('');
         showAlert('Attenzione', `Non è stato possibile generare parole personalizzate per "${topicToGenerate}". Usando parole di default.`);
       } else {
+        setCustomWords(result.words);
+        setUsingCustomWords(true);
         setSavedTopic(topicToGenerate);
         showAlert('Successo', `Generate 20 parole sul tema "${topicToGenerate}"`);
       }
@@ -112,8 +115,8 @@ export default function ImpostoreSettingsPanel({ settings, onSettingsChange }: S
 
         {usingCustomWords ? (
           <View>
-            <Text style={styles.activeTopicText}>✅ Tema attivo: {savedTopic}</Text>
-            <Button onPress={handleResetWords} variant="danger" size="sm">
+            <Text style={styles.activeTopicText}>Tema attivo: {savedTopic}</Text>
+            <Button onPress={handleResetWords} variant="accentOutline" size="sm">
               Ripristina Default
             </Button>
           </View>
@@ -124,7 +127,7 @@ export default function ImpostoreSettingsPanel({ settings, onSettingsChange }: S
             variant="accentOutline"
             size="sm"
           >
-            {generatingWords ? 'Generazione...' : 'Genera Parole con AI'}
+            {generatingWords ? 'Generazione...' : 'Genera'}
           </Button>
         )}
       </View>
@@ -188,7 +191,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   activeTopicText: {
-    color: colors.success,
+    color: colors.textSecondary,
     marginBottom: spacing.sm + 2,
   },
 });

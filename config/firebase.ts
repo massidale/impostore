@@ -12,14 +12,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 console.log('[fb-debug] getReactNativePersistence is:', typeof getReactNativePersistence);
 
 const firebaseConfig = {
-  apiKey: 'AIzaSyA6vCGiQmXvynNGVwqf7jVvEemCBWHPUNM',
-  authDomain: 'impostore-c0ef1.firebaseapp.com',
-  databaseURL: 'https://impostore-c0ef1-default-rtdb.europe-west1.firebasedatabase.app/',
-  projectId: 'impostore-c0ef1',
-  storageBucket: 'impostore-c0ef1.firebasestorage.app',
-  messagingSenderId: '346509804532',
-  appId: '1:346509804532:web:893a26f3e25f86426fefa1',
-  measurementId: 'G-ED7VYPWEF1',
+  apiKey: 'AIzaSyBvMwcuua_w44Ylouf0s_jNzu_j7YgJktc',
+  authDomain: 'gameshub-6b1ce.firebaseapp.com',
+  databaseURL: 'https://gameshub-6b1ce-default-rtdb.europe-west1.firebasedatabase.app',
+  projectId: 'gameshub-6b1ce',
+  storageBucket: 'gameshub-6b1ce.firebasestorage.app',
+  messagingSenderId: '901289726448',
+  appId: '1:901289726448:web:f86d13049b9d132e4c0d35',
+  measurementId: 'G-RN2WF80N2Q',
 };
 
 const app = initializeApp(firebaseConfig);

@@ -14,13 +14,13 @@ firebase deploy --only hosting
 ```
 
 La pagina sarà disponibile su:
-- `https://impostore-c0ef1.web.app`
-- `https://impostore-c0ef1.firebaseapp.com`
+- `https://gameshub-6b1ce.web.app`
+- `https://gameshub-6b1ce.firebaseapp.com`
 
 ### Aggiorna URL nell'app
 Dopo il deploy, aggiorna `WEB_PAGE_URL` in `screens/HostScreen.tsx`:
 ```typescript
-const WEB_PAGE_URL = 'https://impostore-c0ef1.web.app';
+const WEB_PAGE_URL = 'https://gameshub-6b1ce.web.app';
 ```
 
 ## 📝 Note

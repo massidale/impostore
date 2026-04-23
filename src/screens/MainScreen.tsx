@@ -27,6 +27,7 @@ export default function MainScreen() {
   const { roomData, isFetched } = useRoomData(uid ? roomId : null);
   const [loading, setLoading] = useState(false);
   const [gameSettings, setGameSettings] = useState<unknown>(null);
+  const [hostName, setHostName] = useState('');
 
   // If room was deleted externally, reset
   useEffect(() => {
@@ -57,13 +58,14 @@ export default function MainScreen() {
     );
   }
 
-  const handleCreateRoom = async (gameId: string, settings: unknown, hostName: string) => {
+  const handleCreateRoom = async (gameId: string, settings: unknown, name: string) => {
     setLoading(true);
     try {
       const plugin = getGame(gameId);
-      const newRoomId = await createRoom(uid, gameId, hostName);
+      const newRoomId = await createRoom(uid, gameId, name);
       await plugin.initGameState(newRoomId, settings);
       setGameSettings(settings);
+      setHostName(name);
       setRoomId(newRoomId);
     } catch (e) {
       console.error(e);
@@ -99,7 +101,12 @@ export default function MainScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <StatusBar style="light" />
-        <HomeScreen onCreateRoom={handleCreateRoom} loading={loading} />
+        <HomeScreen
+          onCreateRoom={handleCreateRoom}
+          loading={loading}
+          hostName={hostName}
+          onHostNameChange={setHostName}
+        />
       </SafeAreaView>
     );
   }

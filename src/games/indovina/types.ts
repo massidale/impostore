@@ -1,8 +1,19 @@
-export type IndovinaPhase = 'setup' | 'playing' | 'results';
+import { CorePlayer } from '../../core/types/room';
+
+export type IndovinaPhase = 'setup' | 'collecting' | 'playing' | 'results';
+
+export type WordSource = 'random' | 'players';
+
+export interface IndovinaPlayerState extends CorePlayer {
+  word?: string;
+  submittedWord?: string;
+}
 
 export interface IndovinaGameState {
   phase: IndovinaPhase;
+  wordSource: WordSource;
 }
 
-// Placeholder — will be filled in once the game mechanics are designed.
-export type IndovinaSettings = Record<string, never>;
+export interface IndovinaSettings {
+  wordSource: WordSource;
+}

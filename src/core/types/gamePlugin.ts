@@ -26,6 +26,8 @@ export interface PlayerGamepadProps {
 export interface GamePlugin {
   id: string;
   name: string;
+  description?: string;
+  icon?: string;
   minPlayers: number;
   maxPlayers: number;
 

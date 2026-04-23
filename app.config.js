@@ -1,14 +1,14 @@
 module.exports = {
   expo: {
-    name: "impostore",
-    slug: "impostore",
+    name: "gamesHub",
+    slug: "games-hub",
     version: "1.0.0",
     orientation: "portrait",
-    icon: "./assets/icon.png",
+    icon: "./assets/LOGO.png",
     userInterfaceStyle: "light",
     newArchEnabled: true,
     splash: {
-      image: "./assets/splash-icon.png",
+      image: "./assets/LOGO.png",
       resizeMode: "contain",
       backgroundColor: "#111827"
     },
@@ -17,17 +17,17 @@ module.exports = {
     },
     android: {
       adaptiveIcon: {
-        foregroundImage: "./assets/adaptive-icon.png",
+        foregroundImage: "./assets/LOGO.png",
         backgroundColor: "#111827"
       },
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false
     },
     web: {
-      favicon: "./assets/favicon.png",
-      name: "Impostore",
-      shortName: "Impostore",
-      description: "Party game italiano multiplayer",
+      favicon: "./assets/LOGO.png",
+      name: "gamesHub",
+      shortName: "gamesHub",
+      description: "Collezione di party game italiani multiplayer",
       themeColor: "#111827",
       backgroundColor: "#111827",
       display: "standalone",

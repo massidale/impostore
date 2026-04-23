@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   TouchableOpacity,
+  View,
   Text,
   StyleSheet,
   StyleProp,
@@ -33,6 +34,7 @@ interface ButtonProps {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
+  leftIcon?: React.ReactNode;
 }
 
 const gradientFor: Record<ButtonVariant, [string, string]> = {
@@ -74,6 +76,7 @@ export function Button({
   children,
   style,
   textStyle,
+  leftIcon,
 }: ButtonProps) {
   const isDangerOutline = variant === 'dangerOutline';
   const isAccentOutline = variant === 'accentOutline';
@@ -82,6 +85,19 @@ export function Button({
     ? ([colors.disabled, colors.disabled] as [string, string])
     : gradientFor[variant];
   const outlineColor = isAccentOutline ? colors.accent : colors.danger;
+
+  const label = (
+    <Text
+      style={[
+        styles.text,
+        { fontSize: fontFor[size] },
+        isOutline && { color: outlineColor },
+        textStyle,
+      ]}
+    >
+      {children}
+    </Text>
+  );
 
   return (
     <TouchableOpacity
@@ -98,16 +114,14 @@ export function Button({
           disabled && isOutline && { opacity: 0.5 },
         ]}
       >
-        <Text
-          style={[
-            styles.text,
-            { fontSize: fontFor[size] },
-            isOutline && { color: outlineColor },
-            textStyle,
-          ]}
-        >
-          {children}
-        </Text>
+        {leftIcon ? (
+          <View style={styles.iconRow}>
+            {leftIcon}
+            {label}
+          </View>
+        ) : (
+          label
+        )}
       </LinearGradient>
     </TouchableOpacity>
   );
@@ -125,5 +139,10 @@ const styles = StyleSheet.create({
   text: {
     color: colors.textPrimary,
     fontWeight: 'bold',
+  },
+  iconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
 });

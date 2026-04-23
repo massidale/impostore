@@ -59,6 +59,7 @@ export async function startImpostoreGame(roomId: string): Promise<void> {
       updates[`rooms/${roomId}/players/${uid}/role`] = role;
       updates[`rooms/${roomId}/players/${uid}/isFirst`] = uid === firstPlayerId;
       updates[`rooms/${roomId}/players/${uid}/revealed`] = false;
+      updates[`rooms/${roomId}/players/${uid}/eliminated`] = false;
     });
 
     await touchRoom(roomId, updates);
@@ -88,6 +89,7 @@ export async function endImpostoreGame(roomId: string): Promise<void> {
         updates[`rooms/${roomId}/players/${uid}/role`] = null;
         updates[`rooms/${roomId}/players/${uid}/isFirst`] = false;
         updates[`rooms/${roomId}/players/${uid}/revealed`] = false;
+        updates[`rooms/${roomId}/players/${uid}/eliminated`] = false;
     });
 
     await touchRoom(roomId, updates);
@@ -104,8 +106,6 @@ export async function startVoting(roomId: string): Promise<void> {
       [`rooms/${roomId}/gameState/phase`]: 'voting',
       [`rooms/${roomId}/gameState/votes`]: null,
       [`rooms/${roomId}/gameState/runoffCandidates`]: null,
-      [`rooms/${roomId}/gameState/eliminatedPlayer`]: null,
-      [`rooms/${roomId}/gameState/eliminatedRole`]: null,
       [`rooms/${roomId}/gameState/winner`]: null,
       [`rooms/${roomId}/gameState/impostorGuess`]: null,
     });
@@ -117,6 +117,12 @@ export async function castVote(roomId: string, voterUid: string, votedUid: strin
 
     const roomData = snapshot.val() as CoreRoom<ImpostoreGameState>;
     if (roomData.gameState?.phase !== 'voting') throw new Error('Non è il momento di votare');
+
+    const voter = roomData.players?.[voterUid] as ImpostorePlayerState | undefined;
+    if (voter?.eliminated) throw new Error('I giocatori eliminati non possono votare');
+
+    const voted = roomData.players?.[votedUid] as ImpostorePlayerState | undefined;
+    if (voted?.eliminated) throw new Error('Non puoi votare un giocatore eliminato');
 
     const runoff = roomData.gameState.runoffCandidates;
     if (runoff && runoff.length > 0 && !runoff.includes(votedUid)) {
@@ -130,7 +136,10 @@ export async function castVote(roomId: string, voterUid: string, votedUid: strin
     const updatedSnapshot = await get(ref(database, `rooms/${roomId}`));
     const updatedData = updatedSnapshot.val() as CoreRoom<ImpostoreGameState>;
 
-    const playerCount = Object.keys(updatedData.players || {}).length;
+    const alivePlayers = Object.values(updatedData.players || {}).filter(
+      (p) => !(p as ImpostorePlayerState).eliminated
+    );
+    const playerCount = alivePlayers.length;
     const voteCount = updatedData.gameState?.votes ? Object.keys(updatedData.gameState.votes).length : 0;
 
     if (voteCount >= playerCount) {
@@ -216,6 +225,7 @@ async function finalizeElimination(roomId: string, eliminatedUid: string): Promi
       [`rooms/${roomId}/gameState/eliminatedRole`]: eliminatedRole,
       [`rooms/${roomId}/gameState/winner`]: winner,
       [`rooms/${roomId}/gameState/runoffCandidates`]: null,
+      [`rooms/${roomId}/players/${eliminatedUid}/eliminated`]: true,
     });
 }
 
@@ -226,12 +236,38 @@ export async function submitImpostorGuess(roomId: string, guess: string): Promis
     if (roomData.gameState?.phase !== 'impostor_guess') throw new Error('Non è il momento di indovinare');
 
     const isCorrect = guess.toLowerCase().trim() === roomData.gameState.word.toLowerCase().trim();
-    const winner: Winner = isCorrect ? 'impostor' : 'civilians';
+
+    if (isCorrect) {
+      await touchRoom(roomId, {
+        [`rooms/${roomId}/gameState/phase`]: 'results',
+        [`rooms/${roomId}/gameState/impostorGuess`]: guess,
+        [`rooms/${roomId}/gameState/winner`]: 'impostor',
+      });
+      return;
+    }
+
+    const aliveImpostors = Object.values(roomData.players || {}).filter(
+      (p) => {
+        const ps = p as ImpostorePlayerState;
+        return ps.role === 'impostor' && !ps.eliminated;
+      }
+    ).length;
+
+    if (aliveImpostors === 0) {
+      await touchRoom(roomId, {
+        [`rooms/${roomId}/gameState/phase`]: 'results',
+        [`rooms/${roomId}/gameState/impostorGuess`]: guess,
+        [`rooms/${roomId}/gameState/winner`]: 'civilians',
+      });
+      return;
+    }
 
     await touchRoom(roomId, {
-      [`rooms/${roomId}/gameState/phase`]: 'results',
+      [`rooms/${roomId}/gameState/phase`]: 'playing',
       [`rooms/${roomId}/gameState/impostorGuess`]: guess,
-      [`rooms/${roomId}/gameState/winner`]: winner,
+      [`rooms/${roomId}/gameState/votes`]: null,
+      [`rooms/${roomId}/gameState/runoffCandidates`]: null,
+      [`rooms/${roomId}/gameState/winner`]: null,
     });
 }
 

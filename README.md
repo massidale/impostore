@@ -1,5 +1,5 @@
-# 🕵️ Impostore
+# 🕵️ GamesHub
 
-Sfida i tuoi amici e scopri chi è l'impostore.
+Sfida i tuoi amici in una varietà di giochi!
 
-🚀 **Gioca ora:** [Impostore Web](https://impostore-c0ef1.web.app/)
+🚀 **Gioca ora:** [GamesHub Web](https://gameshub-6b1ce.web.app/)

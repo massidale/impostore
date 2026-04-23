@@ -70,7 +70,7 @@ export default function ImpostoreHostDashboard({ roomData }: HostDashboardProps)
             </Button>
           )}
           <Button onPress={handleEndGame} variant="dangerMuted" style={styles.actionButton}>
-            Termina Partita
+            Termina
           </Button>
         </View>
       </View>

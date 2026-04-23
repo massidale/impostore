@@ -2,13 +2,23 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity } from 'react-native';
 import Svg, { Path, Circle, Line, Ellipse } from 'react-native-svg';
 import { PlayerGamepadProps } from '../../../core/types/gamePlugin';
-import { Button, colors, radius, spacing, fontSize } from '../../../core/ui';
+import { Button, colors, radius, spacing, fontSize, avatarColor, avatarInitial } from '../../../core/ui';
 import { ImpostoreGameState, ImpostorePlayerState, PlayerRole } from '../types';
 import { markPlayerAsRevealed, castVote, submitImpostorGuess } from '../services/impostoreLogic';
 
 function capitalize(str: string): string {
   if (!str) return '';
   return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function wordFontSize(word: string | null | undefined): number {
+  const len = word ? word.length : 0;
+  if (len <= 8) return 48;
+  if (len <= 11) return 40;
+  if (len <= 14) return 34;
+  if (len <= 18) return 28;
+  if (len <= 24) return 22;
+  return 18;
 }
 
 function roleLabel(role: PlayerRole): string {
@@ -23,31 +33,6 @@ function roleColor(role: PlayerRole): string {
   if (role === 'clown') return colors.roleClown as string;
   if (role === 'civilian') return colors.roleCivilian as string;
   return colors.textPrimary as string;
-}
-
-function initial(name: string): string {
-  const trimmed = (name || '').trim();
-  if (!trimmed) return '?';
-  return trimmed.charAt(0).toUpperCase();
-}
-
-const AVATAR_PALETTE = [
-  '#2563eb',
-  '#8b5cf6',
-  '#10b981',
-  '#f59e0b',
-  '#ef4444',
-  '#06b6d4',
-  '#ec4899',
-  '#84cc16',
-];
-
-function avatarColor(uid: string): string {
-  let hash = 0;
-  for (let i = 0; i < uid.length; i++) {
-    hash = (hash * 31 + uid.charCodeAt(i)) | 0;
-  }
-  return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
 }
 
 function roleDescription(role: PlayerRole, hasWord: boolean): string {
@@ -236,6 +221,37 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
     const wordLabel =
       role !== 'impostor' ? 'La parola' : shouldShowHint ? "L'indizio" : null;
 
+    const firstPlayerId = gameState.firstPlayerId;
+    const firstPlayerName =
+      firstPlayerId && roomData.players?.[firstPlayerId]?.name
+        ? roomData.players[firstPlayerId].name
+        : null;
+
+    const lastEliminatedUid = gameState.eliminatedPlayer;
+    const lastEliminatedName =
+      lastEliminatedUid && roomData.players?.[lastEliminatedUid]?.name
+        ? roomData.players[lastEliminatedUid].name
+        : null;
+    const lastEliminatedRole = gameState.eliminatedRole || null;
+
+    if (playerState.eliminated) {
+      return (
+        <View style={styles.container}>
+          <View style={styles.card}>
+            <View style={styles.cardInner}>
+              <Text style={[styles.roleText, { color: colors.textMuted }]}>
+                Sei stato eliminato
+              </Text>
+              <Text style={styles.description}>
+                La partita continua per gli altri giocatori. Resta in attesa
+                del risultato finale.
+              </Text>
+            </View>
+          </View>
+        </View>
+      );
+    }
+
     return (
       <View style={styles.container}>
         {!showRole ? (
@@ -283,13 +299,28 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
           </>
         ) : (
           <>
-            <View style={styles.card}>
-              {playerState.isFirst ? (
-                <View style={styles.firstBadge}>
-                  <Text style={styles.firstBadgeText}>PRIMO GIOCATORE</Text>
-                </View>
-              ) : null}
+            {lastEliminatedName ? (
+              <View style={styles.eliminationBanner}>
+                <Text style={styles.eliminationBannerText}>
+                  Eliminato:{' '}
+                  <Text style={styles.eliminationBannerName}>
+                    {lastEliminatedName}
+                  </Text>
+                  {lastEliminatedRole ? (
+                    <Text
+                      style={[
+                        styles.eliminationBannerRole,
+                        { color: roleColor(lastEliminatedRole) },
+                      ]}
+                    >
+                      {' '}· {roleLabel(lastEliminatedRole)}
+                    </Text>
+                  ) : null}
+                </Text>
+              </View>
+            ) : null}
 
+            <View style={styles.card}>
               <View style={styles.cardInner}>
                 <View style={styles.iconWrapper}>
                   <RoleIcon role={role} size={72} />
@@ -303,9 +334,10 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
                   <View style={styles.wordBox}>
                     {wordLabel ? <Text style={styles.wordLabel}>{wordLabel}</Text> : null}
                     <Text
-                      style={styles.wordValue}
+                      style={[styles.wordValue, { fontSize: wordFontSize(displayWord) }]}
                       numberOfLines={1}
                       adjustsFontSizeToFit
+                      minimumFontScale={0.5}
                     >
                       {capitalize(displayWord)}
                     </Text>
@@ -320,6 +352,13 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
                 <Text style={styles.description}>
                   {roleDescription(role, !!displayWord)}
                 </Text>
+
+                {firstPlayerName ? (
+                  <Text style={styles.firstPlayerLine}>
+                    Inizia:{' '}
+                    <Text style={styles.firstPlayerName}>{firstPlayerName}</Text>
+                  </Text>
+                ) : null}
               </View>
             </View>
 
@@ -344,17 +383,37 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
 
   // ── Voting Phase ──
   if (gameState.phase === 'voting') {
+    if (playerState.eliminated) {
+      return (
+        <View style={styles.container}>
+          <View style={styles.card}>
+            <View style={styles.cardInner}>
+              <Text style={[styles.roleText, { color: colors.textMuted }]}>
+                Sei stato eliminato
+              </Text>
+              <Text style={styles.description}>
+                Non puoi votare. Attendi il risultato della votazione.
+              </Text>
+            </View>
+          </View>
+        </View>
+      );
+    }
+
     const hasVoted = gameState.votes && gameState.votes[playerId];
     const runoff = gameState.runoffCandidates;
     const isRunoff = !!(runoff && runoff.length > 0);
 
-    const candidates = Object.entries(roomData.players || {}).filter(([uid]) => {
+    const candidates = Object.entries(roomData.players || {}).filter(([uid, p]) => {
+      if ((p as ImpostorePlayerState).eliminated) return false;
       if (isRunoff && !runoff!.includes(uid)) return false;
       return true;
     });
 
     const votesCast = Object.keys(gameState.votes || {}).length;
-    const totalVoters = Object.keys(roomData.players || {}).length;
+    const totalVoters = Object.values(roomData.players || {}).filter(
+      (p) => !(p as ImpostorePlayerState).eliminated
+    ).length;
 
     const titleColor = isRunoff ? colors.warning : colors.textPrimary;
     const titleText = isRunoff ? 'BALLOTTAGGIO' : 'VOTAZIONE';
@@ -420,7 +479,7 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
                       style={[styles.voteRow, isSelf && styles.voteRowDisabled]}
                     >
                       <View style={[styles.avatar, { backgroundColor: avatarColor(uid) }]}>
-                        <Text style={styles.avatarText}>{initial(name)}</Text>
+                        <Text style={styles.avatarText}>{avatarInitial(name)}</Text>
                       </View>
                       <Text style={styles.voteRowName} numberOfLines={1}>
                         {name}
@@ -695,21 +754,37 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     position: 'relative',
   },
-  firstBadge: {
-    position: 'absolute',
-    top: spacing.md,
-    right: spacing.md,
-    backgroundColor: colors.warning,
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: 4,
-    borderRadius: radius.sm,
-    zIndex: 1,
+  firstPlayerLine: {
+    marginTop: spacing.md,
+    color: colors.textSecondary,
+    fontSize: fontSize.sm,
+    textAlign: 'center',
   },
-  firstBadgeText: {
-    color: '#111827',
-    fontSize: 10,
+  firstPlayerName: {
+    color: colors.textPrimary,
     fontWeight: '700',
-    letterSpacing: 0.8,
+  },
+  eliminationBanner: {
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.md,
+    alignItems: 'center',
+  },
+  eliminationBannerText: {
+    color: colors.textSecondary,
+    fontSize: fontSize.sm,
+    textAlign: 'center',
+  },
+  eliminationBannerName: {
+    color: colors.textPrimary,
+    fontWeight: '700',
+  },
+  eliminationBannerRole: {
+    fontWeight: '700',
   },
   cardInner: {
     alignItems: 'center',

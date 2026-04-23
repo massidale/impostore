@@ -13,6 +13,9 @@ import { initImpostoreGame, startImpostoreGame } from './services/impostoreLogic
 const ImpostorePlugin: GamePlugin = {
   id: 'impostore',
   name: 'Impostore',
+  description:
+    "Un giocatore non conosce la parola segreta. Gli altri devono scoprire chi è l'impostore senza rivelarla.",
+  icon: '🎭',
   minPlayers: 3,
   maxPlayers: 0, // unlimited
 

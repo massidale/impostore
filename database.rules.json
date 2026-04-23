@@ -40,6 +40,8 @@
             "role":     { ".validate": "newData.val() === null || (newData.isString() && newData.val().matches(/^(civilian|impostor|clown)$/))" },
             "isFirst":  { ".validate": "newData.isBoolean()" },
             "revealed": { ".validate": "newData.isBoolean()" },
+            "word":     { ".validate": "newData.val() === null || (newData.isString() && newData.val().length <= 60)" },
+            "submittedWord": { ".validate": "newData.val() === null || (newData.isString() && newData.val().length >= 1 && newData.val().length <= 60)" },
 
             "$other": { ".validate": false }
           }

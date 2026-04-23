@@ -11,9 +11,9 @@ sips -z 192 192 assets/icon-square.png --out dist/icon-192-v2.png
 # Crea il manifest.json per PWA
 cat > dist/manifest.json << 'MANIFEST'
 {
-  "name": "Impostore",
-  "short_name": "Impostore",
-  "description": "Party game italiano multiplayer",
+  "name": "gamesHub",
+  "short_name": "gamesHub",
+  "description": "Collezione di party game italiani multiplayer",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#111827",
@@ -43,7 +43,7 @@ sed -i '' 's/<head>/<head>\
     <meta name="apple-mobile-web-app-capable" content="yes">\
     <meta name="mobile-web-app-capable" content="yes">\
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">\
-    <meta name="apple-mobile-web-app-title" content="Impostore">\
+    <meta name="apple-mobile-web-app-title" content="gamesHub">\
     <link rel="apple-touch-icon" href="\/icon-192-v2.png">\
     <style>html, body, #root { background-color: #111827 !important; box-sizing: border-box; } body { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }<\/style>/' dist/index.html
 
@@ -53,5 +53,5 @@ firebase deploy
 echo "✅ Done!"
 echo ""
 echo "URLs:"
-echo "  - App (host + player): https://impostore-c0ef1.web.app"
-echo "  - Link player:         https://impostore-c0ef1.web.app?room=<ROOM_ID>"
+echo "  - App (host + player): https://gameshub-6b1ce.web.app"
+echo "  - Link player:         https://gameshub-6b1ce.web.app?room=<ROOM_ID>"

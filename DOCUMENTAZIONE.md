@@ -154,7 +154,7 @@ impostore/
 
 - **QR Code:** Incorporato nella schermata host
 - **Condivisione URL:** Dialog nativo + copia clipboard
-- **Link Web:** `https://impostore-c0ef1.web.app?room={roomId}`
+- **Link Web:** `https://gameshub-6b1ce.web.app?room={roomId}`
 
 ---
 
@@ -313,8 +313,8 @@ firebase deploy --only hosting
 ```
 
 ### Endpoint Live
-- Web: `https://impostore-c0ef1.web.app`
-- Deep link: `https://impostore-c0ef1.web.app?room=ABC123`
+- Web: `https://gameshub-6b1ce.web.app`
+- Deep link: `https://gameshub-6b1ce.web.app?room=ABC123`
 
 ---
 

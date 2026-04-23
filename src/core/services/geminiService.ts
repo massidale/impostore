@@ -1,11 +1,8 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import wordsData from '../data/words.json';
 
 const API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || "";
 const genAI = new GoogleGenerativeAI(API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
-const defaultWords: GeneratedWords = wordsData;
 
 export interface GeneratedWords {
   [word: string]: string;
@@ -38,17 +35,64 @@ Rispondi solo con il JSON. Se non riesci a comprendere l'argomento, rispondi con
     const response = await result.response;
     const text = response.text();
 
-    // Pulizia del testo (a volte Gemini mette i backtick ```json)
     const cleanJson = text.replace(/```json|```/g, "").trim();
     const data: GeneratedWords = JSON.parse(cleanJson);
 
-    // Se Gemini restituisce un JSON vuoto, usa le parole predefinite
     if (Object.keys(data).length === 0) {
-      console.log("Gemini ha restituito un JSON vuoto, uso parole predefinite");
-      return { words: defaultWords, usedFallback: true };
+      return { words: {}, usedFallback: true };
     }
 
     return { words: data, usedFallback: false };
+  } catch (error) {
+    console.error("Errore Gemini:", error);
+    throw new Error("Impossibile generare le parole. Riprova.");
+  }
+}
+
+export interface GenerateListResult {
+  words: string[];
+  usedFallback: boolean;
+}
+
+export async function generateWordsList(
+  topic: string,
+  count: number
+): Promise<GenerateListResult> {
+  const prompt = `Genera un array JSON di ${count} elementi sul tema: "${topic}".
+REGOLE STRETTE:
+1. Restituisci SOLO un array JSON di stringhe.
+2. Ogni elemento può essere una parola, un nome proprio (persona, personaggio, luogo) o una breve frase (max 60 caratteri).
+3. Devono essere riconoscibili dal pubblico generale italiano e indovinabili tramite domande sì/no.
+4. Niente duplicati. Evita contenuti volgari o offensivi.
+5. Adatta lo stile al tema: oggetti se il tema è "frutta", personaggi se il tema è "cartoni animati", ecc.
+
+Esempio di formato:
+["mela", "Spider-Man", "Roma", "pizza margherita", "Cleopatra"]
+
+Rispondi solo con l'array JSON. Se non riesci a comprendere il tema, rispondi con [].`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+
+    const cleanJson = text.replace(/```json|```/g, "").trim();
+    const data = JSON.parse(cleanJson);
+
+    if (!Array.isArray(data) || data.length === 0) {
+      return { words: [], usedFallback: true };
+    }
+
+    const cleaned = data
+      .filter((w): w is string => typeof w === 'string')
+      .map((w) => w.trim())
+      .filter((w) => w.length > 0);
+
+    if (cleaned.length === 0) {
+      return { words: [], usedFallback: true };
+    }
+
+    return { words: cleaned, usedFallback: false };
   } catch (error) {
     console.error("Errore Gemini:", error);
     throw new Error("Impossibile generare le parole. Riprova.");
