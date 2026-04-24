@@ -27,6 +27,7 @@ import { IndovinaGameState, IndovinaPlayerState } from '../types';
 import { submitPlayerWord } from '../services/indovinaLogic';
 
 type ViewMode = 'others' | 'mine';
+type DisplayMode = 'blurred' | 'visible';
 
 const BLURRED_PLACEHOLDER = '██████';
 
@@ -35,13 +36,10 @@ function capitalize(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-function useKeepScreenAwakeInLandscape() {
-  const { width, height } = useWindowDimensions();
-  const isLandscape = width > height;
-
+function useKeepScreenAwake(enabled: boolean) {
   useEffect(() => {
+    if (!enabled) return;
     if (Platform.OS !== 'web') return;
-    if (!isLandscape) return;
     if (typeof navigator === 'undefined' || typeof document === 'undefined') return;
     const nav = navigator as unknown as {
       wakeLock?: { request: (type: 'screen') => Promise<{ release: () => Promise<void> }> };
@@ -81,7 +79,7 @@ function useKeepScreenAwakeInLandscape() {
         wakeLock = null;
       }
     };
-  }, [isLandscape]);
+  }, [enabled]);
 }
 
 interface IconProps {
@@ -148,8 +146,10 @@ export default function IndovinaPlayerGamepad({ roomData, playerId }: PlayerGame
   const [viewMode, setViewMode] = useState<ViewMode>('others');
   const [countdown, setCountdown] = useState<number | null>(null);
   const [revealedUid, setRevealedUid] = useState<string | null>(null);
+  const [displayMode, setDisplayMode] = useState<DisplayMode>('blurred');
+  const [keepAwake, setKeepAwake] = useState(false);
 
-  useKeepScreenAwakeInLandscape();
+  useKeepScreenAwake(keepAwake);
 
   useEffect(() => {
     if (countdown === null) return;
@@ -207,23 +207,41 @@ export default function IndovinaPlayerGamepad({ roomData, playerId }: PlayerGame
   }
 
   if (viewMode === 'mine') {
-    return <MineView word={myWord} onBack={() => setViewMode('others')} />;
+    return (
+      <MineView
+        word={myWord}
+        onBack={() => {
+          setViewMode('others');
+          setKeepAwake(false);
+          setDisplayMode('blurred');
+          setRevealedUid(null);
+        }}
+      />
+    );
   }
 
   if (countdown !== null) {
-    return <CountdownView value={countdown} />;
+    return <CountdownView value={countdown} onCancel={() => setCountdown(null)} />;
   }
 
   const allPlayers = Object.entries(roomData.players || {});
   const otherPlayers = allPlayers.filter(([uid]) => uid !== playerId);
   const playerCount = allPlayers.length;
+  const firstPlayerEntry = allPlayers[0];
+  const firstPlayerName = firstPlayerEntry
+    ? ((firstPlayerEntry[1] as IndovinaPlayerState).name || 'Senza nome')
+    : null;
+  const firstIsMe = firstPlayerEntry?.[0] === playerId;
 
   const handleReveal = () => {
     confirmAction(
       'Mostrare la tua parola?',
       'Lo schermo mostrerà la TUA parola in chiaro: tieni il telefono lontano dai tuoi occhi e mostrala agli altri.',
       'Rivela',
-      () => setCountdown(3),
+      () => {
+        setKeepAwake(true);
+        setCountdown(3);
+      },
       true
     );
   };
@@ -248,8 +266,26 @@ export default function IndovinaPlayerGamepad({ roomData, playerId }: PlayerGame
           <View style={styles.cardInner}>
             <Text style={styles.title}>PAROLE DEGLI ALTRI</Text>
             <Text style={styles.subtitle}>
-              Fai domande sì/no per indovinare la tua. Tieni premuto su un giocatore per vedere la sua parola.
+              {displayMode === 'blurred'
+                ? 'Fai domande sì/no per indovinare la tua. Tieni premuto su un giocatore per vedere la sua parola.'
+                : 'Fai domande sì/no per indovinare la tua.'}
             </Text>
+
+            <View style={styles.modeToggle}>
+              <ModeToggleOption
+                label="Nascoste"
+                active={displayMode === 'blurred'}
+                onPress={() => {
+                  setDisplayMode('blurred');
+                  setRevealedUid(null);
+                }}
+              />
+              <ModeToggleOption
+                label="Visibili"
+                active={displayMode === 'visible'}
+                onPress={() => setDisplayMode('visible')}
+              />
+            </View>
 
             <View style={styles.list}>
               {otherPlayers.length === 0 ? (
@@ -259,24 +295,29 @@ export default function IndovinaPlayerGamepad({ roomData, playerId }: PlayerGame
                   const player = p as IndovinaPlayerState;
                   const name = player.name || 'Senza nome';
                   const word = player.word;
-                  const revealed = revealedUid === uid;
+                  const shouldReveal = displayMode === 'visible' || revealedUid === uid;
+                  const pressableProps = displayMode === 'blurred'
+                    ? {
+                        onPressIn: () => setRevealedUid(uid),
+                        onPressOut: () => setRevealedUid((cur) => (cur === uid ? null : cur)),
+                        delayLongPress: 120,
+                      }
+                    : {};
                   return (
                     <Pressable
                       key={uid}
                       style={({ pressed }) => [
                         styles.row,
-                        (pressed || revealed) && styles.rowPressed,
+                        displayMode === 'blurred' && (pressed || revealedUid === uid) && styles.rowPressed,
                       ]}
-                      onPressIn={() => setRevealedUid(uid)}
-                      onPressOut={() => setRevealedUid((cur) => (cur === uid ? null : cur))}
-                      delayLongPress={120}
+                      {...pressableProps}
                     >
                       <View style={[styles.avatar, { backgroundColor: avatarColor(uid) }]}>
                         <Text style={styles.avatarText}>{avatarInitial(name)}</Text>
                       </View>
                       <View style={styles.rowContent}>
                         <Text style={styles.rowName}>{name}</Text>
-                        {revealed && word ? (
+                        {shouldReveal && word ? (
                           <Text style={styles.rowWord}>{capitalize(word)}</Text>
                         ) : (
                           <Text style={[styles.rowWord, styles.rowWordBlurred]} selectable={false}>
@@ -289,6 +330,15 @@ export default function IndovinaPlayerGamepad({ roomData, playerId }: PlayerGame
                 })
               )}
             </View>
+
+            {firstPlayerName && otherPlayers.length > 0 && (
+              <Text style={styles.startsLine}>
+                Inizia:{' '}
+                <Text style={styles.startsName}>
+                  {firstIsMe ? `${firstPlayerName} (tu)` : firstPlayerName}
+                </Text>
+              </Text>
+            )}
           </View>
         </View>
       </ScrollView>
@@ -412,15 +462,69 @@ function CollectingView({ roomData, playerId, playerState }: CollectingViewProps
   );
 }
 
-function CountdownView({ value }: { value: number }) {
-  const display = value > 0 ? value : 1;
+interface ModeToggleOptionProps {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}
+
+function ModeToggleOption({ label, active, onPress }: ModeToggleOptionProps) {
   return (
-    <View style={styles.countdownContainer}>
-      <Text style={styles.countdownHint}>Preparati a mostrare la parola...</Text>
-      <Text style={styles.countdownNumber} allowFontScaling={false}>
-        {display}
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.7}
+      style={[styles.modeToggleSegment, active && styles.modeToggleSegmentActive]}
+    >
+      <Text
+        style={[styles.modeToggleLabel, active && styles.modeToggleLabelActive]}
+      >
+        {label}
       </Text>
-    </View>
+    </TouchableOpacity>
+  );
+}
+
+function CountdownView({ value, onCancel }: { value: number; onCancel: () => void }) {
+  const display = value > 0 ? value : 1;
+  const lastTapRef = useRef(0);
+  const handleScreenTap = () => {
+    const now = Date.now();
+    if (now - lastTapRef.current < 400) {
+      lastTapRef.current = 0;
+      onCancel();
+      return;
+    }
+    lastTapRef.current = now;
+  };
+
+  return (
+    <Modal
+      visible
+      transparent={false}
+      animationType="fade"
+      onRequestClose={onCancel}
+      statusBarTranslucent
+    >
+      <View style={styles.mineContainer}>
+        <Pressable
+          style={[styles.mineCenterWrap, styles.tapTarget]}
+          onPress={handleScreenTap}
+        >
+          <Text style={styles.countdownHint}>Preparati a mostrare la parola...</Text>
+          <Text style={styles.countdownNumber} allowFontScaling={false}>
+            {display}
+          </Text>
+        </Pressable>
+
+        <View style={styles.hideButtonContainer}>
+          <TouchableOpacity onPress={onCancel} style={styles.hideButton} activeOpacity={0.7}>
+            <EyeOffIcon size={18} color={colors.textPrimary} />
+            <Text style={styles.hideButtonText}>Nascondi</Text>
+          </TouchableOpacity>
+          <Text style={styles.hideHint}>oppure doppio tap sullo schermo</Text>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -598,8 +702,47 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
     paddingHorizontal: spacing.sm,
   },
+  modeToggle: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  modeToggleSegment: {
+    flex: 1,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.sm,
+    paddingVertical: spacing.sm + 2,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  modeToggleSegmentActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.background,
+  },
+  modeToggleLabel: {
+    color: colors.textSecondary,
+    fontSize: fontSize.sm,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  modeToggleLabelActive: {
+    color: colors.textPrimary,
+  },
   list: {
     gap: spacing.sm + 2,
+  },
+  startsLine: {
+    color: colors.textMuted,
+    fontSize: fontSize.xs,
+    textAlign: 'center',
+    marginTop: spacing.lg,
+    letterSpacing: 0.5,
+  },
+  startsName: {
+    color: colors.textPrimary,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   empty: {
     color: colors.textMuted,
@@ -709,13 +852,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: fontSize.md,
     textAlign: 'center',
-  },
-  countdownContainer: {
-    flex: 1,
-    backgroundColor: colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.xl,
   },
   countdownHint: {
     color: colors.textSecondary,
