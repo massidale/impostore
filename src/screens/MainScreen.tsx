@@ -5,7 +5,9 @@ import { StatusBar } from 'expo-status-bar';
 import { createRoom } from '../core/services/roomService';
 import { useRoomData } from '../core/hooks/useRoomData';
 import { useAnonymousAuth } from '../core/hooks/useAnonymousAuth';
+import { useClientId } from '../core/hooks/useClientId';
 import { getGame } from '../core/gameRegistry';
+import { AppHeader, colors } from '../core/ui';
 
 import HomeScreen from '../core/components/HomeScreen';
 import LobbyScreen from '../core/components/LobbyScreen';
@@ -22,12 +24,15 @@ import WebPlayerScreen from '../core/components/WebPlayerScreen';
  */
 export default function MainScreen() {
   const uid = useAnonymousAuth();
+  const clientId = useClientId();
   const [roomId, setRoomId] = useState<string | null>(null);
   const [isWebPlayer, setIsWebPlayer] = useState(false);
-  const { roomData, isFetched } = useRoomData(uid ? roomId : null);
+  const { roomData, isFetched } = useRoomData(uid && clientId ? roomId : null);
   const [loading, setLoading] = useState(false);
   const [gameSettings, setGameSettings] = useState<unknown>(null);
   const [hostName, setHostName] = useState('');
+  const [startGameError, setStartGameError] = useState<string | null>(null);
+  const [createRoomError, setCreateRoomError] = useState<string | null>(null);
 
   // If room was deleted externally, reset
   useEffect(() => {
@@ -48,27 +53,19 @@ export default function MainScreen() {
     }
   }, []);
 
-  // Wait for anonymous auth before any DB access
-  if (!uid) {
-    return (
-      <SafeAreaView style={[styles.safeArea, styles.centered]}>
-        <StatusBar style="light" />
-        <ActivityIndicator size="large" color="#2563eb" />
-      </SafeAreaView>
-    );
-  }
-
   const handleCreateRoom = async (gameId: string, settings: unknown, name: string) => {
     setLoading(true);
+    setCreateRoomError(null);
     try {
       const plugin = getGame(gameId);
-      const newRoomId = await createRoom(uid, gameId, name);
+      const newRoomId = await createRoom(uid!, clientId!, gameId, name);
       await plugin.initGameState(newRoomId, settings);
       setGameSettings(settings);
       setHostName(name);
       setRoomId(newRoomId);
     } catch (e) {
       console.error(e);
+      setCreateRoomError(e instanceof Error ? e.message : 'Impossibile creare la stanza');
     } finally {
       setLoading(false);
     }
@@ -77,22 +74,42 @@ export default function MainScreen() {
   const handleStartGame = async () => {
     if (!roomId || !roomData) return;
     setLoading(true);
+    setStartGameError(null);
     try {
       const plugin = getGame(roomData.currentGameId);
       await plugin.startGame(roomId);
     } catch (e) {
       console.error(e);
+      setStartGameError(e instanceof Error ? e.message : 'Impossibile avviare la partita');
     } finally {
       setLoading(false);
     }
   };
 
+  // Wait for both auth UID (for RTDB rules) and clientId (player identity)
+  // before any DB access.
+  if (!uid || !clientId) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar style="light" />
+        <AppHeader />
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   // Loading state for web player joining via URL
   if (!roomId || !roomData) {
     if (isWebPlayer) {
       return (
-        <SafeAreaView style={[styles.safeArea, styles.centered]}>
-          <ActivityIndicator size="large" color="#2563eb" />
+        <SafeAreaView style={styles.safeArea}>
+          <StatusBar style="light" />
+          <AppHeader compact />
+          <View style={styles.centered}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
         </SafeAreaView>
       );
     }
@@ -101,11 +118,14 @@ export default function MainScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <StatusBar style="light" />
+        <AppHeader />
         <HomeScreen
           onCreateRoom={handleCreateRoom}
           loading={loading}
           hostName={hostName}
           onHostNameChange={setHostName}
+          createRoomError={createRoomError}
+          onDismissCreateRoomError={() => setCreateRoomError(null)}
         />
       </SafeAreaView>
     );
@@ -116,7 +136,8 @@ export default function MainScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <StatusBar style="light" />
-        <WebPlayerScreen roomData={roomData} roomId={roomId} playerUid={uid} />
+        <AppHeader compact />
+        <WebPlayerScreen roomData={roomData} roomId={roomId} clientId={clientId} />
       </SafeAreaView>
     );
   }
@@ -126,14 +147,17 @@ export default function MainScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <StatusBar style="light" />
+        <AppHeader />
         <LobbyScreen
           roomData={roomData}
-          hostId={uid}
+          hostId={clientId}
           onStartGame={handleStartGame}
           onRoomDeleted={() => setRoomId(null)}
           loading={loading}
           gameSettings={gameSettings}
           onSettingsChange={setGameSettings}
+          startGameError={startGameError}
+          onDismissStartGameError={() => setStartGameError(null)}
         />
       </SafeAreaView>
     );
@@ -149,11 +173,12 @@ export default function MainScreen() {
       return (
         <SafeAreaView style={styles.safeArea}>
           <StatusBar style="light" />
+          <AppHeader compact />
           <View style={styles.gameLayout}>
             <View style={styles.gameContent}>
-              <PlayerGamepad roomData={roomData} playerId={uid} />
+              <PlayerGamepad roomData={roomData} playerId={clientId} />
             </View>
-            <HostDashboard roomData={roomData} hostId={uid} />
+            <HostDashboard roomData={roomData} hostId={clientId} />
           </View>
         </SafeAreaView>
       );
@@ -161,6 +186,7 @@ export default function MainScreen() {
       return (
         <SafeAreaView style={styles.safeArea}>
           <StatusBar style="light" />
+          <AppHeader compact />
         </SafeAreaView>
       );
     }
@@ -170,8 +196,8 @@ export default function MainScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#111827' },
-  centered: { justifyContent: 'center', alignItems: 'center' },
+  safeArea: { flex: 1, backgroundColor: colors.background },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   gameLayout: { flex: 1 },
   gameContent: { flex: 1 },
 });

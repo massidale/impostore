@@ -2,18 +2,65 @@ import { ref, get } from 'firebase/database';
 import { database } from '../../../../config/firebase';
 import { CoreRoom } from '../../../core/types/room';
 import { touchRoom } from '../../../core/services/roomService';
-import { IndovinaGameState, IndovinaPlayerState, IndovinaSettings, WordSource } from '../types';
-import { getShuffledWords } from './indovinaWordService';
+import { filterActivePlayerUids } from '../../../core/services/playerSelection';
+import {
+  IndovinaGameState,
+  IndovinaPlayerState,
+  IndovinaSettings,
+  WordSource,
+  NOT_ENOUGH_WORDS_ERROR,
+} from '../types';
+import { getActiveWords, pickFreshWords, pickRandom } from './indovinaWordService';
+
+export class NotEnoughWordsError extends Error {
+  available: number;
+  required: number;
+  code = NOT_ENOUGH_WORDS_ERROR;
+  constructor(available: number, required: number) {
+    super(
+      `Parole esaurite: ne servono ${required}, ne restano ${available}. ` +
+        'Genera nuove parole con l\'AI o passa alla modalità "Scelte dai giocatori".'
+    );
+    this.name = 'NotEnoughWordsError';
+    this.available = available;
+    this.required = required;
+  }
+}
 
 export async function initIndovinaGame(
   roomId: string,
   settings: IndovinaSettings
 ): Promise<void> {
   const wordSource: WordSource = settings?.wordSource === 'players' ? 'players' : 'random';
-  const initialState: IndovinaGameState = { phase: 'setup', wordSource };
+
+  // Preserve session-level used-words tracking when the user just tweaks
+  // settings (e.g. toggles wordSource): the dictionary hasn't changed, so the
+  // exclusion list should still apply. It only resets on dictionary swap
+  // (handled by resetIndovinaUsedWords) or game switch.
+  const snapshot = await get(ref(database, `rooms/${roomId}/gameState`));
+  const existing = snapshot.exists() ? (snapshot.val() as Partial<IndovinaGameState>) : null;
+  const preservedUsedWords = Array.isArray(existing?.usedWords) ? existing!.usedWords! : [];
+
+  const initialState: IndovinaGameState = {
+    phase: 'setup',
+    wordSource,
+    usedWords: preservedUsedWords,
+    firstPlayerId: null,
+  };
   await touchRoom(roomId, {
     [`rooms/${roomId}/currentGameId`]: 'indovina',
     [`rooms/${roomId}/gameState`]: initialState,
+  });
+}
+
+/**
+ * Clears the used-words tracker. Called by the settings panel after the
+ * dictionary changes (AI generation / reset to default), so a brand-new pool
+ * starts unused even mid-session.
+ */
+export async function resetIndovinaUsedWords(roomId: string): Promise<void> {
+  await touchRoom(roomId, {
+    [`rooms/${roomId}/gameState/usedWords`]: [],
   });
 }
 
@@ -26,7 +73,8 @@ export async function startIndovinaGame(roomId: string): Promise<void> {
     throw new Error('La partita è già iniziata');
   }
 
-  const playerUids = Object.keys(roomData.players || {});
+  // Skip players flagged `waiting` — they joined mid-game.
+  const playerUids = filterActivePlayerUids(roomData);
   if (playerUids.length === 0) throw new Error('Nessun giocatore');
 
   const wordSource = roomData.gameState?.wordSource ?? 'random';
@@ -36,8 +84,9 @@ export async function startIndovinaGame(roomId: string): Promise<void> {
     const updates: { [key: string]: unknown } = {
       [`rooms/${roomId}/status`]: 'active',
       [`rooms/${roomId}/gameState/phase`]: 'collecting',
+      [`rooms/${roomId}/gameState/firstPlayerId`]: null,
     };
-    // Clear any leftover submissions from a prior round
+    // Clear any leftover submissions/words from a prior round
     playerUids.forEach((uid) => {
       updates[`rooms/${roomId}/players/${uid}/submittedWord`] = null;
       updates[`rooms/${roomId}/players/${uid}/word`] = null;
@@ -46,16 +95,25 @@ export async function startIndovinaGame(roomId: string): Promise<void> {
     return;
   }
 
-  // Random mode: assign words from the dictionary right away
-  const words = getShuffledWords(playerUids.length);
+  // Random mode: assign words from the dictionary right away, skipping any
+  // already used during this session.
+  const usedWords = roomData.gameState?.usedWords ?? [];
+  const result = pickFreshWords(getActiveWords(), usedWords, playerUids.length);
+  if (!result.ok) {
+    throw new NotEnoughWordsError(result.available, result.required);
+  }
+
+  const firstPlayerId = pickRandom(playerUids);
 
   const updates: { [key: string]: unknown } = {
     [`rooms/${roomId}/status`]: 'active',
     [`rooms/${roomId}/gameState/phase`]: 'playing',
+    [`rooms/${roomId}/gameState/firstPlayerId`]: firstPlayerId,
+    [`rooms/${roomId}/gameState/usedWords`]: [...usedWords, ...result.picked],
   };
 
   playerUids.forEach((uid, idx) => {
-    updates[`rooms/${roomId}/players/${uid}/word`] = words[idx];
+    updates[`rooms/${roomId}/players/${uid}/word`] = result.picked[idx];
   });
 
   await touchRoom(roomId, updates);
@@ -129,8 +187,11 @@ export async function finalizeCollecting(roomId: string): Promise<void> {
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
 
+  const firstPlayerId = pickRandom(playerUids);
+
   const updates: { [key: string]: unknown } = {
     [`rooms/${roomId}/gameState/phase`]: 'playing',
+    [`rooms/${roomId}/gameState/firstPlayerId`]: firstPlayerId,
   };
   playerUids.forEach((uid, idx) => {
     updates[`rooms/${roomId}/players/${uid}/word`] = shuffled[idx];
@@ -149,11 +210,14 @@ export async function endIndovinaGame(roomId: string): Promise<void> {
   const updates: { [key: string]: unknown } = {
     [`rooms/${roomId}/status`]: 'lobby',
     [`rooms/${roomId}/gameState/phase`]: 'setup',
+    [`rooms/${roomId}/gameState/firstPlayerId`]: null,
   };
 
   playerUids.forEach((uid) => {
     updates[`rooms/${roomId}/players/${uid}/word`] = null;
     updates[`rooms/${roomId}/players/${uid}/submittedWord`] = null;
+    // Promote waiting spectators to full players for the next round.
+    updates[`rooms/${roomId}/players/${uid}/waiting`] = null;
   });
 
   await touchRoom(roomId, updates);

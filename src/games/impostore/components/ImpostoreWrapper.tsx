@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { colors } from '../../../core/ui';
 import { CoreRoom } from '../../../core/types/room';
 import { ImpostoreGameState } from '../types';
 import { endImpostoreGame, startVoting } from '../services/impostoreLogic';
@@ -33,7 +34,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: '#374151',
+    backgroundColor: colors.border,
     marginVertical: 20,
   }
 });

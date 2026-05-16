@@ -36,50 +36,80 @@ function capitalize(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-function useKeepScreenAwake(enabled: boolean) {
-  useEffect(() => {
-    if (!enabled) return;
+// Returns imperative acquire/release controls for the Screen Wake Lock API.
+// The `request()` call must run synchronously inside the same user-activation
+// tick as the originating tap, otherwise Safari/iOS rejects it silently. So we
+// expose `acquire` instead of driving the lock from a React state + effect.
+function useKeepScreenAwake() {
+  const lockRef = useRef<{ release: () => Promise<void> } | null>(null);
+  const wantedRef = useRef(false);
+
+  const tryRequest = () => {
     if (Platform.OS !== 'web') return;
-    if (typeof navigator === 'undefined' || typeof document === 'undefined') return;
+    if (typeof navigator === 'undefined') return;
     const nav = navigator as unknown as {
-      wakeLock?: { request: (type: 'screen') => Promise<{ release: () => Promise<void> }> };
+      wakeLock?: {
+        request: (type: 'screen') => Promise<{ release: () => Promise<void> }>;
+      };
     };
-    if (!nav.wakeLock) return;
-
-    let wakeLock: { release: () => Promise<void> } | null = null;
-    let cancelled = false;
-
-    const request = async () => {
-      try {
-        const lock = await nav.wakeLock!.request('screen');
-        if (cancelled) {
+    if (!nav.wakeLock) {
+      console.warn('[wakeLock] navigator.wakeLock is not available');
+      return;
+    }
+    // Kick the promise off WITHOUT awaiting so the underlying browser call
+    // happens in the current user-activation tick.
+    nav.wakeLock
+      .request('screen')
+      .then((lock) => {
+        if (!wantedRef.current) {
           lock.release().catch(() => {});
           return;
         }
-        wakeLock = lock;
-      } catch {
-        // screen wake lock not granted — nothing we can do
-      }
-    };
+        lockRef.current = lock;
+      })
+      .catch((err) => {
+        console.warn('[wakeLock] request failed', err);
+      });
+  };
 
+  const acquire = () => {
+    wantedRef.current = true;
+    if (lockRef.current) return;
+    tryRequest();
+  };
+
+  const release = () => {
+    wantedRef.current = false;
+    const lock = lockRef.current;
+    lockRef.current = null;
+    if (lock) lock.release().catch(() => {});
+  };
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    if (typeof document === 'undefined') return;
+
+    // When the tab returns to the foreground the browser auto-releases the
+    // lock — re-request if the caller still wants it. (Best-effort; may fail
+    // if the user-activation has expired.)
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && !wakeLock && !cancelled) {
-        request();
+      if (
+        document.visibilityState === 'visible' &&
+        wantedRef.current &&
+        !lockRef.current
+      ) {
+        tryRequest();
       }
     };
-
-    request();
     document.addEventListener('visibilitychange', handleVisibilityChange);
-
     return () => {
-      cancelled = true;
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      if (wakeLock) {
-        wakeLock.release().catch(() => {});
-        wakeLock = null;
-      }
+      release();
     };
-  }, [enabled]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return { acquire, release };
 }
 
 interface IconProps {
@@ -115,29 +145,6 @@ const WarningIcon = ({ size = 20, color = colors.textPrimary }: IconProps) => (
   </Svg>
 );
 
-function confirmAction(
-  title: string,
-  message: string,
-  confirmLabel: string,
-  onConfirm: () => void,
-  destructive = false
-) {
-  if (Platform.OS === 'web') {
-    if (window.confirm(`${title}\n\n${message}`)) {
-      onConfirm();
-    }
-    return;
-  }
-  Alert.alert(title, message, [
-    { text: 'Annulla', style: 'cancel' },
-    {
-      text: confirmLabel,
-      style: destructive ? 'destructive' : 'default',
-      onPress: onConfirm,
-    },
-  ]);
-}
-
 export default function IndovinaPlayerGamepad({ roomData, playerId }: PlayerGamepadProps) {
   const gameState = roomData.gameState as IndovinaGameState;
   const playerState = roomData.players?.[playerId] as IndovinaPlayerState | undefined;
@@ -147,9 +154,9 @@ export default function IndovinaPlayerGamepad({ roomData, playerId }: PlayerGame
   const [countdown, setCountdown] = useState<number | null>(null);
   const [revealedUid, setRevealedUid] = useState<string | null>(null);
   const [displayMode, setDisplayMode] = useState<DisplayMode>('blurred');
-  const [keepAwake, setKeepAwake] = useState(false);
 
-  useKeepScreenAwake(keepAwake);
+  const { acquire: acquireKeepAwake, release: releaseKeepAwake } =
+    useKeepScreenAwake();
 
   useEffect(() => {
     if (countdown === null) return;
@@ -163,6 +170,21 @@ export default function IndovinaPlayerGamepad({ roomData, playerId }: PlayerGame
     }, 1000);
     return () => clearTimeout(t);
   }, [countdown]);
+
+  // When the host ends the round (or starts a new one), the local fullscreen
+  // states must be torn down so a guest who left their phone showing the
+  // previous word doesn't unlock straight onto the new one.
+  useEffect(() => {
+    if (gameState?.phase !== 'playing') {
+      setViewMode('others');
+      setCountdown(null);
+      releaseKeepAwake();
+      setDisplayMode('blurred');
+      setRevealedUid(null);
+    }
+    // releaseKeepAwake is stable (refs-only), no need to depend on it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameState?.phase]);
 
   if (!playerState) return null;
 
@@ -212,7 +234,7 @@ export default function IndovinaPlayerGamepad({ roomData, playerId }: PlayerGame
         word={myWord}
         onBack={() => {
           setViewMode('others');
-          setKeepAwake(false);
+          releaseKeepAwake();
           setDisplayMode('blurred');
           setRevealedUid(null);
         }}
@@ -221,28 +243,57 @@ export default function IndovinaPlayerGamepad({ roomData, playerId }: PlayerGame
   }
 
   if (countdown !== null) {
-    return <CountdownView value={countdown} onCancel={() => setCountdown(null)} />;
+    return (
+      <CountdownView
+        value={countdown}
+        onCancel={() => {
+          setCountdown(null);
+          releaseKeepAwake();
+        }}
+      />
+    );
   }
 
   const allPlayers = Object.entries(roomData.players || {});
   const otherPlayers = allPlayers.filter(([uid]) => uid !== playerId);
   const playerCount = allPlayers.length;
-  const firstPlayerEntry = allPlayers[0];
+  const firstPlayerId = gameState?.firstPlayerId ?? null;
+  const firstPlayerEntry = firstPlayerId
+    ? allPlayers.find(([uid]) => uid === firstPlayerId)
+    : undefined;
   const firstPlayerName = firstPlayerEntry
     ? ((firstPlayerEntry[1] as IndovinaPlayerState).name || 'Senza nome')
     : null;
   const firstIsMe = firstPlayerEntry?.[0] === playerId;
 
   const handleReveal = () => {
-    confirmAction(
+    // Request the wake lock NOW, synchronously inside the tap's user-activation
+    // tick. Safari/iOS rejects the request if it happens later (e.g. from a
+    // useEffect triggered by a state update). If the user cancels the confirm
+    // we release it again immediately.
+    acquireKeepAwake();
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(
+        'Mostrare la tua parola?\n\nLo schermo mostrerà la TUA parola in chiaro: tieni il telefono lontano dai tuoi occhi e mostrala agli altri.'
+      );
+      if (confirmed) {
+        setCountdown(3);
+      } else {
+        releaseKeepAwake();
+      }
+      return;
+    }
+    Alert.alert(
       'Mostrare la tua parola?',
       'Lo schermo mostrerà la TUA parola in chiaro: tieni il telefono lontano dai tuoi occhi e mostrala agli altri.',
-      'Rivela',
-      () => {
-        setKeepAwake(true);
-        setCountdown(3);
-      },
-      true
+      [
+        { text: 'Annulla', style: 'cancel', onPress: releaseKeepAwake },
+        {
+          text: 'Rivela',
+          style: 'destructive',
+          onPress: () => setCountdown(3),
+        },
+      ]
     );
   };
 
@@ -331,32 +382,30 @@ export default function IndovinaPlayerGamepad({ roomData, playerId }: PlayerGame
               )}
             </View>
 
-            {firstPlayerName && otherPlayers.length > 0 && (
-              <Text style={styles.startsLine}>
-                Inizia:{' '}
-                <Text style={styles.startsName}>
-                  {firstIsMe ? `${firstPlayerName} (tu)` : firstPlayerName}
-                </Text>
-              </Text>
-            )}
           </View>
         </View>
+
+        {firstPlayerName && otherPlayers.length > 0 && (
+          <Text style={styles.startsLine}>
+            <Text style={styles.startsName}>
+              {firstIsMe ? `${firstPlayerName} (tu)` : firstPlayerName}
+            </Text>
+            {' è il primo giocatore'}
+          </Text>
+        )}
       </ScrollView>
 
-      <View style={[styles.card, styles.revealCard]}>
-        <View style={styles.cardInner}>
-          <Button
-            onPress={handleReveal}
-            variant="danger"
-            size="lg"
-            leftIcon={<WarningIcon size={22} color={colors.textPrimary} />}
-          >
-            Rivela parola
-          </Button>
-          <Text style={styles.actionHint}>
-            Mostrerà la TUA parola — non guardare lo schermo!
-          </Text>
-        </View>
+      <View style={styles.revealActions}>
+        <Button
+          onPress={handleReveal}
+          variant="warningMuted"
+          leftIcon={<WarningIcon size={16} color={colors.warning} />}
+        >
+          Rivela parola
+        </Button>
+        <Text style={styles.actionHint}>
+          Lo schermo mostrerà la TUA parola — non guardarlo.
+        </Text>
       </View>
     </View>
   );
@@ -833,6 +882,11 @@ const styles = StyleSheet.create({
   },
   revealCard: {
     marginTop: spacing.sm,
+  },
+  revealActions: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
   },
   actionHint: {
     color: colors.textSecondary,

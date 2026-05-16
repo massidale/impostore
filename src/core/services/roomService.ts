@@ -26,8 +26,19 @@ export async function touchRoom(
   });
 }
 
+/**
+ * Creates a new room.
+ *
+ * `authUid` is the Firebase Auth UID, used as `hostId` so the RTDB rule that
+ * gates room deletion (`auth.uid === hostId`) keeps working. `hostClientId`
+ * is the stable per-device identifier used as the key of the host's player
+ * record — decoupling identity from auth so a host who loses their tab can
+ * still find their record back (the room delete permission may be lost, but
+ * the game continues).
+ */
 export async function createRoom(
-  hostId: string,
+  authUid: string,
+  hostClientId: string,
   currentGameId: string,
   hostName: string
 ): Promise<string> {
@@ -37,12 +48,12 @@ export async function createRoom(
   const roomData: CoreRoom = {
     id: roomId,
     status: 'lobby',
-    hostId,
+    hostId: authUid,
     createdAt: now,
     updatedAt: now,
     currentGameId,
     players: {
-      [hostId]: {
+      [hostClientId]: {
         joinedAt: now,
         name: hostName.trim(),
         isHost: true,
@@ -62,33 +73,48 @@ export class NameTakenError extends Error {
   }
 }
 
+/**
+ * Adds a player keyed by `clientId`. If the room status is `active` (game in
+ * progress) the player is flagged `waiting:true` so the active game ignores
+ * them and the UI shows a "waiting for next round" screen. The flag is
+ * cleared by each plugin's `endGame` so they join automatically on the
+ * next round.
+ */
 export async function addPlayerToRoom(
   roomId: string,
-  playerUid: string,
+  clientId: string,
   playerName?: string
 ): Promise<void> {
   const trimmed = (playerName ?? '').trim();
 
+  const roomSnapshot = await get(ref(database, `rooms/${roomId}`));
+  if (!roomSnapshot.exists()) throw new Error('Stanza non trovata');
+  const room = roomSnapshot.val() as CoreRoom;
+  const players = (room.players ?? {}) as Record<string, CorePlayer>;
+
+  // Already in this room — silent no-op (the rejoin path).
+  if (players[clientId]) return;
+
   if (trimmed.length > 0) {
-    const snapshot = await get(ref(database, `rooms/${roomId}/players`));
-    if (snapshot.exists()) {
-      const players = snapshot.val() as Record<string, CorePlayer>;
-      const wanted = trimmed.toLowerCase();
-      for (const [uid, p] of Object.entries(players)) {
-        if (uid === playerUid) continue;
-        if ((p.name ?? '').trim().toLowerCase() === wanted) {
-          throw new NameTakenError();
-        }
+    const wanted = trimmed.toLowerCase();
+    for (const [uid, p] of Object.entries(players)) {
+      if (uid === clientId) continue;
+      if ((p.name ?? '').trim().toLowerCase() === wanted) {
+        throw new NameTakenError();
       }
     }
   }
 
+  const isActive = room.status === 'active';
+  const record: CorePlayer = {
+    joinedAt: Date.now(),
+    name: trimmed,
+    isHost: false,
+  };
+  if (isActive) record.waiting = true;
+
   await touchRoom(roomId, {
-    [`rooms/${roomId}/players/${playerUid}`]: {
-      joinedAt: Date.now(),
-      name: trimmed,
-      isHost: false,
-    },
+    [`rooms/${roomId}/players/${clientId}`]: record,
   });
 }
 

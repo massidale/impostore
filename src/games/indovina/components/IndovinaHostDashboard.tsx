@@ -1,102 +1,133 @@
 import React from 'react';
-import { View, Text, StyleSheet, Platform, Alert } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { HostDashboardProps } from '../../../core/types/gamePlugin';
-import { Button, colors, radius, spacing, fontSize } from '../../../core/ui';
+import {
+  Button,
+  HostActionFooter,
+  ProgressCounter,
+  colors,
+  confirmDialog,
+  fonts,
+  fontSize,
+  radius,
+  spacing,
+} from '../../../core/ui';
 import { IndovinaGameState, IndovinaPlayerState } from '../types';
 import { endIndovinaGame } from '../services/indovinaLogic';
-
-function confirm(
-  title: string,
-  message: string,
-  confirmLabel: string,
-  onConfirm: () => void,
-  destructive = false
-) {
-  if (Platform.OS === 'web') {
-    if (window.confirm(`${title}\n\n${message}`)) {
-      onConfirm();
-    }
-    return;
-  }
-  Alert.alert(title, message, [
-    { text: 'Annulla', style: 'cancel' },
-    {
-      text: confirmLabel,
-      style: destructive ? 'destructive' : 'default',
-      onPress: onConfirm,
-    },
-  ]);
-}
+import { getWaitingPlayerUids } from '../../../core/services/playerSelection';
+import type { CorePlayer } from '../../../core/types/room';
 
 export default function IndovinaHostDashboard({ roomData }: HostDashboardProps) {
   const gameState = roomData.gameState as IndovinaGameState;
   const roomId = roomData.id;
-  const players = Object.entries(roomData.players || {});
-  const playerCount = players.length;
+  const allPlayers = roomData.players || {};
+  const activeEntries = Object.entries(allPlayers).filter(
+    ([, p]) => !(p as CorePlayer).waiting
+  );
+  const playerCount = activeEntries.length;
 
   const isCollecting = gameState?.phase === 'collecting';
   const submittedCount = isCollecting
-    ? players.filter(([, p]) => !!(p as IndovinaPlayerState).submittedWord).length
+    ? activeEntries.filter(([, p]) => !!(p as IndovinaPlayerState).submittedWord).length
     : 0;
 
-  const handleEndGame = () =>
-    confirm(
-      'Terminare la partita?',
-      'La partita verrà chiusa per tutti i giocatori.',
-      'Termina',
-      () => endIndovinaGame(roomId),
-      true
-    );
+  const waitingUids = getWaitingPlayerUids(roomData);
+  const waitingNames = waitingUids
+    .map((uid) => (allPlayers[uid] as CorePlayer | undefined)?.name)
+    .filter((n): n is string => !!n && n.length > 0);
 
-  const statusText = isCollecting
-    ? `${submittedCount}/${playerCount} parole inviate · ${gameState.phase}`
-    : `${playerCount} giocatori · ${gameState?.phase ?? '-'}`;
+  const handleEndGame = async () => {
+    const ok = await confirmDialog({
+      title: 'Terminare la partita?',
+      message: 'La partita verrà chiusa per tutti i giocatori.',
+      confirmLabel: 'Termina',
+      destructive: true,
+    });
+    if (ok) endIndovinaGame(roomId);
+  };
 
   return (
     <View style={styles.wrapper}>
-      <View style={styles.box}>
-        <View style={styles.statusRow}>
-          <Text style={styles.label}>Host</Text>
-          <Text style={styles.statusText}>{statusText}</Text>
-        </View>
+      <View style={styles.statusRow}>
+        <Text style={styles.label}>Host · Indovina</Text>
+        {isCollecting ? (
+          <ProgressCounter
+            prefix="Parole"
+            completed={submittedCount}
+            total={playerCount}
+            tone="primary"
+          />
+        ) : (
+          <ProgressCounter
+            prefix="Giocatori"
+            completed={playerCount}
+            total={playerCount}
+            tone="primary"
+          />
+        )}
+      </View>
 
-        <Button onPress={handleEndGame} variant="dangerMuted">
+      {waitingNames.length > 0 && (
+        <View style={styles.waitingBanner}>
+          <Text style={styles.waitingBadge}>In attesa</Text>
+          <Text style={styles.waitingNames} numberOfLines={2}>
+            {waitingNames.join(', ')}
+          </Text>
+        </View>
+      )}
+
+      <HostActionFooter>
+        <Button onPress={handleEndGame} variant="dangerMuted" style={{ flex: 1 }}>
           Termina
         </Button>
-      </View>
+      </HostActionFooter>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrapper: {
-    padding: spacing.lg,
-    backgroundColor: colors.background,
-  },
-  box: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.md,
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    paddingVertical: spacing.xl,
-    paddingHorizontal: spacing.xl,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
   statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: spacing.lg,
-    paddingBottom: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    marginBottom: spacing.sm,
   },
   label: {
     color: colors.textMuted,
+    fontFamily: fonts.bodySemi,
+    fontSize: fontSize.xs,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+  },
+  waitingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: 'rgba(245, 158, 11, 0.10)',
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  waitingBadge: {
+    color: colors.warning,
+    fontFamily: fonts.bodySemi,
     fontSize: fontSize.xs,
     textTransform: 'uppercase',
     letterSpacing: 1.2,
-    fontWeight: '700',
   },
-  statusText: {
-    color: colors.textSecondary,
+  waitingNames: {
+    flex: 1,
+    color: colors.textPrimary,
+    fontFamily: fonts.body,
     fontSize: fontSize.sm,
   },
 });

@@ -4,32 +4,32 @@
     "slug": "games-hub",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/LOGO.png",
-    "userInterfaceStyle": "light",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/LOGO.png",
+      "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0A0F1C"
     },
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/LOGO.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0A0F1C"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/LOGO.png",
+      "favicon": "./assets/favicon.png",
       "name": "gamesHub",
       "shortName": "gamesHub",
-      "description": "Collezione di party game italiani multiplayer",
-      "themeColor": "#1f2937",
-      "backgroundColor": "#111827",
+      "description": "Party game italiani multiplayer — gioca con gli amici",
+      "themeColor": "#06B6D4",
+      "backgroundColor": "#0A0F1C",
       "display": "standalone",
       "orientation": "portrait"
     }

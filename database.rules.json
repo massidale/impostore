@@ -37,6 +37,7 @@
             "joinedAt": { ".validate": "newData.isNumber()" },
             "name":     { ".validate": "newData.val() === null || (newData.isString() && newData.val().length <= 30)" },
             "isHost":   { ".validate": "newData.isBoolean()" },
+            "waiting":  { ".validate": "newData.val() === null || newData.isBoolean()" },
             "role":     { ".validate": "newData.val() === null || (newData.isString() && newData.val().matches(/^(civilian|impostor|clown)$/))" },
             "isFirst":  { ".validate": "newData.isBoolean()" },
             "revealed": { ".validate": "newData.isBoolean()" },

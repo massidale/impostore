@@ -9,6 +9,9 @@ import { CoreRoom } from './room';
 export interface SettingsPanelProps {
   onSettingsChange: (settings: unknown) => void;
   settings: unknown;
+  /** Present when the panel is rendered inside an existing room (lobby).
+   *  Absent on HomeScreen, before a room is created. */
+  roomId?: string;
 }
 
 export interface HostDashboardProps {

@@ -1,4 +1,4 @@
-import { PlayerRole } from '../types';
+import type { PlayerRole } from '../types';
 
 /**
  * Mescola un array usando l'algoritmo Fisher-Yates

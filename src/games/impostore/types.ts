@@ -17,13 +17,16 @@ export interface ImpostoreGameState {
   phase: ImpostoreGamePhase;
   word: string;
   hint?: string;
-  
+
   // Settings
   numImpostors: number;
   numClowns: number;
   hintEnabled: boolean;
   hintOnlyFirst: boolean;
-  
+
+  /** Words already used in this session, persisted so rotation survives reloads. */
+  usedWords?: string[];
+
   firstPlayerId?: string;
   
   // Voting data

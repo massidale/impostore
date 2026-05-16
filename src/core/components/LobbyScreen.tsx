@@ -1,15 +1,43 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Alert, useWindowDimensions } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Platform,
+  Alert,
+  useWindowDimensions,
+  Share,
+} from 'react-native';
 import Svg, { Path, Rect } from 'react-native-svg';
 import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
-import { Share } from 'react-native';
 import { CoreRoom } from '../types/room';
-import { removePlayerFromRoom, deleteRoom, resetPlayersToCore } from '../services/roomService';
-import { getGame } from '../gameRegistry';
+import {
+  removePlayerFromRoom,
+  deleteRoom,
+  resetPlayersToCore,
+} from '../services/roomService';
+import { getGame, getAllGames } from '../gameRegistry';
 import { GamePlugin } from '../types/gamePlugin';
-import { Button, Card, colors, radius, spacing, fontSize } from '../ui';
-import GamePickerModal from './GamePickerModal';
+import {
+  Button,
+  ErrorBanner,
+  GameCard,
+  Pill,
+  PlayerSlot,
+  PlayerSlotEmpty,
+  SectionHeader,
+  Sheet,
+  Toast,
+  colors,
+  confirmDialog,
+  fonts,
+  fontSize,
+  radius,
+  spacing,
+} from '../ui';
 
 const WEB_PAGE_URL = 'https://gameshub-6b1ce.web.app';
 
@@ -21,32 +49,62 @@ interface LobbyScreenProps {
   loading: boolean;
   gameSettings: unknown;
   onSettingsChange: (settings: unknown) => void;
+  startGameError?: string | null;
+  onDismissStartGameError?: () => void;
 }
 
-const ICON_COLOR = colors.textPrimary;
-const ICON_STROKE = 2;
+type OpenSheet = 'settings' | 'qr' | null;
 
 const CopyIcon = () => (
-  <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-    <Rect x={9} y={9} width={13} height={13} rx={2} ry={2} stroke={ICON_COLOR} strokeWidth={ICON_STROKE} />
-    <Path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke={ICON_COLOR} strokeWidth={ICON_STROKE} strokeLinecap="round" strokeLinejoin="round" />
+  <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+    <Rect x={9} y={9} width={13} height={13} rx={2} ry={2} stroke={colors.textPrimary} strokeWidth={2} />
+    <Path
+      d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+      stroke={colors.textPrimary}
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
   </Svg>
 );
 
 const ShareIcon = () => (
-  <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-    <Path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" stroke={ICON_COLOR} strokeWidth={ICON_STROKE} strokeLinecap="round" strokeLinejoin="round" />
-    <Path d="M16 6l-4-4-4 4" stroke={ICON_COLOR} strokeWidth={ICON_STROKE} strokeLinecap="round" strokeLinejoin="round" />
-    <Path d="M12 2v13" stroke={ICON_COLOR} strokeWidth={ICON_STROKE} strokeLinecap="round" strokeLinejoin="round" />
+  <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"
+      stroke={colors.textPrimary}
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Path
+      d="M16 6l-4-4-4 4"
+      stroke={colors.textPrimary}
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Path
+      d="M12 2v13"
+      stroke={colors.textPrimary}
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
   </Svg>
 );
 
 const QrIcon = () => (
-  <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-    <Rect x={3} y={3} width={7} height={7} stroke={ICON_COLOR} strokeWidth={ICON_STROKE} />
-    <Rect x={14} y={3} width={7} height={7} stroke={ICON_COLOR} strokeWidth={ICON_STROKE} />
-    <Rect x={3} y={14} width={7} height={7} stroke={ICON_COLOR} strokeWidth={ICON_STROKE} />
-    <Path d="M14 14h3v3h-3z M20 14v3 M14 20h3 M20 20v1" stroke={ICON_COLOR} strokeWidth={ICON_STROKE} strokeLinecap="round" />
+  <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+    <Rect x={3} y={3} width={7} height={7} stroke={colors.textPrimary} strokeWidth={2} />
+    <Rect x={14} y={3} width={7} height={7} stroke={colors.textPrimary} strokeWidth={2} />
+    <Rect x={3} y={14} width={7} height={7} stroke={colors.textPrimary} strokeWidth={2} />
+    <Path
+      d="M14 14h3v3h-3z M20 14v3 M14 20h3 M20 20v1"
+      stroke={colors.textPrimary}
+      strokeWidth={2}
+      strokeLinecap="round"
+    />
   </Svg>
 );
 
@@ -57,7 +115,11 @@ interface IconButtonProps {
 }
 
 const IconButton = ({ onPress, children, label }: IconButtonProps) => (
-  <TouchableOpacity onPress={onPress} style={styles.iconButton} accessibilityLabel={label}>
+  <TouchableOpacity
+    onPress={onPress}
+    style={styles.iconButton}
+    accessibilityLabel={label}
+  >
     {children}
   </TouchableOpacity>
 );
@@ -70,28 +132,32 @@ export default function LobbyScreen({
   loading,
   gameSettings,
   onSettingsChange,
+  startGameError,
+  onDismissStartGameError,
 }: LobbyScreenProps) {
   const roomId = roomData.id;
   const roomUrl = `${WEB_PAGE_URL}?room=${roomId}`;
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [showQrModal, setShowQrModal] = useState(false);
-  const [showGamePickerModal, setShowGamePickerModal] = useState(false);
+  const [openSheet, setOpenSheet] = useState<OpenSheet>(null);
   const [linkCopied, setLinkCopied] = useState(false);
+  const { width: screenWidth } = useWindowDimensions();
+  const qrSize = Math.min(screenWidth - spacing.xl * 4, 280);
 
   useEffect(() => {
     if (!linkCopied) return;
     const t = setTimeout(() => setLinkCopied(false), 2000);
     return () => clearTimeout(t);
   }, [linkCopied]);
-  const { width: screenWidth } = useWindowDimensions();
-  const qrBoxWidth = Math.min(screenWidth - spacing.xl * 2, 400);
-  const qrSize = qrBoxWidth - spacing.lg * 2;
 
   const gamePlugin = getGame(roomData.currentGameId);
   const SettingsPanel = gamePlugin.SettingsPanel;
   const minPlayers = gamePlugin.minPlayers;
 
-  const getPlayerCount = () => Object.keys(roomData.players || {}).length;
+  const players = useMemo(
+    () => Object.entries(roomData.players || {}),
+    [roomData.players]
+  );
+  const playerCount = players.length;
+  const emptySlots = Math.max(0, minPlayers - playerCount);
 
   const handleCopyLink = async () => {
     await Clipboard.setStringAsync(roomUrl);
@@ -100,13 +166,25 @@ export default function LobbyScreen({
 
   const handleShareLink = async () => {
     try {
-      await Share.share({ message: `Unisciti alla stanza: ${roomUrl}`, url: roomUrl });
+      await Share.share({
+        message: `Unisciti alla mia partita su gamesHub: ${roomUrl}`,
+        url: roomUrl,
+      });
     } catch (error) {
       console.error(error);
     }
   };
 
   const handleRemovePlayer = async (uid: string) => {
+    const player = roomData.players?.[uid];
+    const name = player?.name?.trim() || 'questo giocatore';
+    const ok = await confirmDialog({
+      title: 'Rimuovi giocatore',
+      message: `Vuoi rimuovere ${name} dalla stanza?`,
+      confirmLabel: 'Rimuovi',
+      destructive: true,
+    });
+    if (!ok) return;
     await removePlayerFromRoom(roomId, uid);
   };
 
@@ -124,38 +202,33 @@ export default function LobbyScreen({
   };
 
   const handleDeleteRoom = () => {
+    const proceed = async () => {
+      await deleteRoom(roomId);
+      onRoomDeleted();
+    };
     if (Platform.OS === 'web') {
-      if (window.confirm('Sei sicuro di voler eliminare la stanza?')) {
-        deleteRoom(roomId).then(() => onRoomDeleted());
-      }
+      if (window.confirm('Sei sicuro di voler eliminare la stanza?')) proceed();
     } else {
       Alert.alert(
         'Elimina Stanza',
-        'Tutti i giocatori verranno disconnessi. Sei sicuro?',
+        'Tutti i giocatori verranno disconnessi.',
         [
           { text: 'Annulla', style: 'cancel' },
-          {
-            text: 'Elimina',
-            style: 'destructive',
-            onPress: async () => {
-              await deleteRoom(roomId);
-              onRoomDeleted();
-            },
-          },
+          { text: 'Elimina', style: 'destructive', onPress: proceed },
         ]
       );
     }
   };
 
-  const canStart = !loading && getPlayerCount() >= minPlayers;
+  const canStart = !loading && playerCount >= minPlayers;
 
   return (
-    <View style={{ flex: 1 }}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.headerRow}>
-          <View style={styles.headerText}>
-            <Text style={styles.headerLabel}>Stanza</Text>
-            <Text style={styles.headerRoomId}>{roomId}</Text>
+    <View style={styles.root}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+        <View style={styles.roomHeader}>
+          <View style={{ flex: 1, marginRight: spacing.md }}>
+            <Text style={styles.roomLabel}>Stanza</Text>
+            <Text style={styles.roomId}>{roomId}</Text>
           </View>
           <View style={styles.iconActions}>
             <IconButton onPress={handleCopyLink} label="Copia link stanza">
@@ -164,174 +237,172 @@ export default function LobbyScreen({
             <IconButton onPress={handleShareLink} label="Condividi link stanza">
               <ShareIcon />
             </IconButton>
-            <IconButton onPress={() => setShowQrModal(true)} label="Mostra QR code">
+            <IconButton onPress={() => setOpenSheet('qr')} label="Mostra QR code">
               <QrIcon />
             </IconButton>
           </View>
         </View>
 
-        <Card>
-          <Text style={styles.status}>Status: In attesa</Text>
-          <Text style={styles.playerCount}>Giocatori: {getPlayerCount()}</Text>
+        <View style={styles.statusRow}>
+          <Pill label="In attesa" variant="cyan" />
+          <Pill
+            label="Impostazioni"
+            variant="outline"
+            onPress={() => setOpenSheet('settings')}
+          />
+        </View>
 
-          {roomData.players && Object.keys(roomData.players).length > 0 && (
-            <View style={styles.playersListSection}>
-              <Text style={styles.label}>Giocatori nella stanza:</Text>
-              {Object.entries(roomData.players).map(([uid, player]) => (
-                <View key={uid} style={styles.playerItemContainer}>
-                  <View style={styles.playerRow}>
-                    <Text style={styles.playerName}>
-                      {player.name || 'Senza nome'}
-                    </Text>
-                    {uid === hostId && <Text style={styles.hostBadge}>Host</Text>}
-                  </View>
-                  {uid !== hostId && (
-                    <TouchableOpacity onPress={() => handleRemovePlayer(uid)} style={styles.removeButton}>
-                      <Text style={styles.removeButtonText}>✕</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              ))}
-            </View>
-          )}
+        {startGameError ? (
+          <ErrorBanner
+            message={startGameError}
+            onDismiss={onDismissStartGameError}
+            style={{ marginBottom: spacing.lg }}
+          />
+        ) : null}
 
-          <View style={styles.primaryActionContainer}>
-            <Button
-              onPress={onStartGame}
-              disabled={!canStart}
-              variant="primary"
-              size="lg"
-            >
-              {loading ? 'Avvio...' : 'Avvia Partita'}
-            </Button>
-            {!canStart && !loading && (
-              <Text style={styles.primaryHelper}>
-                Servono almeno {minPlayers} giocatori per iniziare
-              </Text>
-            )}
-          </View>
-
-          <View style={styles.secondaryActionsContainer}>
-            <Button
-              onPress={() => setShowSettingsModal(true)}
-              variant="secondary"
-              style={styles.stackedButton}
-            >
-              Impostazioni Stanza
-            </Button>
-
-            <Button
-              onPress={handleDeleteRoom}
-              variant="dangerOutline"
-            >
-              Elimina Stanza
-            </Button>
-          </View>
-        </Card>
+        <SectionHeader
+          label={`Giocatori · ${playerCount}${
+            emptySlots > 0 ? ` di ${minPlayers}` : ''
+          }`}
+        />
+        <View style={styles.playersBlock}>
+          {players.map(([uid, player], i) => {
+            const isLast = i === players.length - 1 && emptySlots === 0;
+            return (
+              <View
+                key={uid}
+                style={!isLast ? styles.playerRowDivider : undefined}
+              >
+                <PlayerSlot
+                  uid={uid}
+                  name={player.name || 'Senza nome'}
+                  isHost={uid === hostId}
+                  isMe={uid === hostId}
+                  onRemove={uid !== hostId ? () => handleRemovePlayer(uid) : undefined}
+                />
+              </View>
+            );
+          })}
+          {Array.from({ length: emptySlots }).map((_, i) => {
+            const isLast = i === emptySlots - 1;
+            return (
+              <View
+                key={`empty-${i}`}
+                style={!isLast ? styles.playerRowDivider : undefined}
+              >
+                <PlayerSlotEmpty index={i} />
+              </View>
+            );
+          })}
+        </View>
       </ScrollView>
 
-      {showQrModal && (
-        <View style={styles.modalOverlay}>
-          <View style={styles.qrModalContainer}>
-            <Text style={styles.qrModalTitle}>Scansiona per unirti</Text>
-            <Text style={styles.qrModalRoomId}>{roomId}</Text>
-            <View style={[styles.qrModalContainerInner, { width: qrBoxWidth }]}>
-              <QRCode value={roomUrl} size={qrSize} backgroundColor="white" color="black" />
-            </View>
-            <Button
-              onPress={() => setShowQrModal(false)}
-              variant="primary"
-              style={{ marginTop: spacing.xl, width: qrBoxWidth }}
-            >
-              Chiudi
-            </Button>
+      <View style={styles.stickyFooter}>
+        <Button
+          onPress={onStartGame}
+          disabled={!canStart}
+          variant="primary"
+          size="lg"
+        >
+          {loading ? 'Avvio…' : 'Avvia Partita'}
+        </Button>
+        {!canStart && !loading ? (
+          <Text style={styles.helper}>
+            {emptySlots > 0
+              ? `Servono ancora ${emptySlots} giocator${emptySlots === 1 ? 'e' : 'i'}`
+              : 'In attesa…'}
+          </Text>
+        ) : null}
+      </View>
+
+      <Sheet
+        visible={openSheet === 'settings'}
+        onClose={() => setOpenSheet(null)}
+        title="Impostazioni stanza"
+        footer={
+          <Button onPress={handleDeleteRoom} variant="dangerOutline">
+            Elimina stanza
+          </Button>
+        }
+      >
+        <SectionHeader label="Gioco" hint="Cambialo quando vuoi: la stanza resta." />
+        <View style={styles.gamePickList}>
+          {getAllGames().map((g) => (
+            <GameCard
+              key={g.id}
+              icon={g.icon || '🎲'}
+              name={g.name}
+              description={g.description}
+              minPlayers={g.minPlayers}
+              maxPlayers={g.maxPlayers}
+              selected={g.id === roomData.currentGameId}
+              onPress={() => handleChangeGame(g)}
+            />
+          ))}
+        </View>
+
+        <View style={styles.divider} />
+
+        <SectionHeader label={`Impostazioni · ${gamePlugin.name}`} />
+        <SettingsPanel
+          settings={gameSettings}
+          onSettingsChange={handleSettingsChange}
+          roomId={roomId}
+        />
+      </Sheet>
+
+      <Sheet
+        visible={openSheet === 'qr'}
+        onClose={() => setOpenSheet(null)}
+        title="QR code"
+      >
+        <Text style={styles.qrHint}>
+          Inquadra con la fotocamera per unirti alla stanza{' '}
+          <Text style={styles.qrCode}>{roomId}</Text>.
+        </Text>
+        <View style={styles.qrBox}>
+          <View style={[styles.qrInner, { width: qrSize + spacing.lg * 2 }]}>
+            <QRCode value={roomUrl} size={qrSize} backgroundColor="white" color="black" />
           </View>
         </View>
-      )}
+      </Sheet>
 
-      {showSettingsModal && (
-        <View style={styles.modalOverlay}>
-          <ScrollView contentContainerStyle={styles.modalScrollContent}>
-            <Card>
-              <Text style={styles.modalTitle}>Modifica Impostazioni</Text>
-
-              <Text style={styles.settingsSectionLabel}>Gioco</Text>
-              <View style={styles.currentGamePreview}>
-                <Text style={styles.currentGameEmoji}>
-                  {gamePlugin.icon || '🎲'}
-                </Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.currentGameName}>{gamePlugin.name}</Text>
-                  {gamePlugin.description ? (
-                    <Text style={styles.currentGameDescription}>
-                      {gamePlugin.description}
-                    </Text>
-                  ) : null}
-                  <Text style={styles.currentGameMeta}>
-                    {gamePlugin.minPlayers}+ giocatori
-                  </Text>
-                </View>
-              </View>
-              <Button
-                onPress={() => setShowGamePickerModal(true)}
-                variant="secondary"
-                style={{ marginBottom: spacing.xl }}
-              >
-                Cambia gioco
-              </Button>
-
-              <SettingsPanel settings={gameSettings} onSettingsChange={handleSettingsChange} />
-
-              <Button
-                onPress={() => setShowSettingsModal(false)}
-                variant="primary"
-                style={{ marginTop: spacing.xl }}
-              >
-                Chiudi
-              </Button>
-            </Card>
-          </ScrollView>
-        </View>
-      )}
-
-      <GamePickerModal
-        visible={showGamePickerModal}
-        selectedId={roomData.currentGameId}
-        onSelect={handleChangeGame}
-        onClose={() => setShowGamePickerModal(false)}
-        helperText="Tocca un gioco per cambiarlo. Le impostazioni verranno reinizializzate."
-      />
-
-      {linkCopied && (
-        <View pointerEvents="none" style={styles.toastContainer}>
-          <View style={styles.toast}>
-            <Text style={styles.toastText}>Link copiato negli appunti</Text>
-          </View>
-        </View>
-      )}
+      <Toast visible={linkCopied} message="Link copiato negli appunti" />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { padding: spacing.xl },
-  headerRow: {
+  root: {
+    flex: 1,
+  },
+  scroll: {
+    flex: 1,
+  },
+  content: {
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.lg,
+  },
+  roomHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
   },
-  headerText: { flexShrink: 1 },
-  headerLabel: {
-    color: colors.textSecondary,
-    fontSize: fontSize.sm,
+  roomLabel: {
+    color: colors.textMuted,
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSize.xs,
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 2,
   },
-  headerRoomId: {
+  roomId: {
     color: colors.textPrimary,
-    fontSize: fontSize.xl,
-    fontWeight: 'bold',
+    fontFamily: fonts.code,
+    fontSize: fontSize.xxl,
+    letterSpacing: 2,
+    marginTop: 2,
+    fontWeight: '700',
   },
   iconActions: {
     flexDirection: 'row',
@@ -340,151 +411,72 @@ const styles = StyleSheet.create({
   iconButton: {
     width: 40,
     height: 40,
-    borderRadius: radius.sm,
-    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  status: { color: colors.textPrimary, fontSize: fontSize.md },
-  playerCount: { color: colors.textPrimary, fontSize: fontSize.md, marginBottom: 15 },
-  playersListSection: { marginBottom: spacing.xl },
-  label: { color: colors.textSecondary, marginBottom: spacing.sm + 2 },
-  playerItemContainer: {
+  statusRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: spacing.sm,
+    marginBottom: spacing.xl,
+    flexWrap: 'wrap',
+  },
+  playersBlock: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  playerRowDivider: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
-  playerRow: { flexDirection: 'row', alignItems: 'center' },
-  playerName: { color: colors.textPrimary, fontSize: fontSize.md },
-  hostBadge: {
-    backgroundColor: colors.surfaceAlt,
-    color: colors.textPrimary,
-    fontSize: 10,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
-    marginLeft: spacing.sm,
+  stickyFooter: {
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: colors.background,
   },
-  removeButton: { padding: spacing.xs },
-  removeButtonText: { color: colors.danger, fontSize: fontSize.md },
-  primaryActionContainer: {
-    marginTop: spacing.lg,
-    marginBottom: spacing.xxl,
-  },
-  primaryHelper: {
-    color: colors.textSecondary,
+  helper: {
+    color: colors.textMuted,
+    fontFamily: fonts.body,
     fontSize: fontSize.sm,
     textAlign: 'center',
     marginTop: spacing.sm,
   },
-  secondaryActionsContainer: {
-    paddingTop: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+  gamePickList: {
+    gap: spacing.sm,
   },
-  stackedButton: { marginBottom: spacing.sm + 2 },
-  modalOverlay: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(0,0,0,0.8)',
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: spacing.xl,
   },
-  modalScrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: spacing.xl,
-  },
-  modalTitle: {
-    fontSize: fontSize.xl,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-    marginBottom: spacing.xl,
-    textAlign: 'center',
-  },
-  qrModalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.xl,
-  },
-  qrModalTitle: {
-    color: colors.textPrimary,
-    fontSize: fontSize.lg,
-    fontWeight: 'bold',
-    marginBottom: spacing.xs,
-  },
-  qrModalRoomId: {
+  qrHint: {
     color: colors.textSecondary,
-    fontSize: fontSize.md,
-    marginBottom: spacing.xl,
+    fontFamily: fonts.body,
+    fontSize: fontSize.sm,
+    lineHeight: 20,
+    marginBottom: spacing.lg,
+  },
+  qrCode: {
+    color: colors.primaryLight,
+    fontFamily: fonts.code,
     letterSpacing: 1,
   },
-  qrModalContainerInner: {
+  qrBox: {
+    alignItems: 'center',
+  },
+  qrInner: {
     padding: spacing.lg,
     backgroundColor: 'white',
-    borderRadius: radius.sm,
-  },
-  settingsSectionLabel: {
-    color: colors.textMuted,
-    fontSize: fontSize.xs,
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-    fontWeight: '700',
-    marginBottom: spacing.sm,
-  },
-  currentGamePreview: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: radius.sm,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.sm,
-    gap: spacing.md,
-  },
-  currentGameEmoji: {
-    fontSize: 32,
-  },
-  currentGameName: {
-    color: colors.textPrimary,
-    fontSize: fontSize.md,
-    fontWeight: '700',
-  },
-  currentGameDescription: {
-    color: colors.textSecondary,
-    fontSize: fontSize.sm,
-    lineHeight: 18,
-    marginTop: 4,
-  },
-  currentGameMeta: {
-    color: colors.textMuted,
-    fontSize: fontSize.xs,
-    marginTop: 4,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  toastContainer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: spacing.xxl,
-    alignItems: 'center',
-  },
-  toast: {
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: radius.sm,
-    paddingVertical: spacing.sm + 2,
-    paddingHorizontal: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  toastText: {
-    color: colors.textPrimary,
-    fontSize: fontSize.sm,
-    fontWeight: '600',
+    borderRadius: radius.md,
   },
 });

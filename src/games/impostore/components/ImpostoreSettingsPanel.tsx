@@ -4,6 +4,7 @@ import { SettingsPanelProps } from '../../../core/types/gamePlugin';
 import { Button, Input, NumberSelector, colors, radius, spacing, fontSize } from '../../../core/ui';
 import { generateWordsForTopic } from '../../../core/services/geminiService';
 import { setCustomWords, resetToDefaultWords } from '../services/wordService';
+import { resetImpostoreUsedWords } from '../services/impostoreLogic';
 
 export interface ImpostoreSettings {
   numImpostors: number;
@@ -12,7 +13,7 @@ export interface ImpostoreSettings {
   hintOnlyFirst: boolean;
 }
 
-export default function ImpostoreSettingsPanel({ settings, onSettingsChange }: SettingsPanelProps) {
+export default function ImpostoreSettingsPanel({ settings, onSettingsChange, roomId }: SettingsPanelProps) {
   const s = settings as ImpostoreSettings;
 
   const [customTopic, setCustomTopic] = useState('');
@@ -45,11 +46,13 @@ export default function ImpostoreSettingsPanel({ settings, onSettingsChange }: S
         resetToDefaultWords();
         setUsingCustomWords(false);
         setSavedTopic('');
+        if (roomId) await resetImpostoreUsedWords(roomId).catch(() => {});
         showAlert('Attenzione', `Non è stato possibile generare parole personalizzate per "${topicToGenerate}". Usando parole di default.`);
       } else {
         setCustomWords(result.words);
         setUsingCustomWords(true);
         setSavedTopic(topicToGenerate);
+        if (roomId) await resetImpostoreUsedWords(roomId).catch(() => {});
         showAlert('Successo', `Generate 20 parole sul tema "${topicToGenerate}"`);
       }
     } catch (e: any) {
@@ -60,11 +63,12 @@ export default function ImpostoreSettingsPanel({ settings, onSettingsChange }: S
     }
   };
 
-  const handleResetWords = () => {
+  const handleResetWords = async () => {
     resetToDefaultWords();
     setUsingCustomWords(false);
     setCustomTopic('');
     setSavedTopic('');
+    if (roomId) await resetImpostoreUsedWords(roomId).catch(() => {});
     showAlert('Successo', 'Parole ripristinate al dizionario predefinito');
   };
 

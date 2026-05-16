@@ -4,6 +4,8 @@ export interface CorePlayer {
   joinedAt: number;
   name?: string;
   isHost?: boolean;
+  /** True when the player joined mid-game and is waiting for the next round. */
+  waiting?: boolean;
 }
 
 export interface CoreRoom<TGameState = unknown> {

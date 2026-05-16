@@ -4,11 +4,12 @@ import { SettingsPanelProps } from '../../../core/types/gamePlugin';
 import { Button, Input, colors, radius, spacing, fontSize } from '../../../core/ui';
 import { generateWordsList } from '../../../core/services/geminiService';
 import { setCustomWords, resetToDefaultWords } from '../services/indovinaWordService';
+import { resetIndovinaUsedWords } from '../services/indovinaLogic';
 import { IndovinaSettings, WordSource } from '../types';
 
 const AI_WORDS_COUNT = 30;
 
-export default function IndovinaSettingsPanel({ settings, onSettingsChange }: SettingsPanelProps) {
+export default function IndovinaSettingsPanel({ settings, onSettingsChange, roomId }: SettingsPanelProps) {
   const s = (settings || {}) as IndovinaSettings;
   const wordSource: WordSource = s.wordSource ?? 'random';
 
@@ -43,6 +44,9 @@ export default function IndovinaSettingsPanel({ settings, onSettingsChange }: Se
         resetToDefaultWords();
         setUsingCustomWords(false);
         setSavedTopic('');
+        if (roomId) {
+          await resetIndovinaUsedWords(roomId).catch(() => {});
+        }
         showAlert(
           'Attenzione',
           `Non è stato possibile generare parole personalizzate per "${topicToGenerate}". Usando parole di default.`
@@ -51,6 +55,9 @@ export default function IndovinaSettingsPanel({ settings, onSettingsChange }: Se
         setCustomWords(result.words);
         setUsingCustomWords(true);
         setSavedTopic(topicToGenerate);
+        if (roomId) {
+          await resetIndovinaUsedWords(roomId).catch(() => {});
+        }
         showAlert(
           'Successo',
           `Generate ${result.words.length} parole sul tema "${topicToGenerate}"`
@@ -64,11 +71,14 @@ export default function IndovinaSettingsPanel({ settings, onSettingsChange }: Se
     }
   };
 
-  const handleResetWords = () => {
+  const handleResetWords = async () => {
     resetToDefaultWords();
     setUsingCustomWords(false);
     setCustomTopic('');
     setSavedTopic('');
+    if (roomId) {
+      await resetIndovinaUsedWords(roomId).catch(() => {});
+    }
     showAlert('Successo', 'Parole ripristinate al dizionario predefinito');
   };
 

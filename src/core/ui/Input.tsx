@@ -1,24 +1,34 @@
 import React from 'react';
 import { TextInput, StyleSheet, StyleProp, TextStyle } from 'react-native';
-import { colors, radius, spacing, fontSize } from './theme';
+import { colors, fonts, fontSize, radius, spacing } from './theme';
 
 interface InputProps {
   value: string;
   onChangeText: (v: string) => void;
   placeholder?: string;
   maxLength?: number;
+  autoFocus?: boolean;
   style?: StyleProp<TextStyle>;
 }
 
-export function Input({ value, onChangeText, placeholder, maxLength, style }: InputProps) {
+export function Input({
+  value,
+  onChangeText,
+  placeholder,
+  maxLength,
+  autoFocus,
+  style,
+}: InputProps) {
   return (
     <TextInput
       style={[styles.input, style]}
       placeholder={placeholder}
-      placeholderTextColor={colors.textSecondary}
+      placeholderTextColor={colors.textMuted}
       value={value}
       onChangeText={onChangeText}
       maxLength={maxLength}
+      autoFocus={autoFocus}
+      selectionColor={colors.primary}
     />
   );
 }
@@ -29,9 +39,10 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
-    borderRadius: radius.sm,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.textMuted,
+    borderColor: colors.border,
+    fontFamily: fonts.bodyMedium,
     fontSize: fontSize.md,
   },
 });

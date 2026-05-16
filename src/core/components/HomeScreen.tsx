@@ -1,177 +1,172 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { getAllGames } from '../gameRegistry';
 import { GamePlugin } from '../types/gamePlugin';
-import { Button, Card, Input, colors, radius, spacing, fontSize } from '../ui';
-import GamePickerModal from './GamePickerModal';
+import {
+  Button,
+  ErrorBanner,
+  GameCard,
+  Input,
+  SectionHeader,
+  Sheet,
+  colors,
+  fonts,
+  fontSize,
+  spacing,
+} from '../ui';
 
 interface HomeScreenProps {
   onCreateRoom: (gameId: string, settings: unknown, hostName: string) => void;
   loading: boolean;
   hostName: string;
   onHostNameChange: (name: string) => void;
+  createRoomError?: string | null;
+  onDismissCreateRoomError?: () => void;
 }
 
 /**
- * Home screen — game selection + settings configuration.
- * Discovers available games from the Game Registry and renders
- * each plugin's SettingsPanel.
+ * Home screen — hero gallery of available games. Tap a game to open a
+ * bottom sheet with name input, settings panel and "Crea Stanza" CTA.
+ *
+ * The room is the central concept; choosing a game here is just a starting
+ * point — it can be changed later from the lobby.
  */
 export default function HomeScreen({
   onCreateRoom,
   loading,
   hostName,
   onHostNameChange,
+  createRoomError,
+  onDismissCreateRoomError,
 }: HomeScreenProps) {
-  const games = getAllGames();
-  const [selectedGame, setSelectedGame] = useState<GamePlugin>(games[0]);
-  const [gameSettings, setGameSettings] = useState<unknown>(selectedGame.getDefaultSettings());
-  const [showGamePickerModal, setShowGamePickerModal] = useState(false);
+  const games = useMemo(() => getAllGames(), []);
+  const [selectedGame, setSelectedGame] = useState<GamePlugin | null>(null);
+  const [gameSettings, setGameSettings] = useState<unknown>(null);
 
-  const handleSelectGame = (game: GamePlugin) => {
+  const handleOpenGame = (game: GamePlugin) => {
     setSelectedGame(game);
     setGameSettings(game.getDefaultSettings());
   };
 
-  const SettingsPanel = selectedGame.SettingsPanel;
+  const handleClose = () => {
+    setSelectedGame(null);
+  };
+
   const trimmedName = hostName.trim();
-  const canCreate = !loading && trimmedName.length > 0;
+  const canCreate = !loading && trimmedName.length > 0 && selectedGame !== null;
+
+  const handleCreate = () => {
+    if (!selectedGame || !canCreate) return;
+    onCreateRoom(selectedGame.id, gameSettings, trimmedName);
+  };
+
+  const SettingsPanel = selectedGame?.SettingsPanel;
 
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Crea Stanza</Text>
+        <Text style={styles.intro}>
+          Crea una stanza, invita gli amici{'\n'}e scegli un gioco.
+        </Text>
 
-        <Card style={{ marginBottom: spacing.xl }}>
-          <Text style={styles.fieldLabel}>Il tuo nome</Text>
-          <Input
-            placeholder="Es. Mario"
-            value={hostName}
-            onChangeText={onHostNameChange}
-            maxLength={15}
+        {createRoomError ? (
+          <ErrorBanner
+            message={createRoomError}
+            onDismiss={onDismissCreateRoomError}
+            style={{ marginBottom: spacing.lg }}
           />
-        </Card>
+        ) : null}
 
-        <Card style={{ marginBottom: spacing.xl }}>
-          <Text style={styles.sectionLabel}>Gioco</Text>
-          <View style={styles.currentGamePreview}>
-            <Text style={styles.currentGameEmoji}>
-              {selectedGame.icon || '🎲'}
-            </Text>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.currentGameName}>{selectedGame.name}</Text>
-              {selectedGame.description ? (
-                <Text style={styles.currentGameDescription}>
-                  {selectedGame.description}
-                </Text>
-              ) : null}
-              <Text style={styles.currentGameMeta}>
-                {selectedGame.minPlayers}+ giocatori
-              </Text>
-            </View>
-          </View>
-          <Button
-            onPress={() => setShowGamePickerModal(true)}
-            variant="secondary"
-          >
-            Cambia gioco
-          </Button>
-        </Card>
-
-        <Card>
-          <SettingsPanel
-            settings={gameSettings}
-            onSettingsChange={setGameSettings}
-          />
-        </Card>
+        <SectionHeader label="Catalogo giochi" />
+        <View style={styles.gallery}>
+          {games.map((game) => (
+            <GameCard
+              key={game.id}
+              icon={game.icon || '🎲'}
+              name={game.name}
+              description={game.description}
+              minPlayers={game.minPlayers}
+              maxPlayers={game.maxPlayers}
+              onPress={() => handleOpenGame(game)}
+            />
+          ))}
+        </View>
       </ScrollView>
 
-      <View style={styles.bottomButtonContainer}>
-        <Button
-          onPress={() => onCreateRoom(selectedGame.id, gameSettings, trimmedName)}
-          disabled={!canCreate}
-          variant="primary"
-          size="lg"
-        >
-          {loading ? 'Creazione...' : 'Crea Stanza'}
-        </Button>
-        {!canCreate && !loading && (
-          <Text style={styles.disabledHelper}>
-            Inserisci il tuo nome per continuare
-          </Text>
-        )}
-      </View>
+      <Sheet
+        visible={selectedGame !== null}
+        onClose={handleClose}
+        title={selectedGame ? `Nuova partita · ${selectedGame.name}` : ''}
+        footer={
+          selectedGame ? (
+            <View>
+              <Button
+                onPress={handleCreate}
+                disabled={!canCreate}
+                variant="primary"
+                size="lg"
+              >
+                {loading ? 'Creazione…' : 'Crea Stanza'}
+              </Button>
+              {!canCreate && !loading ? (
+                <Text style={styles.helper}>
+                  Inserisci il tuo nome per continuare
+                </Text>
+              ) : null}
+            </View>
+          ) : null
+        }
+      >
+        {selectedGame && SettingsPanel ? (
+          <View>
+            <SectionHeader label="Il tuo nome" />
+            <Input
+              placeholder="Es. Mario"
+              value={hostName}
+              onChangeText={onHostNameChange}
+              maxLength={15}
+              autoFocus
+            />
 
-      <GamePickerModal
-        visible={showGamePickerModal}
-        selectedId={selectedGame.id}
-        onSelect={handleSelectGame}
-        onClose={() => setShowGamePickerModal(false)}
-      />
+            <View style={styles.settingsBlock}>
+              <SectionHeader label="Impostazioni" />
+              <SettingsPanel
+                settings={gameSettings}
+                onSettingsChange={setGameSettings}
+              />
+            </View>
+          </View>
+        ) : null}
+      </Sheet>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'space-between' },
-  content: { padding: spacing.xl },
-  title: {
-    fontSize: fontSize.xl,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-    marginBottom: spacing.xl,
-    textAlign: 'center',
+  container: {
+    flex: 1,
   },
-  bottomButtonContainer: {
-    padding: spacing.xl,
-    paddingBottom: spacing.xxl + 16,
+  content: {
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.lg,
   },
-  fieldLabel: {
+  intro: {
     color: colors.textSecondary,
-    fontSize: fontSize.sm,
-    marginBottom: spacing.sm,
+    fontFamily: fonts.body,
+    fontSize: fontSize.md,
+    lineHeight: 22,
+    marginBottom: spacing.xl,
   },
-  sectionLabel: {
-    color: colors.textMuted,
-    fontSize: fontSize.xs,
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-    fontWeight: '700',
-    marginBottom: spacing.sm,
-  },
-  currentGamePreview: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: radius.sm,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.sm,
+  gallery: {
     gap: spacing.md,
   },
-  currentGameEmoji: {
-    fontSize: 32,
+  settingsBlock: {
+    marginTop: spacing.xl,
   },
-  currentGameName: {
-    color: colors.textPrimary,
-    fontSize: fontSize.md,
-    fontWeight: '700',
-  },
-  currentGameDescription: {
-    color: colors.textSecondary,
-    fontSize: fontSize.sm,
-    lineHeight: 18,
-    marginTop: 4,
-  },
-  currentGameMeta: {
+  helper: {
     color: colors.textMuted,
-    fontSize: fontSize.xs,
-    marginTop: 4,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  disabledHelper: {
-    color: colors.textSecondary,
+    fontFamily: fonts.body,
     fontSize: fontSize.sm,
     textAlign: 'center',
     marginTop: spacing.sm,

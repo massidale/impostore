@@ -1,12 +1,12 @@
 const AVATAR_PALETTE = [
-  '#2563eb',
-  '#8b5cf6',
-  '#10b981',
-  '#f59e0b',
-  '#ef4444',
-  '#06b6d4',
-  '#ec4899',
-  '#84cc16',
+  '#06B6D4',
+  '#22D3EE',
+  '#10B981',
+  '#F59E0B',
+  '#F43F5E',
+  '#EC4899',
+  '#84CC16',
+  '#A78BFA',
 ];
 
 export function avatarColor(uid: string): string {

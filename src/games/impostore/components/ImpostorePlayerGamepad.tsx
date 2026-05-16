@@ -290,6 +290,13 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
               </View>
             </View>
 
+            {firstPlayerName ? (
+              <Text style={styles.firstPlayerLine}>
+                <Text style={styles.firstPlayerName}>{firstPlayerName}</Text>
+                {' è il primo giocatore'}
+              </Text>
+            ) : null}
+
             <View style={styles.revealMetaBottom}>
               <Text style={styles.revealMetaLabel}>Pronti</Text>
               <Text style={styles.revealMetaValue}>
@@ -352,15 +359,15 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
                 <Text style={styles.description}>
                   {roleDescription(role, !!displayWord)}
                 </Text>
-
-                {firstPlayerName ? (
-                  <Text style={styles.firstPlayerLine}>
-                    Inizia:{' '}
-                    <Text style={styles.firstPlayerName}>{firstPlayerName}</Text>
-                  </Text>
-                ) : null}
               </View>
             </View>
+
+            {firstPlayerName ? (
+              <Text style={styles.firstPlayerLine}>
+                <Text style={styles.firstPlayerName}>{firstPlayerName}</Text>
+                {' è il primo giocatore'}
+              </Text>
+            ) : null}
 
             <TouchableOpacity
               onPress={() => setShowRole(false)}
@@ -608,7 +615,7 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
               <Text
                 style={[
                   styles.resultBadgeText,
-                  { color: didIWin ? '#111827' : colors.textSecondary },
+                  { color: didIWin ? colors.background : colors.textSecondary },
                 ]}
               >
                 {didIWin ? 'HAI VINTO' : 'HAI PERSO'}
@@ -759,10 +766,11 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: fontSize.sm,
     textAlign: 'center',
+    paddingHorizontal: spacing.lg,
   },
   firstPlayerName: {
     color: colors.textPrimary,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   eliminationBanner: {
     backgroundColor: colors.surfaceAlt,
