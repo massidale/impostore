@@ -56,6 +56,9 @@ sed -i '' 's/<head>/<head>\
     <meta name="description" content="Party game italiani multiplayer — gioca con gli amici">\
     <link rel="apple-touch-icon" href="\/icon-192-v2.png">\
     <link rel="icon" type="image\/png" href="\/icon-192-v2.png">\
-    <style>html, body, #root { background-color: #0A0F1C !important; box-sizing: border-box; height: 100dvh; max-height: 100dvh; overflow: hidden; } body { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }<\/style>/' dist/index.html
+    <style>html, body, #root { background-color: #0A0F1C !important; box-sizing: border-box; height: 100dvh; max-height: 100dvh; overflow: hidden; }<\/style>/' dist/index.html
+# NOTE: no env(safe-area-inset-*) on <body> — react-native-web's SafeAreaView
+# already pads all four insets; doubling them left ~1cm of dead space (HIG:
+# respect the inset exactly once, with only a minimal extra gap).
 
 echo "[build] Done."

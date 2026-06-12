@@ -487,7 +487,9 @@ const styles = StyleSheet.create({
   stickyFooter: {
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.md,
-    paddingBottom: spacing.xl,
+    // ~2mm above the safe-area inset (SafeAreaView already clears the
+    // home indicator): HIG wants the inset respected once, not padded out.
+    paddingBottom: spacing.sm,
     borderTopWidth: 1,
     borderTopColor: colors.border,
     backgroundColor: colors.background,

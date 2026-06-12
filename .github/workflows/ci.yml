@@ -12,9 +12,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Node 24 = same major as local dev; npm 11 avoids the npm 10
+      # "Invalid Version:" bug that broke `npm ci` on the runner.
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           cache: 'npm'
 
       - name: Install dependencies

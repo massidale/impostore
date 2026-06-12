@@ -56,9 +56,9 @@ const styles = StyleSheet.create({
   wrapper: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
-    // Extra bottom inset keeps the action buttons clear of the screen edge
-    // (home indicator / browser bar) — see also the safe-area CSS in build-web.sh.
-    paddingBottom: spacing.xl,
+    // ~2mm above the safe-area inset: SafeAreaView already clears the home
+    // indicator, so only a minimal extra gap is needed here (HIG).
+    paddingBottom: spacing.sm,
     backgroundColor: colors.surface,
     borderTopWidth: 1,
     borderTopColor: colors.border,

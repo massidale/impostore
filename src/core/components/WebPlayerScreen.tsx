@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Platform } from 'react-native';
 import { CoreRoom, CorePlayer } from '../types/room';
 import {
   addPlayerToRoom,
@@ -272,9 +272,11 @@ export default function WebPlayerScreen({
       const plugin = getGame(roomData.currentGameId);
       const PlayerGamepad = plugin.PlayerGamepad;
       return (
-        <SafeAreaView style={styles.activeContainer}>
+        // Plain View: this sits inside MainScreen's SafeAreaView — a nested
+        // SafeAreaView would apply the device insets a second time.
+        <View style={styles.activeContainer}>
           <PlayerGamepad roomData={roomData} playerId={clientId} />
-        </SafeAreaView>
+        </View>
       );
     } catch {
       return (

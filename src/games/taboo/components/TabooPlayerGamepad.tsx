@@ -373,6 +373,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
     padding: spacing.lg,
+    // Bottom-pinned action buttons sit ~2mm above the safe-area inset.
+    paddingBottom: spacing.sm,
   },
   centered: {
     flex: 1,
