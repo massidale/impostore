@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import {
-  SafeAreaView,
   StyleSheet,
   Platform,
   ActivityIndicator,
@@ -16,7 +15,7 @@ import { useRoomData } from '../core/hooks/useRoomData';
 import { useAuthUser } from '../core/hooks/useAuthUser';
 import { useClientId } from '../core/hooks/useClientId';
 import { getGame, NO_GAME_ID } from '../core/gameRegistry';
-import { AppHeader, UserIcon, avatarColor, colors, fonts, fontSize, radius } from '../core/ui';
+import { AppHeader, Screen, UserIcon, avatarColor, colors, fonts, fontSize, radius } from '../core/ui';
 import AccountSheet from '../core/components/AccountSheet';
 
 import LandingScreen from '../core/components/LandingScreen';
@@ -216,13 +215,13 @@ export default function MainScreen() {
   // (account UID or device clientId) before any DB access.
   if (!uid || !identityId) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <Screen style={styles.safeArea}>
         <StatusBar style="light" />
         <AppHeader />
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
-      </SafeAreaView>
+      </Screen>
     );
   }
 
@@ -230,19 +229,19 @@ export default function MainScreen() {
   if (!roomId || !roomData) {
     if (isWebPlayer) {
       return (
-        <SafeAreaView style={styles.safeArea}>
+        <Screen style={styles.safeArea}>
           <StatusBar style="light" />
           <AppHeader compact />
           <View style={styles.centered}>
             <ActivityIndicator size="large" color={colors.primary} />
           </View>
-        </SafeAreaView>
+        </Screen>
       );
     }
 
     // Landing — name + join by code or create the room right away
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <Screen style={styles.safeArea}>
         <StatusBar style="light" />
         <AppHeader actions={accountAction} />
         <LandingScreen
@@ -260,14 +259,14 @@ export default function MainScreen() {
           }}
         />
         {accountSheet}
-      </SafeAreaView>
+      </Screen>
     );
   }
 
   // Web player flow
   if (isWebPlayer) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <Screen style={styles.safeArea}>
         <StatusBar style="light" />
         <AppHeader compact />
         <WebPlayerScreen
@@ -279,14 +278,14 @@ export default function MainScreen() {
           }
           onLeave={handleLeftRoom}
         />
-      </SafeAreaView>
+      </Screen>
     );
   }
 
   // Host flow — Lobby
   if (roomData.status === 'lobby') {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <Screen style={styles.safeArea}>
         <StatusBar style="light" />
         <AppHeader />
         <LobbyScreen
@@ -303,7 +302,7 @@ export default function MainScreen() {
           startGameError={startGameError}
           onDismissStartGameError={() => setStartGameError(null)}
         />
-      </SafeAreaView>
+      </Screen>
     );
   }
 
@@ -315,7 +314,7 @@ export default function MainScreen() {
       const PlayerGamepad = plugin.PlayerGamepad;
 
       return (
-        <SafeAreaView style={styles.safeArea}>
+        <Screen style={styles.safeArea}>
           <StatusBar style="light" />
           <AppHeader compact />
           <View style={styles.gameLayout}>
@@ -324,14 +323,14 @@ export default function MainScreen() {
             </View>
             <HostDashboard roomData={roomData} hostId={identityId} />
           </View>
-        </SafeAreaView>
+        </Screen>
       );
     } catch {
       return (
-        <SafeAreaView style={styles.safeArea}>
+        <Screen style={styles.safeArea}>
           <StatusBar style="light" />
           <AppHeader compact />
-        </SafeAreaView>
+        </Screen>
       );
     }
   }

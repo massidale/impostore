@@ -56,9 +56,9 @@ const styles = StyleSheet.create({
   wrapper: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
-    // ~2mm above the safe-area inset: SafeAreaView already clears the home
-    // indicator, so only a minimal extra gap is needed here (HIG).
-    paddingBottom: spacing.sm,
+    // Same bottom gap as the Sheet footer (screens anchor to the physical
+    // bottom edge — see core/ui/Screen.tsx).
+    paddingBottom: spacing.lg,
     backgroundColor: colors.surface,
     borderTopWidth: 1,
     borderTopColor: colors.border,

@@ -6,6 +6,7 @@ export { NumberSelector } from './NumberSelector';
 export { Logo } from './Logo';
 export type { LogoSize, LogoVariant } from './Logo';
 export { AppHeader } from './AppHeader';
+export { Screen } from './Screen';
 export { Sheet } from './Sheet';
 export { SectionHeader } from './SectionHeader';
 export { PlayerSlot, PlayerSlotEmpty } from './PlayerSlot';
