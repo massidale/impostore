@@ -19,12 +19,13 @@ import {
   deleteRoom,
   resetPlayersToCore,
 } from '../services/roomService';
-import { getGame, getAllGames } from '../gameRegistry';
+import { getGame, getAllGames, NO_GAME_ID } from '../gameRegistry';
 import { GamePlugin } from '../types/gamePlugin';
 import {
   Button,
   ErrorBanner,
   GameCard,
+  GameRules,
   Pill,
   PlayerSlot,
   PlayerSlotEmpty,
@@ -39,7 +40,7 @@ import {
   spacing,
 } from '../ui';
 
-const WEB_PAGE_URL = 'https://gameshub-6b1ce.web.app';
+import { getWebBaseUrl } from '../utils/webBaseUrl';
 
 interface LobbyScreenProps {
   roomData: CoreRoom;
@@ -136,8 +137,9 @@ export default function LobbyScreen({
   onDismissStartGameError,
 }: LobbyScreenProps) {
   const roomId = roomData.id;
-  const roomUrl = `${WEB_PAGE_URL}?room=${roomId}`;
+  const roomUrl = `${getWebBaseUrl()}?room=${roomId}`;
   const [openSheet, setOpenSheet] = useState<OpenSheet>(null);
+  const [showGamePicker, setShowGamePicker] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const { width: screenWidth } = useWindowDimensions();
   const qrSize = Math.min(screenWidth - spacing.xl * 4, 280);
@@ -148,9 +150,18 @@ export default function LobbyScreen({
     return () => clearTimeout(t);
   }, [linkCopied]);
 
-  const gamePlugin = getGame(roomData.currentGameId);
-  const SettingsPanel = gamePlugin.SettingsPanel;
-  const minPlayers = gamePlugin.minPlayers;
+  // No game yet: the room is created before choosing one.
+  const hasGame = roomData.currentGameId !== NO_GAME_ID;
+  const gamePlugin = hasGame ? getGame(roomData.currentGameId) : null;
+
+  // The game catalog inside the settings sheet starts collapsed each time —
+  // but expanded while no game has been chosen yet.
+  useEffect(() => {
+    if (openSheet !== 'settings') setShowGamePicker(!hasGame);
+  }, [openSheet, hasGame]);
+
+  const SettingsPanel = gamePlugin?.SettingsPanel;
+  const minPlayers = gamePlugin?.minPlayers ?? 0;
 
   const players = useMemo(
     () => Object.entries(roomData.players || {}),
@@ -189,14 +200,19 @@ export default function LobbyScreen({
   };
 
   const handleChangeGame = async (newPlugin: GamePlugin) => {
+    setShowGamePicker(false);
     if (newPlugin.id === roomData.currentGameId) return;
     const defaults = newPlugin.getDefaultSettings();
+    // Settings state FIRST: the RTDB subscription may flip currentGameId
+    // before these awaits resolve, and the new SettingsPanel must never
+    // render with the previous game's settings (or null).
+    onSettingsChange(defaults);
     await resetPlayersToCore(roomId);
     await newPlugin.initGameState(roomId, defaults);
-    onSettingsChange(defaults);
   };
 
   const handleSettingsChange = async (newSettings: unknown) => {
+    if (!gamePlugin) return;
     onSettingsChange(newSettings);
     await gamePlugin.initGameState(roomId, newSettings);
   };
@@ -220,7 +236,7 @@ export default function LobbyScreen({
     }
   };
 
-  const canStart = !loading && playerCount >= minPlayers;
+  const canStart = !loading && hasGame && playerCount >= minPlayers;
 
   return (
     <View style={styles.root}>
@@ -246,7 +262,7 @@ export default function LobbyScreen({
         <View style={styles.statusRow}>
           <Pill label="In attesa" variant="cyan" />
           <Pill
-            label="Impostazioni"
+            label={hasGame ? `${gamePlugin!.icon ?? ''} ${gamePlugin!.name}`.trim() : 'Scegli il gioco'}
             variant="outline"
             onPress={() => setOpenSheet('settings')}
           />
@@ -276,7 +292,7 @@ export default function LobbyScreen({
                 <PlayerSlot
                   uid={uid}
                   name={player.name || 'Senza nome'}
-                  isHost={uid === hostId}
+                  isHost={player.isHost === true}
                   isMe={uid === hostId}
                   onRemove={uid !== hostId ? () => handleRemovePlayer(uid) : undefined}
                 />
@@ -308,9 +324,11 @@ export default function LobbyScreen({
         </Button>
         {!canStart && !loading ? (
           <Text style={styles.helper}>
-            {emptySlots > 0
-              ? `Servono ancora ${emptySlots} giocator${emptySlots === 1 ? 'e' : 'i'}`
-              : 'In attesa…'}
+            {!hasGame
+              ? 'Scegli un gioco per avviare la partita'
+              : emptySlots > 0
+                ? `Servono ancora ${emptySlots} giocator${emptySlots === 1 ? 'e' : 'i'}`
+                : 'In attesa…'}
           </Text>
         ) : null}
       </View>
@@ -325,30 +343,60 @@ export default function LobbyScreen({
           </Button>
         }
       >
-        <SectionHeader label="Gioco" hint="Cambialo quando vuoi: la stanza resta." />
-        <View style={styles.gamePickList}>
-          {getAllGames().map((g) => (
-            <GameCard
-              key={g.id}
-              icon={g.icon || '🎲'}
-              name={g.name}
-              description={g.description}
-              minPlayers={g.minPlayers}
-              maxPlayers={g.maxPlayers}
-              selected={g.id === roomData.currentGameId}
-              onPress={() => handleChangeGame(g)}
-            />
-          ))}
-        </View>
-
-        <View style={styles.divider} />
-
-        <SectionHeader label={`Impostazioni · ${gamePlugin.name}`} />
-        <SettingsPanel
-          settings={gameSettings}
-          onSettingsChange={handleSettingsChange}
-          roomId={roomId}
+        <SectionHeader
+          label="Gioco"
+          hint={hasGame ? 'Cambialo quando vuoi: la stanza resta.' : 'Scegli il gioco per questa stanza.'}
         />
+        {hasGame && !showGamePicker ? (
+          <View style={styles.gamePickList}>
+            <GameCard
+              icon={gamePlugin!.icon || '🎲'}
+              name={gamePlugin!.name}
+              description={gamePlugin!.description}
+              minPlayers={gamePlugin!.minPlayers}
+              maxPlayers={gamePlugin!.maxPlayers}
+              selected
+            />
+            <Button onPress={() => setShowGamePicker(true)} variant="secondary" size="sm">
+              Cambia gioco
+            </Button>
+          </View>
+        ) : (
+          <View style={styles.gamePickList}>
+            {getAllGames().map((g) => (
+              <GameCard
+                key={g.id}
+                icon={g.icon || '🎲'}
+                name={g.name}
+                description={g.description}
+                minPlayers={g.minPlayers}
+                maxPlayers={g.maxPlayers}
+                selected={g.id === roomData.currentGameId}
+                onPress={() => handleChangeGame(g)}
+              />
+            ))}
+          </View>
+        )}
+
+        {gamePlugin && SettingsPanel ? (
+          <>
+            <View style={styles.divider} />
+
+            <SectionHeader label={`Impostazioni · ${gamePlugin.name}`} />
+            {/* `gameSettings` is null when the game was picked from the lobby
+                (room created without one) or after a host re-entry: fall back
+                to the plugin defaults — panels like Impostore's dereference
+                the object and would white-screen on null. */}
+            <SettingsPanel
+              settings={gameSettings ?? gamePlugin.getDefaultSettings()}
+              onSettingsChange={handleSettingsChange}
+              roomId={roomId}
+              roomData={roomData}
+            />
+
+            <GameRules rules={gamePlugin.rules} style={styles.rulesBlock} />
+          </>
+        ) : null}
       </Sheet>
 
       <Sheet
@@ -439,7 +487,7 @@ const styles = StyleSheet.create({
   stickyFooter: {
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.md,
-    paddingBottom: spacing.md,
+    paddingBottom: spacing.xl,
     borderTopWidth: 1,
     borderTopColor: colors.border,
     backgroundColor: colors.background,
@@ -453,6 +501,9 @@ const styles = StyleSheet.create({
   },
   gamePickList: {
     gap: spacing.sm,
+  },
+  rulesBlock: {
+    marginTop: spacing.xl,
   },
   divider: {
     height: 1,
@@ -473,6 +524,8 @@ const styles = StyleSheet.create({
   },
   qrBox: {
     alignItems: 'center',
+    // Lifted off the sheet's bottom edge, like the action footers.
+    marginBottom: spacing.xl,
   },
   qrInner: {
     padding: spacing.lg,

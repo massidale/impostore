@@ -1,4 +1,4 @@
-import { ref, set, onValue, off, update, remove, get } from 'firebase/database';
+import { ref, set, onValue, update, remove, get } from 'firebase/database';
 import { database } from '../../../config/firebase';
 import { CoreRoom, CorePlayer } from '../types/room';
 
@@ -64,6 +64,12 @@ export async function createRoom(
   await set(ref(database, `rooms/${roomId}`), roomData);
 
   return roomId;
+}
+
+/** One-shot room fetch (no subscription). */
+export async function fetchRoom(roomId: string): Promise<CoreRoom | null> {
+  const snapshot = await get(ref(database, `rooms/${roomId}`));
+  return snapshot.exists() ? (snapshot.val() as CoreRoom) : null;
 }
 
 export class NameTakenError extends Error {
@@ -159,16 +165,35 @@ export function subscribeToRoom(
   callback: (room: CoreRoom | null) => void
 ): () => void {
   const roomRef = ref(database, `rooms/${roomId}`);
+  let cancelled = false;
+  let retryTimer: ReturnType<typeof setTimeout> | null = null;
+  let detach: (() => void) | null = null;
 
-  onValue(roomRef, (snapshot) => {
-    if (snapshot.exists()) {
-      callback(snapshot.val() as CoreRoom);
-    } else {
-      callback(null);
-    }
-  });
+  const attach = () => {
+    if (cancelled) return;
+    detach = onValue(
+      roomRef,
+      (snapshot) => {
+        callback(snapshot.exists() ? (snapshot.val() as CoreRoom) : null);
+      },
+      (error) => {
+        // A cancelled listener (transient network error, auth-token refresh
+        // hiccup) would otherwise die SILENTLY: the screen freezes on stale
+        // data until the user reloads. Re-attach with a short backoff.
+        console.warn('[subscribeToRoom] listener cancelled, retrying…', error);
+        detach?.();
+        detach = null;
+        if (!cancelled) retryTimer = setTimeout(attach, 2000);
+      }
+    );
+  };
+  attach();
 
+  // Per-listener unsubscribe: `off(roomRef)` would tear down EVERY listener
+  // on the ref, including ones belonging to other mounts.
   return () => {
-    off(roomRef);
+    cancelled = true;
+    if (retryTimer) clearTimeout(retryTimer);
+    detach?.();
   };
 }

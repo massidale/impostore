@@ -8,6 +8,7 @@ import {
   TouchableWithoutFeedback,
   Animated,
   Easing,
+  PanResponder,
   ScrollView,
   Platform,
   KeyboardAvoidingView,
@@ -45,15 +46,47 @@ export function Sheet({
   maxHeightRatio = 0.9,
 }: SheetProps) {
   const slide = useRef(new Animated.Value(0)).current;
+  const dragY = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    if (visible) dragY.setValue(0);
     Animated.timing(slide, {
       toValue: visible ? 1 : 0,
       duration: 240,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
-  }, [visible, slide]);
+  }, [visible, slide, dragY]);
+
+  // Drag-to-dismiss: the grab zone (handle + header) follows the finger
+  // downwards; release past the threshold slides the sheet away and closes.
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_evt, g) => g.dy > 6 && Math.abs(g.dy) > Math.abs(g.dx),
+      onPanResponderMove: (_evt, g) => {
+        if (g.dy > 0) dragY.setValue(g.dy);
+      },
+      onPanResponderRelease: (_evt, g) => {
+        if (g.dy > 90 || g.vy > 0.6) {
+          Animated.timing(dragY, {
+            toValue: 600,
+            duration: 160,
+            easing: Easing.in(Easing.cubic),
+            useNativeDriver: true,
+          }).start(() => onClose());
+        } else {
+          Animated.spring(dragY, {
+            toValue: 0,
+            useNativeDriver: true,
+            bounciness: 4,
+          }).start();
+        }
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(dragY, { toValue: 0, useNativeDriver: true }).start();
+      },
+    })
+  ).current;
 
   const translateY = slide.interpolate({
     inputRange: [0, 1],
@@ -66,20 +99,22 @@ export function Sheet({
 
   const sheetInner = (
     <>
-      <View style={styles.handle} />
-      {title ? (
-        <View style={styles.header}>
-          <Text style={styles.title}>{title}</Text>
-          <TouchableOpacity
-            onPress={onClose}
-            style={styles.closeButton}
-            accessibilityLabel="Chiudi"
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Text style={styles.closeIcon}>×</Text>
-          </TouchableOpacity>
-        </View>
-      ) : null}
+      <View style={styles.grabZone} {...panResponder.panHandlers}>
+        <View style={styles.handle} />
+        {title ? (
+          <View style={styles.header}>
+            <Text style={styles.title}>{title}</Text>
+            <TouchableOpacity
+              onPress={onClose}
+              style={styles.closeButton}
+              accessibilityLabel="Chiudi"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.closeIcon}>×</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+      </View>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -127,7 +162,7 @@ export function Sheet({
               styles.sheetWeb,
               {
                 maxHeight: (`${maxHeightRatio * 100}dvh` as unknown) as number,
-                transform: [{ translateY }],
+                transform: [{ translateY }, { translateY: dragY }],
               },
             ]}
           >
@@ -153,7 +188,7 @@ export function Sheet({
           style={[
             styles.sheet,
             {
-              transform: [{ translateY }],
+              transform: [{ translateY }, { translateY: dragY }],
               maxHeight: `${maxHeightRatio * 100}%` as `${number}%`,
             },
           ]}
@@ -199,6 +234,13 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+  },
+  grabZone: {
+    // Drag-to-dismiss area; on web `touchAction: none` stops the browser
+    // from hijacking the vertical gesture as a scroll.
+    ...Platform.select({
+      web: { touchAction: 'none', cursor: 'grab' } as object,
+    }),
   },
   handle: {
     width: 40,

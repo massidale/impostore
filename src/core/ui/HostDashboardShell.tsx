@@ -1,0 +1,82 @@
+import React, { ReactNode } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { colors, fonts, fontSize, spacing } from './theme';
+import { NoticeBanner } from './NoticeBanner';
+import { HostActionFooter } from './HostActionFooter';
+
+interface HostDashboardShellProps {
+  /** Game name shown as "Host · {gameName}". */
+  gameName: string;
+  /** Right side of the status row (typically a ProgressCounter). */
+  status?: ReactNode;
+  /** Names of players who joined mid-game and wait for the next round. */
+  waitingNames?: string[];
+  /** Extra rows between the status row and the action footer. */
+  children?: ReactNode;
+  /** Host action buttons, laid out horizontally with flex:1 each. */
+  actions?: ReactNode;
+}
+
+/**
+ * Common chrome for every game's HostDashboard: top border, status row
+ * with the game label, optional "waiting players" banner and the action
+ * footer. Keeps the host strip identical across games.
+ */
+export function HostDashboardShell({
+  gameName,
+  status,
+  waitingNames,
+  children,
+  actions,
+}: HostDashboardShellProps) {
+  return (
+    <View style={styles.wrapper}>
+      <View style={styles.statusRow}>
+        <Text style={styles.label}>Host · {gameName}</Text>
+        {status}
+      </View>
+
+      {waitingNames && waitingNames.length > 0 ? (
+        <NoticeBanner
+          badge="In attesa"
+          message={waitingNames.join(', ')}
+          tone="warning"
+          style={styles.banner}
+        />
+      ) : null}
+
+      {children}
+
+      {actions ? <HostActionFooter>{actions}</HostActionFooter> : null}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  wrapper: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    // Extra bottom inset keeps the action buttons clear of the screen edge
+    // (home indicator / browser bar) — see also the safe-area CSS in build-web.sh.
+    paddingBottom: spacing.xl,
+    backgroundColor: colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
+  label: {
+    color: colors.textMuted,
+    fontFamily: fonts.bodySemi,
+    fontSize: fontSize.xs,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+  },
+  banner: {
+    marginBottom: spacing.sm,
+  },
+});

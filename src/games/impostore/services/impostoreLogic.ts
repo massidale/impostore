@@ -8,12 +8,15 @@ import { pickWordForSession } from './wordService';
 import { computeVoteOutcome } from './impostoreVotePure';
 import { filterActivePlayerUids } from '../../../core/services/playerSelection';
 
+const DEFAULT_VOTING_SECONDS = 60;
+
 export async function initImpostoreGame(
     roomId: string,
     numImpostors: number,
     numClowns: number,
     hintEnabled: boolean,
-    hintOnlyFirst: boolean
+    hintOnlyFirst: boolean,
+    votingSeconds: number = DEFAULT_VOTING_SECONDS
   ): Promise<void> {
     // Preserve session-level usedWords across settings tweaks (same pattern
     // as initIndovinaGame): the dictionary hasn't changed just because the
@@ -30,6 +33,7 @@ export async function initImpostoreGame(
         numClowns,
         hintEnabled,
         hintOnlyFirst,
+        votingSeconds,
         usedWords: preservedUsedWords,
     };
 
@@ -105,6 +109,7 @@ export async function endImpostoreGame(roomId: string): Promise<void> {
         [`rooms/${roomId}/gameState/hint`]: null,
         [`rooms/${roomId}/gameState/votes`]: null,
         [`rooms/${roomId}/gameState/runoffCandidates`]: null,
+        [`rooms/${roomId}/gameState/votingEndsAt`]: null,
         [`rooms/${roomId}/gameState/eliminatedPlayer`]: null,
         [`rooms/${roomId}/gameState/eliminatedRole`]: null,
         [`rooms/${roomId}/gameState/winner`]: null,
@@ -130,12 +135,17 @@ export async function markPlayerAsRevealed(roomId: string, playerUid: string): P
 }
 
 export async function startVoting(roomId: string): Promise<void> {
+    const snapshot = await get(ref(database, `rooms/${roomId}/gameState`));
+    const gameState = snapshot.exists() ? (snapshot.val() as ImpostoreGameState) : null;
+    const votingSeconds = gameState?.votingSeconds ?? DEFAULT_VOTING_SECONDS;
+
     await touchRoom(roomId, {
       [`rooms/${roomId}/gameState/phase`]: 'voting',
       [`rooms/${roomId}/gameState/votes`]: null,
       [`rooms/${roomId}/gameState/runoffCandidates`]: null,
       [`rooms/${roomId}/gameState/winner`]: null,
       [`rooms/${roomId}/gameState/impostorGuess`]: null,
+      [`rooms/${roomId}/gameState/votingEndsAt`]: Date.now() + votingSeconds * 1000,
     });
 }
 
@@ -192,11 +202,40 @@ async function evaluateVotingRound(roomId: string): Promise<void> {
       return finalizeElimination(roomId, outcome.uid);
     }
 
-    // Tied first round → start runoff with the tied candidates.
+    // Tied first round → start runoff with the tied candidates (fresh timer).
+    const votingSeconds = gameState.votingSeconds ?? DEFAULT_VOTING_SECONDS;
     await touchRoom(roomId, {
       [`rooms/${roomId}/gameState/votes`]: null,
       [`rooms/${roomId}/gameState/runoffCandidates`]: outcome.candidates,
+      [`rooms/${roomId}/gameState/votingEndsAt`]: Date.now() + votingSeconds * 1000,
     });
+}
+
+/**
+ * Closes the voting round when the timer expires: late voters simply aren't
+ * counted. With zero votes cast the round is cancelled and play resumes.
+ * Idempotent — safe to call from multiple clients (no-op unless still voting).
+ */
+export async function closeVotingByTimeout(roomId: string): Promise<void> {
+    const snapshot = await get(ref(database, `rooms/${roomId}/gameState`));
+    if (!snapshot.exists()) return;
+    const gameState = snapshot.val() as ImpostoreGameState;
+    if (gameState.phase !== 'voting') return;
+    if (!gameState.votingEndsAt || Date.now() < gameState.votingEndsAt) return;
+
+    const votes = gameState.votes ?? {};
+    if (Object.keys(votes).length === 0) {
+      // Nobody voted: cancel the round and go back to playing.
+      await touchRoom(roomId, {
+        [`rooms/${roomId}/gameState/phase`]: 'playing',
+        [`rooms/${roomId}/gameState/votes`]: null,
+        [`rooms/${roomId}/gameState/runoffCandidates`]: null,
+        [`rooms/${roomId}/gameState/votingEndsAt`]: null,
+      });
+      return;
+    }
+
+    await evaluateVotingRound(roomId);
 }
 
 async function finalizeElimination(roomId: string, eliminatedUid: string): Promise<void> {
@@ -225,6 +264,7 @@ async function finalizeElimination(roomId: string, eliminatedUid: string): Promi
       [`rooms/${roomId}/gameState/eliminatedRole`]: eliminatedRole,
       [`rooms/${roomId}/gameState/winner`]: winner,
       [`rooms/${roomId}/gameState/runoffCandidates`]: null,
+      [`rooms/${roomId}/gameState/votingEndsAt`]: null,
       [`rooms/${roomId}/players/${eliminatedUid}/eliminated`]: true,
     });
 }
@@ -278,6 +318,7 @@ export async function updateImpostoreSettings(
         numClowns?: number;
         hintEnabled?: boolean;
         hintOnlyFirst?: boolean;
+        votingSeconds?: number;
     }
 ) {
     const updates: Record<string, unknown> = {};
@@ -285,6 +326,7 @@ export async function updateImpostoreSettings(
     if (settings.numClowns !== undefined) updates[`rooms/${roomId}/gameState/numClowns`] = settings.numClowns;
     if (settings.hintEnabled !== undefined) updates[`rooms/${roomId}/gameState/hintEnabled`] = settings.hintEnabled;
     if (settings.hintOnlyFirst !== undefined) updates[`rooms/${roomId}/gameState/hintOnlyFirst`] = settings.hintOnlyFirst;
+    if (settings.votingSeconds !== undefined) updates[`rooms/${roomId}/gameState/votingSeconds`] = settings.votingSeconds;
 
     await touchRoom(roomId, updates);
 }

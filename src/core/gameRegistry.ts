@@ -1,15 +1,26 @@
 import { GamePlugin } from './types/gamePlugin';
 import ImpostorePlugin from '../games/impostore';
 import IndovinaPlugin from '../games/indovina';
+import TabooPlugin from '../games/taboo';
+import LupusPlugin from '../games/lupus';
 
 // ── Game Registry ──
 // Central map of all available games. To add a new game:
 // 1. Create a plugin under src/games/<name>/ with an index.ts exporting GamePlugin
 // 2. Import it here and add to the registry map
 
+/**
+ * Sentinel `currentGameId` for a room created before any game is chosen.
+ * Must be a non-empty string (RTDB rules require `length > 0`) that never
+ * collides with a real plugin id.
+ */
+export const NO_GAME_ID = 'none';
+
 const registry: Record<string, GamePlugin> = {
   [ImpostorePlugin.id]: ImpostorePlugin,
   [IndovinaPlugin.id]: IndovinaPlugin,
+  [TabooPlugin.id]: TabooPlugin,
+  [LupusPlugin.id]: LupusPlugin,
 };
 
 /**

@@ -7,7 +7,7 @@ import {
   StyleProp,
   ViewStyle,
 } from 'react-native';
-import { colors, radius, spacing, fontSize } from './theme';
+import { colors, fonts, radius, spacing, fontSize } from './theme';
 
 interface NumberSelectorProps {
   value: number;
@@ -90,8 +90,8 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: colors.textPrimary,
+    fontFamily: fonts.bodySemi,
     fontSize: fontSize.lg + 2,
-    fontWeight: 'bold',
     lineHeight: fontSize.lg + 2,
   },
   valueContainer: {
@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
   },
   value: {
     color: colors.textPrimary,
+    fontFamily: fonts.bodySemi,
     fontSize: fontSize.lg,
-    fontWeight: 'bold',
   },
 });

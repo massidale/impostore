@@ -54,6 +54,73 @@ export interface GenerateListResult {
   usedFallback: boolean;
 }
 
+export interface GeneratedTabooCard {
+  word: string;
+  taboo: string[];
+}
+
+export interface GenerateTabooResult {
+  cards: GeneratedTabooCard[];
+  usedFallback: boolean;
+}
+
+export async function generateTabooCards(
+  topic: string,
+  count: number
+): Promise<GenerateTabooResult> {
+  const prompt = `Genera un array JSON di ${count} carte per il gioco Taboo sul tema: "${topic}".
+REGOLE STRETTE:
+1. Ogni carta è un oggetto {"word": "...", "taboo": ["...", "...", "...", "...", "..."]}.
+2. "word" è la parola da far indovinare: riconoscibile dal pubblico generale italiano.
+3. "taboo" contiene ESATTAMENTE 5 parole vietate: le più ovvie che si userebbero per descrivere la parola.
+4. Le parole vietate non devono contenere la parola da indovinare né sue varianti.
+5. Niente duplicati. Evita contenuti volgari o offensivi. Tutto in italiano.
+
+Esempio di formato:
+[{"word": "Pizza", "taboo": ["Margherita", "Forno", "Mozzarella", "Napoli", "Pomodoro"]}]
+
+Rispondi solo con l'array JSON. Se non riesci a comprendere il tema, rispondi con [].`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+
+    const cleanJson = text.replace(/```json|```/g, "").trim();
+    const data = JSON.parse(cleanJson);
+
+    if (!Array.isArray(data) || data.length === 0) {
+      return { cards: [], usedFallback: true };
+    }
+
+    const cleaned: GeneratedTabooCard[] = data
+      .filter(
+        (c): c is GeneratedTabooCard =>
+          !!c &&
+          typeof c.word === 'string' &&
+          c.word.trim().length > 0 &&
+          Array.isArray(c.taboo) &&
+          c.taboo.length >= 3
+      )
+      .map((c) => ({
+        word: c.word.trim(),
+        taboo: c.taboo
+          .filter((t): t is string => typeof t === 'string' && t.trim().length > 0)
+          .map((t) => t.trim())
+          .slice(0, 5),
+      }));
+
+    if (cleaned.length === 0) {
+      return { cards: [], usedFallback: true };
+    }
+
+    return { cards: cleaned, usedFallback: false };
+  } catch (error) {
+    console.error("Errore Gemini:", error);
+    throw new Error("Impossibile generare le carte. Riprova.");
+  }
+}
+
 export async function generateWordsList(
   topic: string,
   count: number

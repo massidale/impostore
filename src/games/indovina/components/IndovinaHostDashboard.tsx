@@ -1,16 +1,10 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
 import { HostDashboardProps } from '../../../core/types/gamePlugin';
 import {
   Button,
-  HostActionFooter,
+  HostDashboardShell,
   ProgressCounter,
-  colors,
   confirmDialog,
-  fonts,
-  fontSize,
-  radius,
-  spacing,
 } from '../../../core/ui';
 import { IndovinaGameState, IndovinaPlayerState } from '../types';
 import { endIndovinaGame } from '../services/indovinaLogic';
@@ -47,10 +41,10 @@ export default function IndovinaHostDashboard({ roomData }: HostDashboardProps) 
   };
 
   return (
-    <View style={styles.wrapper}>
-      <View style={styles.statusRow}>
-        <Text style={styles.label}>Host · Indovina</Text>
-        {isCollecting ? (
+    <HostDashboardShell
+      gameName="Indovina"
+      status={
+        isCollecting ? (
           <ProgressCounter
             prefix="Parole"
             completed={submittedCount}
@@ -64,70 +58,14 @@ export default function IndovinaHostDashboard({ roomData }: HostDashboardProps) 
             total={playerCount}
             tone="primary"
           />
-        )}
-      </View>
-
-      {waitingNames.length > 0 && (
-        <View style={styles.waitingBanner}>
-          <Text style={styles.waitingBadge}>In attesa</Text>
-          <Text style={styles.waitingNames} numberOfLines={2}>
-            {waitingNames.join(', ')}
-          </Text>
-        </View>
-      )}
-
-      <HostActionFooter>
+        )
+      }
+      waitingNames={waitingNames}
+      actions={
         <Button onPress={handleEndGame} variant="dangerMuted" style={{ flex: 1 }}>
           Termina
         </Button>
-      </HostActionFooter>
-    </View>
+      }
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  wrapper: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.md,
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  statusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.sm,
-  },
-  label: {
-    color: colors.textMuted,
-    fontFamily: fonts.bodySemi,
-    fontSize: fontSize.xs,
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-  },
-  waitingBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: 'rgba(245, 158, 11, 0.10)',
-    borderRadius: radius.md,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  waitingBadge: {
-    color: colors.warning,
-    fontFamily: fonts.bodySemi,
-    fontSize: fontSize.xs,
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-  },
-  waitingNames: {
-    flex: 1,
-    color: colors.textPrimary,
-    fontFamily: fonts.body,
-    fontSize: fontSize.sm,
-  },
-});

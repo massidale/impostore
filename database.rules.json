@@ -3,6 +3,19 @@
     ".read": false,
     ".write": false,
 
+    "nicknames": {
+      "$nick": {
+        ".read": "auth != null",
+        ".write": "auth != null && (!data.exists() || data.child('uid').val() === auth.uid) && newData.child('uid').val() === auth.uid",
+        ".validate": "newData.hasChildren(['uid', 'email'])",
+
+        "uid":   { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128" },
+        "email": { ".validate": "newData.isString() && newData.val().length <= 254" },
+
+        "$other": { ".validate": false }
+      }
+    },
+
     "rooms": {
       "$roomId": {
         ".read":  "auth != null && $roomId.matches(/^[A-Z0-9]{6}$/)",

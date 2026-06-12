@@ -10,7 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors, radius, spacing, fontSize } from './theme';
+import { colors, fonts, radius, spacing, fontSize } from './theme';
 
 export type ButtonVariant =
   | 'primary'
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
   },
   text: {
     color: colors.textPrimary,
-    fontWeight: 'bold',
+    fontFamily: fonts.bodySemi,
   },
   iconRow: {
     flexDirection: 'row',

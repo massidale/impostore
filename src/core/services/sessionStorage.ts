@@ -13,18 +13,34 @@ export { makeSessionStore } from './sessionStoragePure';
  * RTDB rule check (`auth != null`); it just isn't the source of identity.
  */
 
+/**
+ * Test hook: opening the app with `?cid=<name>` (web only) namespaces every
+ * storage key with that value, giving the tab its own player identity and
+ * room-session. Lets one browser simulate N players via N tabs:
+ *   http://localhost:8081?room=ABC123&cid=p2
+ * Reopening the same cid restores the same player. Without the param the
+ * behavior is unchanged (one identity per browser profile).
+ */
+function storageNamespace(): string {
+  if (typeof window === 'undefined') return '';
+  const cid = new URLSearchParams(window.location.search).get('cid');
+  if (!cid) return '';
+  // Keep the suffix key-safe and bounded.
+  return ':' + cid.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 32);
+}
+
 const webAdapter: StorageAdapter = {
   async getItem(key) {
     if (typeof window === 'undefined' || !window.localStorage) return null;
-    return window.localStorage.getItem(key);
+    return window.localStorage.getItem(key + storageNamespace());
   },
   async setItem(key, value) {
     if (typeof window === 'undefined' || !window.localStorage) return;
-    window.localStorage.setItem(key, value);
+    window.localStorage.setItem(key + storageNamespace(), value);
   },
   async removeItem(key) {
     if (typeof window === 'undefined' || !window.localStorage) return;
-    window.localStorage.removeItem(key);
+    window.localStorage.removeItem(key + storageNamespace());
   },
 };
 

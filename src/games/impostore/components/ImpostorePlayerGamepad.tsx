@@ -1,25 +1,30 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity } from 'react-native';
-import Svg, { Path, Circle, Line, Ellipse } from 'react-native-svg';
+import { View, Text, StyleSheet, ScrollView, TextInput } from 'react-native';
+import Svg, { Path, Circle, Ellipse } from 'react-native-svg';
 import { PlayerGamepadProps } from '../../../core/types/gamePlugin';
-import { Button, colors, radius, spacing, fontSize, avatarColor, avatarInitial } from '../../../core/ui';
+import {
+  Button,
+  CheckIcon,
+  CountdownBar,
+  EyeOffIcon,
+  GhostButton,
+  InlineConfirm,
+  MetaCorner,
+  PhaseCard,
+  PlayerSlot,
+  ProgressCounter,
+  StatusCard,
+  TrophyIcon,
+  WordBox,
+  colors,
+  fonts,
+  fontSize,
+  radius,
+  spacing,
+} from '../../../core/ui';
+import { useCountdown } from '../../../core/hooks/useCountdown';
 import { ImpostoreGameState, ImpostorePlayerState, PlayerRole } from '../types';
 import { markPlayerAsRevealed, castVote, submitImpostorGuess } from '../services/impostoreLogic';
-
-function capitalize(str: string): string {
-  if (!str) return '';
-  return str.charAt(0).toUpperCase() + str.slice(1);
-}
-
-function wordFontSize(word: string | null | undefined): number {
-  const len = word ? word.length : 0;
-  if (len <= 8) return 48;
-  if (len <= 11) return 40;
-  if (len <= 14) return 34;
-  if (len <= 18) return 28;
-  if (len <= 24) return 22;
-  return 18;
-}
 
 function roleLabel(role: PlayerRole): string {
   if (role === 'impostor') return 'Impostore';
@@ -125,45 +130,23 @@ const MaskIcon = ({ size = 28, color = colors.textMuted }: IconProps) => (
   </Svg>
 );
 
-const TrophyIcon = ({ size = 28, color = colors.warning }: IconProps) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Path d="M7 4h10v4a5 5 0 0 1-10 0V4z" stroke={color} strokeWidth={1.6} strokeLinejoin="round" fill={color} fillOpacity={0.18} />
-    <Path d="M7 6H5a2 2 0 0 0 0 4h2M17 6h2a2 2 0 0 1 0 4h-2" stroke={color} strokeWidth={1.6} strokeLinecap="round" />
-    <Path d="M10 14h4v2h-4zM9 21h6M12 16v5" stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
-  </Svg>
-);
-
-const CheckIcon = ({ size = 48, color = colors.success }: IconProps) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Path
-      d="M20 6L9 17l-5-5"
-      stroke={color}
-      strokeWidth={3}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </Svg>
-);
-
-const EyeOffIcon = ({ size = 18, color = colors.textPrimary }: IconProps) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Path
-      d="M17.94 17.94A10.06 10.06 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
-      stroke={color}
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <Line x1={1} y1={1} x2={23} y2={23} stroke={color} strokeWidth={2} strokeLinecap="round" />
-  </Svg>
-);
+function VotingTimer({
+  endsAt,
+  totalSeconds,
+}: {
+  endsAt?: number | null;
+  totalSeconds: number;
+}) {
+  const remaining = useCountdown(endsAt ?? null);
+  if (remaining === null) return null;
+  return <CountdownBar seconds={remaining} total={totalSeconds} size="md" style={{ marginBottom: spacing.md }} />;
+}
 
 function RoleIcon({ role, size }: { role: PlayerRole; size?: number }) {
   const color = roleColor(role);
   if (role === 'civilian') return <CivilianIcon size={size} color={color} />;
   if (role === 'impostor') return <ImpostorIcon size={size} color={color} />;
   if (role === 'clown') return <ClownIcon size={size} color={color} />;
-  // Placeholder circle
   return (
     <Svg width={size || 64} height={size || 64} viewBox="0 0 24 24">
       <Ellipse cx={12} cy={12} rx={10} ry={10} stroke={color} strokeWidth={2} fill="none" />
@@ -178,6 +161,8 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
 
   const [showRole, setShowRole] = useState(false);
   const [guessText, setGuessText] = useState('');
+  // Vote awaiting the inline ✓/✕ confirmation.
+  const [pendingVote, setPendingVote] = useState<string | null>(null);
 
   const handleReveal = () => {
     setShowRole(true);
@@ -237,17 +222,11 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
     if (playerState.eliminated) {
       return (
         <View style={styles.container}>
-          <View style={styles.card}>
-            <View style={styles.cardInner}>
-              <Text style={[styles.roleText, { color: colors.textMuted }]}>
-                Sei stato eliminato
-              </Text>
-              <Text style={styles.description}>
-                La partita continua per gli altri giocatori. Resta in attesa
-                del risultato finale.
-              </Text>
-            </View>
-          </View>
+          <StatusCard
+            tone="muted"
+            title="Sei stato eliminato"
+            message="La partita continua per gli altri giocatori. Resta in attesa del risultato finale."
+          />
         </View>
       );
     }
@@ -256,14 +235,8 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
       <View style={styles.container}>
         {!showRole ? (
           <>
-            <View style={styles.revealMetaTop}>
-              <Text style={styles.revealMetaLabel}>Stanza</Text>
-              <Text style={styles.revealMetaValue}>{roomId}</Text>
-              <Text style={[styles.revealMetaLabel, { marginTop: spacing.xs }]}>
-                Giocatori
-              </Text>
-              <Text style={styles.revealMetaValue}>{playerCount}</Text>
-            </View>
+            <MetaCorner position="top-left" label="Stanza" value={roomId} />
+            <MetaCorner position="top-right" label="Giocatori" value={String(playerCount)} />
 
             <View style={styles.card}>
               <View style={styles.cardInner}>
@@ -283,7 +256,7 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
                   </Button>
                 </View>
 
-                <Text style={styles.revealInstructions}>
+                <Text style={styles.description}>
                   Tocca per svelare il tuo ruolo in segreto. Non mostrare lo
                   schermo a nessuno. Il gioco inizierà tra poco.
                 </Text>
@@ -297,12 +270,11 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
               </Text>
             ) : null}
 
-            <View style={styles.revealMetaBottom}>
-              <Text style={styles.revealMetaLabel}>Pronti</Text>
-              <Text style={styles.revealMetaValue}>
-                {readyCount}/{playerCount}
-              </Text>
-            </View>
+            <MetaCorner
+              position="bottom-right"
+              label="Pronti"
+              value={`${readyCount}/${playerCount}`}
+            />
           </>
         ) : (
           <>
@@ -338,22 +310,19 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
                 </Text>
 
                 {displayWord ? (
-                  <View style={styles.wordBox}>
-                    {wordLabel ? <Text style={styles.wordLabel}>{wordLabel}</Text> : null}
-                    <Text
-                      style={[styles.wordValue, { fontSize: wordFontSize(displayWord) }]}
-                      numberOfLines={1}
-                      adjustsFontSizeToFit
-                      minimumFontScale={0.5}
-                    >
-                      {capitalize(displayWord)}
-                    </Text>
-                  </View>
+                  <WordBox
+                    label={wordLabel ?? undefined}
+                    word={displayWord}
+                    style={styles.wordSpacing}
+                  />
                 ) : (
-                  <View style={styles.wordBox}>
-                    <Text style={styles.wordLabel}>Nessun indizio</Text>
-                    <Text style={styles.noHintValue}>???</Text>
-                  </View>
+                  <WordBox
+                    label="Nessun indizio"
+                    word="???"
+                    tone="muted"
+                    autoCapitalize={false}
+                    style={styles.wordSpacing}
+                  />
                 )}
 
                 <Text style={styles.description}>
@@ -369,13 +338,13 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
               </Text>
             ) : null}
 
-            <TouchableOpacity
+            <GhostButton
               onPress={() => setShowRole(false)}
+              icon={<EyeOffIcon size={18} color={colors.textPrimary} />}
               style={styles.hideButton}
             >
-              <EyeOffIcon size={18} color={colors.textPrimary} />
-              <Text style={styles.hideButtonText}>Nascondi</Text>
-            </TouchableOpacity>
+              Nascondi
+            </GhostButton>
 
             <View style={styles.footer}>
               <Text style={styles.footerText}>
@@ -393,21 +362,16 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
     if (playerState.eliminated) {
       return (
         <View style={styles.container}>
-          <View style={styles.card}>
-            <View style={styles.cardInner}>
-              <Text style={[styles.roleText, { color: colors.textMuted }]}>
-                Sei stato eliminato
-              </Text>
-              <Text style={styles.description}>
-                Non puoi votare. Attendi il risultato della votazione.
-              </Text>
-            </View>
-          </View>
+          <StatusCard
+            tone="muted"
+            title="Sei stato eliminato"
+            message="Non puoi votare. Attendi il risultato della votazione."
+          />
         </View>
       );
     }
 
-    const hasVoted = gameState.votes && gameState.votes[playerId];
+    const myVote = gameState.votes?.[playerId] ?? null;
     const runoff = gameState.runoffCandidates;
     const isRunoff = !!(runoff && runoff.length > 0);
 
@@ -422,12 +386,6 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
       (p) => !(p as ImpostorePlayerState).eliminated
     ).length;
 
-    const titleColor = isRunoff ? colors.warning : colors.textPrimary;
-    const titleText = isRunoff ? 'BALLOTTAGGIO' : 'VOTAZIONE';
-    const titleDescription = isRunoff
-      ? 'Pareggio. Scegli tra i candidati qui sotto.'
-      : "Tocca il giocatore che pensi sia l'impostore.";
-
     const firstPlayerId = gameState.firstPlayerId;
     const firstPlayerName =
       firstPlayerId && roomData.players?.[firstPlayerId]?.name
@@ -439,70 +397,77 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
         contentContainerStyle={[styles.container, styles.votingScroll]}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.card}>
-          {hasVoted ? (
-            <View style={styles.cardInner}>
-              <View style={[styles.iconWrapper, { backgroundColor: colors.surfaceAlt }]}>
-                <CheckIcon size={56} color={colors.success} />
-              </View>
-              <Text style={[styles.roleText, { color: colors.success }]}>
-                Voto registrato
-              </Text>
-              <Text style={styles.description}>
-                Attendi che tutti gli altri abbiano espresso la loro preferenza.
-              </Text>
-              <View style={styles.wordBox}>
-                <Text style={styles.wordLabel}>Votazioni</Text>
-                <Text style={styles.wordValue}>
-                  {votesCast}/{totalVoters}
-                </Text>
-              </View>
-            </View>
-          ) : (
-            <View style={styles.cardInner}>
-              <Text style={[styles.roleText, { color: titleColor }]}>
-                {titleText}
-              </Text>
-              <Text style={styles.description}>{titleDescription}</Text>
+        <VotingTimer
+          endsAt={gameState.votingEndsAt}
+          totalSeconds={gameState.votingSeconds ?? 60}
+        />
 
-              {isRunoff && firstPlayerName ? (
-                <Text style={styles.tiebreakerNote}>
-                  In caso di pareggio il voto di{' '}
-                  <Text style={styles.tiebreakerName}>{firstPlayerName}</Text>{' '}
-                  vale doppio.
-                </Text>
-              ) : null}
+        <PhaseCard
+          title={isRunoff ? 'Ballottaggio' : 'Votazione'}
+          description={
+            isRunoff
+              ? 'Pareggio. Scegli tra i candidati qui sotto.'
+              : "Tocca il giocatore che pensi sia l'impostore. Puoi cambiare voto finché il tempo non scade."
+          }
+          tone={isRunoff ? 'warning' : 'cyan'}
+        >
+          {isRunoff && firstPlayerName ? (
+            <Text style={styles.tiebreakerNote}>
+              In caso di pareggio il voto di{' '}
+              <Text style={styles.tiebreakerName}>{firstPlayerName}</Text>{' '}
+              vale doppio.
+            </Text>
+          ) : null}
 
-              <View style={styles.voteList}>
-                {candidates.map(([uid, p]) => {
-                  const isSelf = uid === playerId;
-                  const name = p.name || 'Senza nome';
-                  return (
-                    <TouchableOpacity
-                      key={uid}
-                      onPress={isSelf ? undefined : () => handleVote(uid)}
-                      disabled={isSelf}
-                      activeOpacity={0.7}
-                      style={[styles.voteRow, isSelf && styles.voteRowDisabled]}
-                    >
-                      <View style={[styles.avatar, { backgroundColor: avatarColor(uid) }]}>
-                        <Text style={styles.avatarText}>{avatarInitial(name)}</Text>
-                      </View>
-                      <Text style={styles.voteRowName} numberOfLines={1}>
-                        {name}
-                      </Text>
-                      {isSelf && <Text style={styles.voteRowSelfTag}>TU</Text>}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+          <View style={styles.voteList}>
+            {candidates.map(([uid, p]) => {
+              const isSelf = uid === playerId;
+              const name = p.name || 'Senza nome';
+              const isMyVote = myVote === uid;
+              const isPending = pendingVote === uid;
+              return (
+                <View
+                  key={uid}
+                  // Colored only once the vote is CONFIRMED — a pending
+                  // pick shows just the ✓/✕ pair, no highlight.
+                  style={[styles.voteRow, isMyVote && styles.voteRowSelected]}
+                >
+                  <PlayerSlot
+                    uid={uid}
+                    name={name}
+                    isMe={isSelf}
+                    subtitle={null}
+                    onPress={
+                      isSelf ? undefined : () => setPendingVote(isPending ? null : uid)
+                    }
+                    disabled={isSelf}
+                    variant={isSelf ? 'dimmed' : isMyVote ? 'selected' : 'default'}
+                    right={
+                      isPending ? (
+                        <InlineConfirm
+                          onConfirm={() => {
+                            setPendingVote(null);
+                            handleVote(uid);
+                          }}
+                          onCancel={() => setPendingVote(null)}
+                        />
+                      ) : isMyVote ? (
+                        <CheckIcon size={20} color={colors.primaryLight} />
+                      ) : undefined
+                    }
+                  />
+                </View>
+              );
+            })}
+          </View>
 
-              <Text style={styles.voteProgress}>
-                {votesCast}/{totalVoters} hanno votato
-              </Text>
-            </View>
-          )}
-        </View>
+          <ProgressCounter
+            completed={votesCast}
+            total={totalVoters}
+            suffix="hanno votato"
+            style={styles.voteProgress}
+          />
+        </PhaseCard>
       </ScrollView>
     );
   }
@@ -519,17 +484,17 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
 
     return (
       <View style={styles.container}>
-        <View style={styles.roleBox}>
-          <Text style={styles.eliminationText}>
-            {isEliminatedMe ? 'Sei stato eliminato.' : `${eliminatedName} eliminato.`}
-          </Text>
+        <StatusCard
+          title={isEliminatedMe ? 'Sei stato eliminato.' : `${eliminatedName} eliminato.`}
+          tone="neutral"
+        >
           <Text style={[styles.eliminationRole, { color: roleColor(eliminatedRole || null) }]}>
             Era un {roleLabel(eliminatedRole || null).toLowerCase()}.
           </Text>
 
           {isEliminatedMe ? (
             <View style={styles.guessContainer}>
-              <Text style={styles.infoLabel}>Prova a indovinare la parola:</Text>
+              <Text style={styles.guessLabel}>Prova a indovinare la parola:</Text>
               <TextInput
                 style={styles.guessInput}
                 value={guessText}
@@ -551,50 +516,40 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
               L'impostore sta tentando di indovinare la parola...
             </Text>
           )}
-        </View>
+        </StatusCard>
       </View>
     );
   }
 
   // ── Results Phase ──
+  // Minimal recap, identical for every player: who won (name + role)
+  // and the secret word revealed to everyone.
   if (gameState.phase === 'results') {
-    const eliminatedUid = gameState.eliminatedPlayer;
-    const eliminatedName =
-      eliminatedUid && roomData.players?.[eliminatedUid]?.name
-        ? roomData.players[eliminatedUid].name
-        : 'Giocatore';
-    const eliminatedRole = gameState.eliminatedRole;
-
     const winner = gameState.winner;
-    const myRole = playerState.role;
-    const didIWin =
-      (winner === 'civilians' && myRole === 'civilian') ||
-      (winner === 'impostor' && myRole === 'impostor') ||
-      (winner === 'clown' && myRole === 'clown');
 
     let winnerTitle = 'Partita conclusa';
     let winnerColor: string = colors.textPrimary;
-    let winnerDescription = '';
     let winnerIconRole: PlayerRole = null;
 
     if (winner === 'impostor') {
       winnerTitle = "Vince l'Impostore";
       winnerColor = colors.roleImpostor;
       winnerIconRole = 'impostor';
-      winnerDescription = gameState.impostorGuess
-        ? "L'impostore ha indovinato la parola e si è salvato in extremis."
-        : "L'impostore è rimasto nell'ombra fino alla fine.";
     } else if (winner === 'clown') {
       winnerTitle = 'Vince il Pagliaccio';
       winnerColor = colors.roleClown;
       winnerIconRole = 'clown';
-      winnerDescription = 'Il pagliaccio si è fatto eliminare come voleva.';
     } else if (winner === 'civilians') {
       winnerTitle = 'Vincono i Civili';
       winnerColor = colors.roleCivilian;
       winnerIconRole = 'civilian';
-      winnerDescription = "I civili hanno smascherato l'impostore.";
     }
+
+    const winnerNames = winnerIconRole
+      ? Object.values(roomData.players || {})
+          .filter((p) => (p as ImpostorePlayerState).role === winnerIconRole)
+          .map((p) => p.name || 'Senza nome')
+      : [];
 
     return (
       <View style={styles.container}>
@@ -605,24 +560,6 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
             { borderColor: winnerColor },
           ]}
         >
-          {winner ? (
-            <View
-              style={[
-                styles.resultBadge,
-                { backgroundColor: didIWin ? colors.success : colors.surfaceAlt },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.resultBadgeText,
-                  { color: didIWin ? colors.background : colors.textSecondary },
-                ]}
-              >
-                {didIWin ? 'HAI VINTO' : 'HAI PERSO'}
-              </Text>
-            </View>
-          ) : null}
-
           <View style={styles.cardInner}>
             <View style={styles.gameOverHeader}>
               <TrophyIcon size={14} color={winnerColor} />
@@ -644,49 +581,15 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
               {winnerTitle}
             </Text>
 
-            {winnerDescription ? (
-              <Text style={styles.description}>{winnerDescription}</Text>
+            {winnerNames.length > 0 ? (
+              <Text style={styles.winnerNames}>{winnerNames.join(' · ')}</Text>
             ) : null}
 
-            <View style={styles.wordBox}>
-              <Text style={styles.wordLabel}>La parola era</Text>
-              <Text style={styles.wordValue} numberOfLines={1} adjustsFontSizeToFit>
-                {capitalize(gameState.word)}
-              </Text>
-            </View>
-
-            {eliminatedUid ? (
-              <View style={styles.resultRecapRow}>
-                <Text style={styles.resultRecapLabel}>Eliminato</Text>
-                <Text style={styles.resultRecapValue} numberOfLines={1}>
-                  {eliminatedName}
-                </Text>
-                <View
-                  style={[
-                    styles.resultRoleTag,
-                    { borderColor: roleColor(eliminatedRole || null) },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.resultRoleTagText,
-                      { color: roleColor(eliminatedRole || null) },
-                    ]}
-                  >
-                    {roleLabel(eliminatedRole || null).toUpperCase()}
-                  </Text>
-                </View>
-              </View>
-            ) : null}
-
-            {gameState.impostorGuess ? (
-              <View style={styles.guessRecapBox}>
-                <Text style={styles.wordLabel}>L'impostore ha provato</Text>
-                <Text style={styles.guessRecapValue}>
-                  "{gameState.impostorGuess}"
-                </Text>
-              </View>
-            ) : null}
+            <WordBox
+              label="La parola era"
+              word={gameState.word}
+              style={styles.wordSpacingTop}
+            />
           </View>
         </View>
       </View>
@@ -708,34 +611,10 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     marginBottom: spacing.lg,
   },
-  revealMetaTop: {
-    position: 'absolute',
-    top: spacing.lg,
-    left: spacing.lg,
-  },
-  revealMetaBottom: {
-    position: 'absolute',
-    bottom: spacing.lg,
-    right: spacing.lg,
-    alignItems: 'flex-end',
-  },
-  revealMetaLabel: {
-    color: colors.textMuted,
-    fontSize: 10,
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-    fontWeight: '700',
-  },
-  revealMetaValue: {
-    color: colors.textSecondary,
-    fontSize: fontSize.sm,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-  },
   revealTitle: {
     color: colors.textPrimary,
+    fontFamily: fonts.display,
     fontSize: fontSize.lg,
-    fontWeight: '700',
     textAlign: 'center',
     lineHeight: 26,
     letterSpacing: 0.3,
@@ -748,13 +627,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     marginBottom: spacing.sm,
   },
-  revealInstructions: {
-    color: colors.textSecondary,
-    fontSize: fontSize.sm,
-    lineHeight: 20,
-    textAlign: 'center',
-    paddingHorizontal: spacing.sm,
-  },
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -764,13 +636,14 @@ const styles = StyleSheet.create({
   firstPlayerLine: {
     marginTop: spacing.md,
     color: colors.textSecondary,
+    fontFamily: fonts.body,
     fontSize: fontSize.sm,
     textAlign: 'center',
     paddingHorizontal: spacing.lg,
   },
   firstPlayerName: {
     color: colors.textPrimary,
-    fontWeight: '800',
+    fontFamily: fonts.displayHeavy,
   },
   eliminationBanner: {
     backgroundColor: colors.surfaceAlt,
@@ -784,15 +657,16 @@ const styles = StyleSheet.create({
   },
   eliminationBannerText: {
     color: colors.textSecondary,
+    fontFamily: fonts.body,
     fontSize: fontSize.sm,
     textAlign: 'center',
   },
   eliminationBannerName: {
     color: colors.textPrimary,
-    fontWeight: '700',
+    fontFamily: fonts.bodySemi,
   },
   eliminationBannerRole: {
-    fontWeight: '700',
+    fontFamily: fonts.bodySemi,
   },
   cardInner: {
     alignItems: 'center',
@@ -808,67 +682,29 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   roleText: {
-    fontSize: 32,
-    fontWeight: '800',
+    fontFamily: fonts.displayHeavy,
+    fontSize: fontSize.xxl,
     marginBottom: spacing.lg,
     textAlign: 'center',
     textTransform: 'uppercase',
     letterSpacing: 1.5,
   },
-  wordBox: {
-    width: '100%',
-    backgroundColor: colors.background,
-    borderRadius: radius.md,
-    paddingVertical: spacing.xl,
-    paddingHorizontal: spacing.lg,
-    alignItems: 'center',
+  wordSpacing: {
     marginBottom: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
-  wordLabel: {
-    color: colors.textSecondary,
-    fontSize: fontSize.xs,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: spacing.xs,
-  },
-  wordValue: {
-    color: colors.textPrimary,
-    fontSize: 48,
-    fontWeight: '800',
-    textAlign: 'center',
-    letterSpacing: 0.5,
-  },
-  noHintValue: {
-    color: colors.textMuted,
-    fontSize: 48,
-    fontWeight: '800',
-    textAlign: 'center',
+  wordSpacingTop: {
+    marginTop: spacing.lg,
   },
   description: {
     color: colors.textSecondary,
+    fontFamily: fonts.body,
     fontSize: fontSize.sm,
     lineHeight: 20,
     textAlign: 'center',
     paddingHorizontal: spacing.sm,
   },
   hideButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
     marginTop: spacing.lg,
-    borderRadius: radius.sm,
-    backgroundColor: colors.surfaceAlt,
-  },
-  hideButtonText: {
-    color: colors.textPrimary,
-    fontSize: fontSize.md,
-    fontWeight: '600',
   },
   footer: {
     alignItems: 'center',
@@ -876,6 +712,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     color: colors.textMuted,
+    fontFamily: fonts.bodySemi,
     fontSize: fontSize.xs,
     letterSpacing: 1.5,
   },
@@ -884,89 +721,39 @@ const styles = StyleSheet.create({
   },
   voteList: {
     width: '100%',
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
     marginBottom: spacing.lg,
+  },
+  voteRow: {
+    backgroundColor: colors.background,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  voteRowSelected: {
+    borderColor: colors.primary,
   },
   tiebreakerNote: {
     color: colors.textSecondary,
+    fontFamily: fonts.body,
     fontSize: fontSize.xs,
     textAlign: 'center',
-    marginTop: spacing.sm,
     fontStyle: 'italic',
     lineHeight: 18,
   },
   tiebreakerName: {
     color: colors.warning,
-    fontWeight: '700',
+    fontFamily: fonts.bodySemi,
     fontStyle: 'normal',
   },
-  resultBadge: {
-    position: 'absolute',
-    top: spacing.md,
-    right: spacing.md,
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: 4,
-    borderRadius: radius.sm,
-    zIndex: 1,
-  },
-  resultBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-  },
-  resultRecapRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.background,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: spacing.sm,
-  },
-  resultRecapLabel: {
-    color: colors.textMuted,
-    fontSize: fontSize.xs,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginRight: spacing.sm,
-  },
-  resultRecapValue: {
+  winnerNames: {
     color: colors.textPrimary,
-    fontSize: fontSize.md,
-    fontWeight: '600',
-    flex: 1,
-  },
-  resultRoleTag: {
-    borderWidth: 1,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-  },
-  resultRoleTagText: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-  },
-  guessRecapBox: {
-    width: '100%',
-    backgroundColor: colors.background,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    alignItems: 'center',
-    marginTop: spacing.xs,
-  },
-  guessRecapValue: {
-    color: colors.textPrimary,
+    fontFamily: fonts.bodySemi,
     fontSize: fontSize.lg,
-    fontWeight: '700',
-    marginTop: spacing.xs,
-    fontStyle: 'italic',
+    textAlign: 'center',
+    marginBottom: spacing.sm,
   },
   winnerCard: {
     borderWidth: 2,
@@ -983,137 +770,48 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   gameOverLabel: {
+    fontFamily: fonts.displayHeavy,
     fontSize: 11,
-    fontWeight: '800',
     letterSpacing: 2,
     textTransform: 'uppercase',
   },
-  voteRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.background,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  voteRowDisabled: {
-    opacity: 0.5,
-  },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.md,
-  },
-  avatarText: {
-    color: '#ffffff',
-    fontWeight: '700',
-    fontSize: fontSize.md,
-  },
-  voteRowName: {
-    flex: 1,
-    color: colors.textPrimary,
-    fontSize: fontSize.md,
-    fontWeight: '600',
-  },
-  voteRowSelfTag: {
-    color: colors.textMuted,
-    fontSize: fontSize.xs,
-    fontWeight: '700',
-    letterSpacing: 1,
-    marginLeft: spacing.sm,
-  },
   voteProgress: {
-    color: colors.textMuted,
-    fontSize: fontSize.xs,
-    textAlign: 'center',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  // legacy styles kept for voting / guess / results phases
-  title: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    marginBottom: spacing.lg,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  statusText: {
-    color: colors.textPrimary,
-    fontSize: 17,
-    marginBottom: spacing.sm + 2,
-    textAlign: 'center',
-  },
-  roleBox: {
-    padding: spacing.xxl,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    alignItems: 'center',
-  },
-  infoContainer: {
-    alignItems: 'center',
-    marginBottom: spacing.xs,
-  },
-  infoLabel: {
-    color: colors.textSecondary,
-    fontSize: fontSize.sm,
-    marginBottom: 6,
-  },
-  infoValue: {
-    color: colors.textPrimary,
-    fontSize: 28,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  votingContainer: { gap: spacing.sm + 2 },
-  eliminationText: {
-    color: colors.textPrimary,
-    fontSize: fontSize.xl,
-    fontWeight: 'bold',
     textAlign: 'center',
   },
   eliminationRole: {
+    fontFamily: fonts.display,
     fontSize: fontSize.lg,
-    fontWeight: 'bold',
     marginTop: spacing.xs,
-    marginBottom: spacing.lg,
-    textAlign: 'center',
-  },
-  winnerText: {
-    fontSize: fontSize.xl,
-    fontWeight: 'bold',
-    marginVertical: spacing.lg,
+    marginBottom: spacing.md,
     textAlign: 'center',
   },
   guessContainer: {
     alignItems: 'stretch',
     width: '100%',
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
+  },
+  guessLabel: {
+    color: colors.textSecondary,
+    fontFamily: fonts.body,
+    fontSize: fontSize.sm,
+    marginBottom: 6,
+    textAlign: 'center',
   },
   guessInput: {
     backgroundColor: colors.surfaceAlt,
     color: colors.textPrimary,
     borderRadius: radius.sm,
     padding: spacing.md,
+    fontFamily: fonts.bodyMedium,
     fontSize: fontSize.md,
     borderWidth: 1,
     borderColor: colors.border,
   },
   waitingText: {
     color: colors.textSecondary,
+    fontFamily: fonts.body,
     fontSize: fontSize.md,
     fontStyle: 'italic',
-    marginTop: spacing.md,
-    textAlign: 'center',
-  },
-  guessRecap: {
-    color: colors.textSecondary,
-    fontSize: fontSize.sm,
     marginTop: spacing.md,
     textAlign: 'center',
   },

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Switch, Platform, Alert } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, Switch } from 'react-native';
 import { SettingsPanelProps } from '../../../core/types/gamePlugin';
-import { Button, Input, NumberSelector, colors, radius, spacing, fontSize } from '../../../core/ui';
+import { NumberSelector, colors, fonts, spacing, fontSize } from '../../../core/ui';
+import { AiDictionaryCard } from '../../../core/components/AiDictionaryCard';
 import { generateWordsForTopic } from '../../../core/services/geminiService';
 import { setCustomWords, resetToDefaultWords } from '../services/wordService';
 import { resetImpostoreUsedWords } from '../services/impostoreLogic';
@@ -11,65 +12,31 @@ export interface ImpostoreSettings {
   numClowns: number;
   hintEnabled: boolean;
   hintOnlyFirst: boolean;
+  votingSeconds: number;
 }
 
 export default function ImpostoreSettingsPanel({ settings, onSettingsChange, roomId }: SettingsPanelProps) {
   const s = settings as ImpostoreSettings;
 
-  const [customTopic, setCustomTopic] = useState('');
-  const [generatingWords, setGeneratingWords] = useState(false);
-  const [usingCustomWords, setUsingCustomWords] = useState(false);
-  const [savedTopic, setSavedTopic] = useState('');
-
-  const showAlert = (title: string, message: string) => {
-    if (Platform.OS === 'web') {
-      window.alert(`${title}\n\n${message}`);
-    } else {
-      Alert.alert(title, message);
-    }
-  };
-
   const update = (partial: Partial<ImpostoreSettings>) => {
     onSettingsChange({ ...s, ...partial });
   };
 
-  const handleGenerateWords = async () => {
-    if (!customTopic.trim()) {
-      showAlert('Errore', 'Inserisci un argomento per generare le parole');
-      return;
+  const handleGenerate = async (topic: string): Promise<string | null> => {
+    const result = await generateWordsForTopic(topic);
+    if (result.usedFallback) {
+      resetToDefaultWords();
+      if (roomId) await resetImpostoreUsedWords(roomId).catch(() => {});
+      return null;
     }
-    setGeneratingWords(true);
-    const topicToGenerate = customTopic.trim();
-    try {
-      const result = await generateWordsForTopic(topicToGenerate);
-      if (result.usedFallback) {
-        resetToDefaultWords();
-        setUsingCustomWords(false);
-        setSavedTopic('');
-        if (roomId) await resetImpostoreUsedWords(roomId).catch(() => {});
-        showAlert('Attenzione', `Non è stato possibile generare parole personalizzate per "${topicToGenerate}". Usando parole di default.`);
-      } else {
-        setCustomWords(result.words);
-        setUsingCustomWords(true);
-        setSavedTopic(topicToGenerate);
-        if (roomId) await resetImpostoreUsedWords(roomId).catch(() => {});
-        showAlert('Successo', `Generate 20 parole sul tema "${topicToGenerate}"`);
-      }
-    } catch (e: any) {
-      showAlert('Errore', 'Impossibile generare le parole');
-      console.error(e);
-    } finally {
-      setGeneratingWords(false);
-    }
+    setCustomWords(result.words);
+    if (roomId) await resetImpostoreUsedWords(roomId).catch(() => {});
+    return `Generate ${Object.keys(result.words).length} parole sul tema "${topic}"`;
   };
 
-  const handleResetWords = async () => {
+  const handleReset = async () => {
     resetToDefaultWords();
-    setUsingCustomWords(false);
-    setCustomTopic('');
-    setSavedTopic('');
     if (roomId) await resetImpostoreUsedWords(roomId).catch(() => {});
-    showAlert('Successo', 'Parole ripristinate al dizionario predefinito');
   };
 
   return (
@@ -89,6 +56,16 @@ export default function ImpostoreSettingsPanel({ settings, onSettingsChange, roo
         style={{ marginTop: spacing.lg }}
       />
 
+      <NumberSelector
+        label="Durata votazione (secondi)"
+        value={s.votingSeconds ?? 60}
+        onChange={(v) => update({ votingSeconds: v })}
+        min={15}
+        max={300}
+        step={15}
+        style={{ marginTop: spacing.lg }}
+      />
+
       <View style={styles.switchRow}>
         <Text style={styles.switchLabel}>Abilita indizi</Text>
         <Switch value={s.hintEnabled} onValueChange={(v) => update({ hintEnabled: v })} />
@@ -103,38 +80,11 @@ export default function ImpostoreSettingsPanel({ settings, onSettingsChange, roo
         </View>
       )}
 
-      <View style={styles.aiCard}>
-        <View style={styles.aiHeader}>
-          <Text style={styles.aiTitle}>Tema Personalizzato</Text>
-          <Text style={styles.aiOptional}>opzionale</Text>
-        </View>
-        <Text style={styles.aiHint}>Genera un dizionario su misura con l'AI</Text>
-
-        <Input
-          placeholder="Es. Film di Fantascienza"
-          value={customTopic}
-          onChangeText={setCustomTopic}
-          style={{ marginBottom: spacing.sm + 2 }}
-        />
-
-        {usingCustomWords ? (
-          <View>
-            <Text style={styles.activeTopicText}>Tema attivo: {savedTopic}</Text>
-            <Button onPress={handleResetWords} variant="accentOutline" size="sm">
-              Ripristina Default
-            </Button>
-          </View>
-        ) : (
-          <Button
-            onPress={handleGenerateWords}
-            disabled={generatingWords}
-            variant="accentOutline"
-            size="sm"
-          >
-            {generatingWords ? 'Generazione...' : 'Genera'}
-          </Button>
-        )}
-      </View>
+      <AiDictionaryCard
+        placeholder="Es. Film di Fantascienza"
+        onGenerate={handleGenerate}
+        onReset={handleReset}
+      />
     </View>
   );
 }
@@ -145,10 +95,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: spacing.lg,
+    marginBottom: spacing.lg,
   },
-  switchLabel: { color: colors.textPrimary, fontSize: fontSize.md },
+  switchLabel: {
+    color: colors.textPrimary,
+    fontFamily: fonts.body,
+    fontSize: fontSize.md,
+  },
   nestedContainer: {
-    marginTop: spacing.xs,
+    marginTop: -spacing.md,
+    marginBottom: spacing.lg,
     marginLeft: spacing.sm,
     paddingLeft: spacing.md,
     borderLeftWidth: 2,
@@ -162,40 +118,9 @@ const styles = StyleSheet.create({
   },
   nestedLabel: {
     color: colors.textSecondary,
+    fontFamily: fonts.body,
     fontSize: fontSize.sm,
     flexShrink: 1,
     marginRight: spacing.sm,
-  },
-  aiCard: {
-    marginTop: spacing.xxl,
-    padding: spacing.lg,
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: radius.sm,
-  },
-  aiHeader: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginBottom: spacing.xs,
-  },
-  aiTitle: {
-    color: colors.textPrimary,
-    fontSize: fontSize.md,
-    fontWeight: '600',
-  },
-  aiOptional: {
-    color: colors.textMuted,
-    fontSize: fontSize.xs,
-    marginLeft: spacing.sm,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  aiHint: {
-    color: colors.textSecondary,
-    fontSize: fontSize.sm,
-    marginBottom: spacing.md,
-  },
-  activeTopicText: {
-    color: colors.textSecondary,
-    marginBottom: spacing.sm + 2,
   },
 });

@@ -12,6 +12,7 @@ export interface StorageAdapter {
 
 const CLIENT_ID_KEY = 'gameshub:clientId';
 const ROOM_SESSION_PREFIX = 'gameshub:roomSession:';
+const LAST_HOSTED_ROOM_KEY = 'gameshub:lastHostedRoom';
 
 export interface RoomSession {
   name: string;
@@ -22,6 +23,10 @@ export interface SessionStore {
   getRoomSession(roomId: string): Promise<RoomSession | null>;
   setRoomSession(roomId: string, session: RoomSession): Promise<void>;
   clearRoomSession(roomId: string): Promise<void>;
+  /** Room the user is currently hosting — lets a host who lost the tab re-enter. */
+  getLastHostedRoom(): Promise<string | null>;
+  setLastHostedRoom(roomId: string): Promise<void>;
+  clearLastHostedRoom(): Promise<void>;
 }
 
 function uuidv4(): string {
@@ -71,6 +76,19 @@ export function makeSessionStore(adapter: StorageAdapter): SessionStore {
 
     async clearRoomSession(roomId) {
       await adapter.removeItem(ROOM_SESSION_PREFIX + roomId);
+    },
+
+    async getLastHostedRoom() {
+      const raw = await adapter.getItem(LAST_HOSTED_ROOM_KEY);
+      return raw && raw.length > 0 ? raw : null;
+    },
+
+    async setLastHostedRoom(roomId) {
+      await adapter.setItem(LAST_HOSTED_ROOM_KEY, roomId);
+    },
+
+    async clearLastHostedRoom() {
+      await adapter.removeItem(LAST_HOSTED_ROOM_KEY);
     },
   };
 }

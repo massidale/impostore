@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
 #
 # Deploys the current branch for manual end-to-end testing, then opens
-# 3 browser windows:
-#   - Chrome (host)   in isolated profile  -> bare URL
-#   - Chrome (guest)  in isolated profile  -> URL?room=<ROOM>
-#   - Safari (guest)                       -> URL?room=<ROOM>
+# phone-sized chromeless Chrome windows like `npm run dev:multi`:
+#   - 1 host window (slot 0, top-left, isolated profile)
+#   - N guest windows, each with its own profile and `cid=pN&name=GiocatoreN`
+#     so they join the room automatically.
+#
+# Usage:
+#   npm run deploy:staging                 # preview channel, 4 guests
+#   npm run deploy:staging -- 6            # preview channel, 6 guests
+#   npm run deploy:staging -- --live       # live hosting, 4 guests
+#   npm run deploy:staging -- --live 6     # live hosting, 6 guests
 #
 # Modes:
 #   (default)  Firebase Hosting preview channel "staging".
@@ -17,10 +23,13 @@
 #              WARNING: this REPLACES the live hosting bundle. Use only
 #              when you accept that what's testing is what users see.
 #
-# Override the channel name/expiry via env:
-#   STAGING_CHANNEL=alpha STAGING_EXPIRES=2d ./scripts/deploy-staging.sh
+# Overrides via env:
+#   STAGING_CHANNEL=alpha STAGING_EXPIRES=2d  channel name/expiry
+#   GUESTS=6                                  number of guest windows
+#   WIN_W=390 WIN_H=800                       window size (px)
+#   NAME_PREFIX=Giocatore                     player name prefix
 #
-# Requires: macOS, npx, firebase CLI, Google Chrome, Safari.
+# Requires: macOS, npx, firebase CLI, Google Chrome.
 
 set -euo pipefail
 
@@ -29,7 +38,13 @@ cd "$(dirname "$0")/.."
 MODE="channel"
 if [[ "${1:-}" == "--live" ]]; then
   MODE="live"
+  shift
 fi
+
+GUESTS="${1:-${GUESTS:-4}}"
+WIN_W="${WIN_W:-390}"
+WIN_H="${WIN_H:-800}"
+NAME_PREFIX="${NAME_PREFIX:-Giocatore}"
 
 CHANNEL="${STAGING_CHANNEL:-staging}"
 EXPIRES="${STAGING_EXPIRES:-7d}"
@@ -79,15 +94,15 @@ echo "[staging] URL: $URL"
 echo
 
 HOST_PROFILE="${TMPDIR:-/tmp}/gameshub-staging-host"
-GUEST_PROFILE="${TMPDIR:-/tmp}/gameshub-staging-guest"
-mkdir -p "$HOST_PROFILE" "$GUEST_PROFILE"
+mkdir -p "$HOST_PROFILE"
 
-echo "[staging] Opening Chrome (host) in isolated profile: $HOST_PROFILE"
+echo "[staging] Apro la finestra host ($WIN_W x $WIN_H)"
 open -na "Google Chrome" --args \
-  --new-window \
   --user-data-dir="$HOST_PROFILE" \
   --no-first-run --no-default-browser-check \
-  "$URL"
+  --window-size="$WIN_W,$WIN_H" \
+  --window-position="0,60" \
+  --app="$URL"
 
 echo
 echo "Crea la stanza nella finestra host appena aperta, poi torna qui."
@@ -99,26 +114,26 @@ if [[ ! "$ROOM_UPPER" =~ ^[A-Z0-9]{6}$ ]]; then
   exit 1
 fi
 
-GUEST_URL="${URL}/?room=${ROOM_UPPER}"
+echo "[staging] Stanza $ROOM_UPPER — apro $GUESTS guest ($WIN_W x $WIN_H)"
 
-echo "[staging] Opening Chrome (guest) on $GUEST_URL"
-open -na "Google Chrome" --args \
-  --new-window \
-  --user-data-dir="$GUEST_PROFILE" \
-  --no-first-run --no-default-browser-check \
-  "$GUEST_URL"
+for ((i = 1; i <= GUESTS; i++)); do
+  n=$((i + 1)) # host is player 1
+  profile="${TMPDIR:-/tmp}/gameshub-staging-p$n"
+  mkdir -p "$profile"
+  guest_url="$URL/?room=$ROOM_UPPER&cid=p$n&name=$NAME_PREFIX$n"
+  # Slot 0 is reserved for the host window opened above.
+  x=$(( i * (WIN_W + 14) ))
 
-echo "[staging] Opening Safari (guest) on $GUEST_URL"
-osascript <<EOF
-tell application "Safari"
-  activate
-  make new document with properties {URL:"$GUEST_URL"}
-end tell
-EOF
+  echo "[staging]  → $NAME_PREFIX$n ($guest_url)"
+  open -na "Google Chrome" --args \
+    --user-data-dir="$profile" \
+    --no-first-run --no-default-browser-check \
+    --window-size="$WIN_W,$WIN_H" \
+    --window-position="$x,60" \
+    --app="$guest_url"
+done
 
 echo
-echo "[staging] Pronti. Chiudi le finestre quando hai finito."
-echo
-echo "Per ripulire le sessioni dei browser di test:"
-echo "  rm -rf \"$HOST_PROFILE\" \"$GUEST_PROFILE\""
-echo "Per Safari, svuota i dati del sito da Preferences > Privacy."
+echo "[staging] Pronti. I guest entrano in stanza da soli."
+echo "Per ripulire le identità di test:"
+echo "  rm -rf ${TMPDIR:-/tmp}/gameshub-staging-host ${TMPDIR:-/tmp}/gameshub-staging-p*"

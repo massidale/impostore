@@ -8,7 +8,8 @@ interface GameCardProps {
   description?: string;
   minPlayers: number;
   maxPlayers?: number;
-  onPress: () => void;
+  /** Without it the card is a static display (no chevron). */
+  onPress?: () => void;
   selected?: boolean;
   style?: StyleProp<ViewStyle>;
 }
@@ -24,28 +25,37 @@ export function GameCard({
   style,
 }: GameCardProps) {
   const meta = maxPlayers ? `${minPlayers}-${maxPlayers}` : `${minPlayers}+`;
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.85}
-      style={[styles.card, selected && styles.cardSelected, style]}
-    >
+  const inner = (
+    <>
       <View style={styles.iconBox}>
         <Text style={styles.icon}>{icon}</Text>
       </View>
       <View style={styles.body}>
         <Text style={styles.name} numberOfLines={1}>{name}</Text>
         {description ? (
-          <Text style={styles.description} numberOfLines={2}>
-            {description}
-          </Text>
+          <Text style={styles.description}>{description}</Text>
         ) : null}
         <View style={styles.metaRow}>
           <Text style={styles.metaLabel}>{meta}</Text>
           <Text style={styles.metaText}>giocatori</Text>
         </View>
       </View>
-      <Text style={styles.chevron}>›</Text>
+      {onPress ? <Text style={styles.chevron}>›</Text> : null}
+    </>
+  );
+
+  if (!onPress) {
+    return (
+      <View style={[styles.card, selected && styles.cardSelected, style]}>{inner}</View>
+    );
+  }
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.85}
+      style={[styles.card, selected && styles.cardSelected, style]}
+    >
+      {inner}
     </TouchableOpacity>
   );
 }

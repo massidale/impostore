@@ -23,13 +23,17 @@ export interface ImpostoreGameState {
   numClowns: number;
   hintEnabled: boolean;
   hintOnlyFirst: boolean;
+  /** Length of each voting round in seconds. */
+  votingSeconds?: number;
 
   /** Words already used in this session, persisted so rotation survives reloads. */
   usedWords?: string[];
 
   firstPlayerId?: string;
-  
+
   // Voting data
+  /** Epoch ms when the running voting round expires. */
+  votingEndsAt?: number | null;
   votes?: {
     [voterUid: string]: string; // voterUid -> votedUid
   };

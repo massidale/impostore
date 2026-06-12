@@ -24,6 +24,11 @@ interface PlayerSlotProps {
   onRemove?: () => void;
   /** Visual emphasis (selected for voting, eliminated, etc.). */
   variant?: 'default' | 'selected' | 'dimmed';
+  /**
+   * Second line under the name. Defaults to "Host"/"Giocatore";
+   * pass `null` to hide it entirely (e.g. compact vote lists).
+   */
+  subtitle?: string | null;
 }
 
 export function PlayerSlot({
@@ -36,6 +41,7 @@ export function PlayerSlot({
   right,
   onRemove,
   variant = 'default',
+  subtitle,
 }: PlayerSlotProps) {
   const bg = avatarColor(uid);
   const initial = avatarInitial(name);
@@ -71,7 +77,9 @@ export function PlayerSlot({
           {name || 'Senza nome'}
           {isMe ? <Text style={styles.me}>  · tu</Text> : null}
         </Text>
-        <Text style={styles.role}>{isHost ? 'Host' : 'Giocatore'}</Text>
+        {subtitle === null ? null : (
+          <Text style={styles.role}>{subtitle ?? (isHost ? 'Host' : 'Giocatore')}</Text>
+        )}
       </View>
       {rightContent}
     </View>

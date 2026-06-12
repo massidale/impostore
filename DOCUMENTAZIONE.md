@@ -1,187 +1,94 @@
-# IMPOSTORE - Documentazione Completa
+# gamesHub - Documentazione
 
 ## Panoramica del Progetto
 
-**Impostore** e un gioco multiplayer party game italiano (ispirato a "Among Us" / "Mafia") costruito con React Native ed Expo. L'app utilizza Firebase Realtime Database come backend e include sia client mobile (React Native) che web (HTML/JavaScript).
+**gamesHub** è una piattaforma di party game italiani multiplayer costruita con React Native ed Expo (web-first, ospitata su Firebase Hosting). Una stanza condivisa, un host e i giocatori che si collegano dal proprio telefono via QR code o link.
+
+> Nota: il repository si chiama `impostore` per ragioni storiche, ma il prodotto è **gamesHub**.
 
 **Versione:** 1.0.0
-**Stato:** In sviluppo attivo
 
 ---
 
 ## Stack Tecnologico
 
-### Frontend Mobile
-- **React Native:** 0.81.5
-- **React:** 19.1.0
-- **Expo:** ~54.0.30
-- **TypeScript:** ~5.9.2
-
-### Librerie UI
-- **expo-linear-gradient:** Sfondi gradient
-- **react-native-qrcode-svg:** Generazione QR code
-- **expo-clipboard:** Operazioni clipboard
-- **expo-sharing:** Condivisione nativa
-
-### Backend
-- **Firebase Realtime Database:** Database in tempo reale
-- **Firebase Authentication:** Autenticazione anonima
-- **Firebase Hosting:** Hosting web
-
-### Web Client
-- **Tailwind CSS:** (via CDN)
-- **Vanilla JavaScript**
+- **React Native** 0.81 + **React** 19 + **Expo** 54 + **TypeScript** 5.9
+- **Firebase Realtime Database** (stato di gioco in tempo reale) + **Auth anonima** + **Hosting**
+- **Gemini API** (`@google/generative-ai`) per dizionari/carte generate dall'AI
+- UI: `expo-linear-gradient`, `react-native-svg`, `react-native-qrcode-svg`, font **DM Sans**
 
 ---
 
-## Struttura del Progetto
+## Architettura
+
+### Plugin di gioco
+
+Ogni gioco è un modulo autonomo sotto `src/games/<nome>/` che esporta un `GamePlugin` (vedi `src/core/types/gamePlugin.ts`):
 
 ```
-impostore/
-├── App.tsx                    # Entry point dell'applicazione
-├── index.ts                   # Registrazione componente root
-├── package.json               # Dipendenze e script
-├── app.json                   # Configurazione Expo
-├── tsconfig.json              # Configurazione TypeScript
-├── firebase.json              # Configurazione Firebase Hosting
-│
-├── assets/                    # Asset dell'app
-│   ├── icon.png              # Icona app
-│   ├── favicon.png           # Favicon web
-│   ├── adaptive-icon.png     # Icona adattiva Android
-│   └── splash-icon.png       # Immagine splash screen
-│
-├── screens/                   # Schermate React Native
-│   └── HostScreen.tsx        # Schermata principale host
-│
-├── services/                  # Logica business e API
-│   ├── roomService.ts        # Gestione stanze (Firebase CRUD)
-│   ├── roleService.ts        # Logica assegnazione ruoli
-│   └── wordService.ts        # Gestione parole e indizi
-│
-├── config/                    # File di configurazione
-│   └── firebase.ts           # Inizializzazione Firebase
-│
-├── types/                     # Definizioni TypeScript
-│   └── game.ts               # Tipi dominio gioco
-│
-├── utils/                     # Funzioni di utilita
-│   └── uuid.ts               # Generazione ID host
-│
-├── data/                      # Dati statici
-│   ├── words.json            # 95+ parole italiane
-│   └── hints.json            # Indizi per ogni parola
-│
-└── web/                       # Applicazione web
-    └── index.html            # Client HTML standalone
+GamePlugin {
+  id, name, description, icon, minPlayers, maxPlayers
+  SettingsPanel    // pannello impostazioni (home + lobby)
+  HostDashboard    // barra azioni dell'host durante la partita
+  PlayerGamepad    // schermata di gioco del singolo giocatore
+  initGameState()  // scrive gameState iniziale su RTDB
+  startGame()      // avvia il round
+  getDefaultSettings()
+}
 ```
 
----
+I plugin si registrano in `src/core/gameRegistry.ts`. Il core (stanze, lobby, giocatori) non conosce i dettagli dei giochi: legge solo `currentGameId` e delega ai componenti del plugin.
 
-## Funzionalita Implementate
+### Struttura
 
-### 1. Gestione Stanze
+```
+src/
+├── core/
+│   ├── ui/            # design system condiviso (vedi sotto)
+│   ├── components/    # HomeScreen, LobbyScreen, WebPlayerScreen, AiDictionaryCard
+│   ├── hooks/         # useRoomData, useAnonymousAuth, useClientId,
+│   │                  # useCountdown, useKeepScreenAwake
+│   ├── services/      # roomService, playerSelection, sessionStorage, geminiService
+│   ├── types/         # CoreRoom, GamePlugin
+│   ├── utils/         # capitalize…
+│   └── gameRegistry.ts
+├── games/
+│   ├── impostore/     # ruoli segreti, votazioni, pagliaccio
+│   ├── indovina/      # ognuno indovina la propria parola con domande sì/no
+│   └── taboo/         # squadre, carte con parole vietate, timer e buzzer
+└── screens/MainScreen.tsx   # router: home → lobby → partita
+```
 
-- **Creazione stanze** con ID alfanumerico di 6 caratteri
-- **Configurazione** impostazioni prima dell'inizio
-- **Lista giocatori** sincronizzata in tempo reale
-- **Auto-pulizia** stanze dopo 30 secondi di inattivita host (meccanismo heartbeat)
-- **Eliminazione stanza** (solo host)
+### Design system (`src/core/ui`)
 
-### 2. Gestione Giocatori
+Tema centralizzato in `theme.ts` (colori dark slate + cyan, spaziature, radius, font DM Sans). Componenti riutilizzabili:
 
-- Ingresso tramite **QR code** o **link URL**
-- **Validazione** nome giocatore e controllo unicita
-- **Sincronizzazione** in tempo reale
-- **Rimozione** giocatori specifici (solo host)
-- Identificazione univoca tramite **Firebase UID**
+- **Layout di gioco:** `PhaseCard`, `StatusCard`, `WordBox`, `MetaCorner`, `GameCard`
+- **Host:** `HostDashboardShell` (header + banner giocatori in attesa + azioni), `HostActionFooter`, `ProgressCounter`
+- **Controlli:** `Button`, `GhostButton`, `Input`, `NumberSelector`, `SegmentedControl`, `Sheet`, `Pill`
+- **Feedback:** `ErrorBanner`, `NoticeBanner`, `Toast`, `confirmDialog`
+- **Giocatori:** `PlayerSlot`/`PlayerSlotEmpty`, `avatarColor`
+- **Icone SVG condivise:** `icons.tsx` (EyeOff, Warning, Check, Trophy, Clock, Bell, Forbidden)
 
-### 3. Impostazioni Gioco
-
-- **Numero impostori:** Configurabile (1 a N, dove N < giocatori totali)
-- **Sistema indizi:**
-  - Attivabile/disattivabile per impostori
-  - Opzione indizio solo al primo giocatore
-  - 95 parole italiane con indizi predefiniti
-
-### 4. Stati del Gioco
-
-#### Stato: Waiting (Attesa)
-- Giocatori possono unirsi
-- Host configura impostazioni
-- Pronto per iniziare con almeno 1 giocatore
-
-#### Stato: Active (Attivo)
-- Tutti i giocatori hanno ruoli assegnati
-- Giocatori visualizzano il proprio ruolo
-- Host vede conteggio "pronti" in tempo reale
-- Gioco continua fino a terminazione manuale
-
-### 5. Sistema Ruoli
-
-#### Civile
-- Conosce la **parola segreta**
-- Cerca di identificare l'impostore
-
-#### Impostore
-- **NON** conosce la parola segreta
-- Riceve un **indizio** (se abilitato)
-- Cerca di mimetizzarsi e indovinare la parola
-
-#### Primo Giocatore
-- Selezionato casualmente
-- Usato per restrizioni indizi
-- Visualizzato ai giocatori
-
-### 6. Interfacce Utente
-
-#### Mobile (React Native)
-- **HostScreen:** Schermata unica che gestisce tutto
-  - Form creazione stanza
-  - Interfaccia gestione stanza
-  - Lista giocatori
-  - QR code e condivisione link
-  - Modal impostazioni
-  - Modal visualizzazione ruolo
-  - Modal fine gioco
-
-#### Web (Vanilla HTML/JS)
-- **Ingresso giocatore:** Form nome con validazione
-- **Stato attesa:** Spinner di caricamento
-- **Stato attivo:** Schermata visualizzazione ruolo
-
-### 7. Condivisione e Distribuzione
-
-- **QR Code:** Incorporato nella schermata host
-- **Condivisione URL:** Dialog nativo + copia clipboard
-- **Link Web:** `https://gameshub-6b1ce.web.app?room={roomId}`
+Regola: i componenti di gioco usano SEMPRE `colors/fonts/spacing/radius` dal tema, mai valori raw.
 
 ---
 
-## Meccaniche di Gioco
+## I giochi
 
-### Inizializzazione
-1. Host crea stanza e imposta numero impostori
-2. Giocatori entrano tramite QR/link e inseriscono nome
-3. Host puo modificare impostazioni durante l'attesa
-4. Host avvia il gioco
+### Impostore (min 3)
+Tutti conoscono la parola segreta tranne l'impostore (che riceve al massimo un indizio). Discussione a voce, poi votazione con eventuale ballottaggio; l'impostore eliminato può salvarsi indovinando la parola. Ruolo extra "Pagliaccio": vince se viene eliminato.
 
-### Assegnazione Ruoli (Fisher-Yates shuffle)
-1. Assegnazione casuale ruoli civile/impostore
-2. Selezione casuale primo giocatore
-3. Ruoli salvati in Firebase
+### Indovina la parola (min 2)
+Ogni giocatore riceve una parola visibile solo agli altri (dal dizionario, dall'AI o scritte dai giocatori e distribuite con permutazione senza punti fissi). A turno si fanno domande sì/no per scoprire la propria.
 
-### Gameplay
-1. I civili vedono la parola e discutono/accusano
-2. Gli impostori non conoscono la parola ma ascoltano
-3. Gli impostori possono vedere gli indizi (configurabile)
-4. Il gioco continua fino a terminazione manuale
+### Lupus (min 4)
+Ruoli segreti: Lupi, Veggente, Guardia, Villici (ruoli e stato vita vivono in `gameState`, non sui player — la whitelist delle regole RTDB ammette solo i campi di Impostore). Alternanza notte/giorno: di notte ogni ruolo agisce dal telefono (lupi scelgono la vittima, veggente scruta, guardia protegge — risoluzione automatica quando tutte le azioni sono inviate); di giorno annuncio dell'alba, discussione e votazione con timer avviata dall'host (pareggio = nessun eliminato). Vince il villaggio eliminando i lupi, i lupi alla parità. Logica pura in `lupusPure.ts`.
 
-### Fine Gioco
-1. Nuova parola selezionata (diversa dalla precedente)
-2. Tutti i ruoli resettati
-3. Stanza torna in stato "waiting"
-4. Giocatori possono rigiocare
+### Taboo (min 4)
+Due squadre (Blu/Rossa) bilanciate automaticamente. A turno un giocatore descrive le parole alla propria squadra senza usare le 5 parole vietate della carta; gli **avversari vedono la carta** e premono **TABÙ!** se sente una parola vietata. +1 indovinata, −1 tabù, passa = 0. Timer sincronizzato via timestamp RTDB (`turnEndsAt`); il client del descrittore chiude il turno allo scadere (l'host ha un fallback "Termina turno"). Vince la squadra con più punti dopo N turni per squadra.
+
+Logica pura testabile in `src/games/taboo/services/tabooPure.ts` (squadre, rotazione, punteggi), carte in `data/cards.json`, generazione carte AI via `generateTabooCards`.
 
 ---
 
@@ -189,139 +96,52 @@ impostore/
 
 ```
 /rooms/{roomId}/
-├── word: string                    # Parola segreta
-├── hint: string | null             # Indizio per impostori
-├── status: 'waiting' | 'active'    # Stato gioco
-├── numImpostors: number            # Numero impostori
-├── hostId: string                  # UUID host
-├── createdAt: number               # Timestamp creazione
-├── lastHeartbeat: number           # Ultimo heartbeat
-├── hintEnabled: boolean            # Indizi abilitati
-├── hintOnlyFirst: boolean          # Indizi solo primo
-├── firstPlayerId: string           # UID primo giocatore
-│
-└── players/
-    └── {playerUid}/
-        ├── role: 'civilian' | 'impostor' | null
-        ├── joinedAt: number
-        ├── revealed: boolean
-        ├── name: string
-        └── isFirst: boolean
+├── id: string                 # codice stanza (6 char A-Z0-9)
+├── status: 'lobby' | 'active'
+├── hostId: string             # Firebase Auth UID dell'host
+├── createdAt / updatedAt      # updatedAt usato dal job di cleanup
+├── currentGameId: string      # 'impostore' | 'indovina' | 'taboo'
+├── players/{clientId}/        # identity stabile per device (non auth uid)
+│   ├── joinedAt, name, isHost
+│   ├── waiting?               # entrato a partita in corso
+│   └── …campi specifici del gioco (role, word, …)
+└── gameState/                 # payload polimorfo del gioco corrente
 ```
 
----
+Ogni mutazione passa da `touchRoom()` che aggiorna `updatedAt` (cleanup stanze stantie via GitHub Action `cleanup.yml`).
 
-## Servizi
+## Identità e autenticazione
 
-### roomService.ts
-Funzioni principali:
-- `createRoom()` - Crea nuova stanza
-- `getRoomData()` - Ottiene dati stanza
-- `deleteRoom()` - Elimina stanza
-- `addPlayerToRoom()` - Aggiunge giocatore
-- `removePlayerFromRoom()` - Rimuove giocatore
-- `startGame()` - Avvia gioco
-- `endGame()` - Termina gioco
-- `subscribeToRoom()` - Sottoscrizione real-time
-- `isNameAvailable()` - Validazione nome
-
-### roleService.ts
-- `assignRoles()` - Assegna ruoli (Fisher-Yates)
-- `selectFirstPlayer()` - Seleziona primo giocatore
-
-### wordService.ts
-- `getRandomWord()` - Parola casuale italiana
-- `getHint()` - Ottiene indizio per parola
+- Di default l'app usa **auth anonima** Firebase (per le regole RTDB) + un **clientId** per-device in localStorage come identità del giocatore.
+- **Account opzionale** (Google o email+password con email di conferma, vedi `authService.ts` / `AccountSheet`): quando presente, l'identità del giocatore è lo **UID dell'account** (stabile tra dispositivi) e il nickname è il display name.
+- **Rientro host**: la stanza creata è salvata in `lastHostedRoom`; al riavvio, se la stanza esiste ancora e l'identità risulta host, si rientra automaticamente.
+- Hook di test (solo web): `?cid=` isola l'identità per tab, `?name=` precompila il nome e fa entrare in stanza (usati da `scripts/dev-multi.sh`).
 
 ---
 
-## Tipi TypeScript
+## Sviluppo
 
-```typescript
-type RoomStatus = 'waiting' | 'active';
-type PlayerRole = 'civilian' | 'impostor' | null;
-
-interface Player {
-  role: PlayerRole;
-  joinedAt: number;
-  isFirst?: boolean;
-  revealed?: boolean;
-  name?: string;
-}
-
-interface Room {
-  word: string;
-  hint?: string;
-  status: RoomStatus;
-  numImpostors: number;
-  hostId: string;
-  createdAt: number;
-  hintEnabled?: boolean;
-  hintOnlyFirst?: boolean;
-  firstPlayerId?: string;
-  lastHeartbeat?: number;
-  players?: { [uid: string]: Player };
-}
-```
-
----
-
-## Gestione Stato
-
-### Mobile (React Hooks)
-- `useState` per stato UI (modal, input, loading)
-- `useEffect` per sottoscrizioni Firebase
-- Sincronizzazione real-time tramite `subscribeToRoom()`
-
-### Web (Vanilla JS)
-- Variabili locali per stato
-- Listener Firebase `onValue()`
-- Aggiornamenti UI tramite innerHTML
-
----
-
-## Design UI/UX
-
-### Schema Colori (Dark Mode)
-- **Background:** `#111827`
-- **Surface:** `#1f2937`
-- **Primary:** `#2563eb`
-- **Accent:** `#60a5fa`
-- **Text:** `#fff`
-- **Error:** `#ef4444`
-
-### Tipografia
-- Titoli: 28px bold
-- Body: 16px regular
-- Parola gioco: 48px bold blue
-
----
-
-## Deployment
-
-### Sviluppo Mobile
 ```bash
-npm start          # Server Expo
-npm run android    # Emulatore Android
-npm run ios        # Simulatore iOS
-npm run web        # Browser web
+npm start            # server Expo
+npm run web          # browser
+npm test             # test (node:test, logica pura)
+npm run typecheck    # tsc --noEmit
+npm run build:web    # bundle statico in dist/ + PWA
+npm run deploy:staging / deploy:prod
 ```
 
-### Deploy Web (Firebase Hosting)
-```bash
-firebase deploy --only hosting
-```
+I test importano solo moduli "puri" (senza JSON/Firebase) sotto il loader strip-types di Node: la logica testabile va separata nei file `*Pure.ts`.
 
-### Endpoint Live
+### Aggiungere un nuovo gioco
+
+1. Crea `src/games/<nome>/` con `types.ts`, `services/` (logica pura + logica Firebase), `components/` (SettingsPanel, HostDashboard, PlayerGamepad) e `index.ts` che esporta il `GamePlugin`.
+2. Registra il plugin in `src/core/gameRegistry.ts`.
+3. Riusa i componenti di `src/core/ui` per restare coerente col design system.
+4. Aggiungi i test della logica pura in `tests/<nome>/`.
+
+---
+
+## Endpoint Live
+
 - Web: `https://gameshub-6b1ce.web.app`
-- Deep link: `https://gameshub-6b1ce.web.app?room=ABC123`
-
----
-
-## Note Tecniche
-
-1. **Lingua:** UI interamente in italiano
-2. **Sicurezza:** Firebase auth anonima (nessun login richiesto)
-3. **Performance:** Debouncing su impostazioni (500ms)
-4. **Affidabilita:** Meccanismo heartbeat previene stanze fantasma
-5. **Responsivita:** Design mobile-first, max-width constraints
+- Ingresso stanza: `https://gameshub-6b1ce.web.app?room=ABC123`

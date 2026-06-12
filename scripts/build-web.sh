@@ -42,6 +42,9 @@ cat > dist/manifest.json <<'MANIFEST'
 }
 MANIFEST
 
+echo "[build] Viewport: keyboard overlays content (bottom sheet stays put)"
+sed -i '' 's/<meta name="viewport" content="[^"]*"/<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover, interactive-widget=overlays-content"/' dist/index.html
+
 echo "[build] Injecting PWA meta tags + safe-area styles"
 sed -i '' 's/<head>/<head>\
     <link rel="manifest" href="\/manifest.json">\
@@ -53,6 +56,6 @@ sed -i '' 's/<head>/<head>\
     <meta name="description" content="Party game italiani multiplayer — gioca con gli amici">\
     <link rel="apple-touch-icon" href="\/icon-192-v2.png">\
     <link rel="icon" type="image\/png" href="\/icon-192-v2.png">\
-    <style>html, body, #root { background-color: #0A0F1C !important; box-sizing: border-box; height: 100dvh; max-height: 100dvh; overflow: hidden; } body { padding-top: env(safe-area-inset-top); }<\/style>/' dist/index.html
+    <style>html, body, #root { background-color: #0A0F1C !important; box-sizing: border-box; height: 100dvh; max-height: 100dvh; overflow: hidden; } body { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }<\/style>/' dist/index.html
 
 echo "[build] Done."

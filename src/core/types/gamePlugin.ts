@@ -12,6 +12,9 @@ export interface SettingsPanelProps {
   /** Present when the panel is rendered inside an existing room (lobby).
    *  Absent on HomeScreen, before a room is created. */
   roomId?: string;
+  /** Room snapshot (players included) — lobby only, like roomId. Lets
+   *  panels offer per-player settings (e.g. Taboo manual teams). */
+  roomData?: CoreRoom;
 }
 
 export interface HostDashboardProps {
@@ -30,6 +33,8 @@ export interface GamePlugin {
   id: string;
   name: string;
   description?: string;
+  /** Full game rules, shown by the "Regole" toggle in the settings sheets. */
+  rules: string;
   icon?: string;
   minPlayers: number;
   maxPlayers: number;

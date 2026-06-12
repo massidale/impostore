@@ -4,25 +4,32 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   Pressable,
   Modal,
   useWindowDimensions,
   Platform,
   Alert,
 } from 'react-native';
-import Svg, { Path, Line, Circle } from 'react-native-svg';
 import { PlayerGamepadProps } from '../../../core/types/gamePlugin';
 import {
   Button,
+  EyeOffIcon,
+  GhostButton,
   Input,
-  colors,
-  radius,
-  spacing,
-  fontSize,
+  MetaCorner,
+  SegmentedControl,
+  StatusCard,
+  WarningIcon,
   avatarColor,
   avatarInitial,
+  colors,
+  fonts,
+  fontSize,
+  radius,
+  spacing,
 } from '../../../core/ui';
+import { capitalize } from '../../../core/utils/text';
+import { useKeepScreenAwake } from '../../../core/hooks/useKeepScreenAwake';
 import { IndovinaGameState, IndovinaPlayerState } from '../types';
 import { submitPlayerWord } from '../services/indovinaLogic';
 
@@ -30,120 +37,6 @@ type ViewMode = 'others' | 'mine';
 type DisplayMode = 'blurred' | 'visible';
 
 const BLURRED_PLACEHOLDER = '██████';
-
-function capitalize(str: string): string {
-  if (!str) return '';
-  return str.charAt(0).toUpperCase() + str.slice(1);
-}
-
-// Returns imperative acquire/release controls for the Screen Wake Lock API.
-// The `request()` call must run synchronously inside the same user-activation
-// tick as the originating tap, otherwise Safari/iOS rejects it silently. So we
-// expose `acquire` instead of driving the lock from a React state + effect.
-function useKeepScreenAwake() {
-  const lockRef = useRef<{ release: () => Promise<void> } | null>(null);
-  const wantedRef = useRef(false);
-
-  const tryRequest = () => {
-    if (Platform.OS !== 'web') return;
-    if (typeof navigator === 'undefined') return;
-    const nav = navigator as unknown as {
-      wakeLock?: {
-        request: (type: 'screen') => Promise<{ release: () => Promise<void> }>;
-      };
-    };
-    if (!nav.wakeLock) {
-      console.warn('[wakeLock] navigator.wakeLock is not available');
-      return;
-    }
-    // Kick the promise off WITHOUT awaiting so the underlying browser call
-    // happens in the current user-activation tick.
-    nav.wakeLock
-      .request('screen')
-      .then((lock) => {
-        if (!wantedRef.current) {
-          lock.release().catch(() => {});
-          return;
-        }
-        lockRef.current = lock;
-      })
-      .catch((err) => {
-        console.warn('[wakeLock] request failed', err);
-      });
-  };
-
-  const acquire = () => {
-    wantedRef.current = true;
-    if (lockRef.current) return;
-    tryRequest();
-  };
-
-  const release = () => {
-    wantedRef.current = false;
-    const lock = lockRef.current;
-    lockRef.current = null;
-    if (lock) lock.release().catch(() => {});
-  };
-
-  useEffect(() => {
-    if (Platform.OS !== 'web') return;
-    if (typeof document === 'undefined') return;
-
-    // When the tab returns to the foreground the browser auto-releases the
-    // lock — re-request if the caller still wants it. (Best-effort; may fail
-    // if the user-activation has expired.)
-    const handleVisibilityChange = () => {
-      if (
-        document.visibilityState === 'visible' &&
-        wantedRef.current &&
-        !lockRef.current
-      ) {
-        tryRequest();
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      release();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return { acquire, release };
-}
-
-interface IconProps {
-  size?: number;
-  color?: string;
-}
-
-const EyeOffIcon = ({ size = 18, color = colors.textPrimary }: IconProps) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Path
-      d="M17.94 17.94A10.06 10.06 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
-      stroke={color}
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <Line x1={1} y1={1} x2={23} y2={23} stroke={color} strokeWidth={2} strokeLinecap="round" />
-  </Svg>
-);
-
-const WarningIcon = ({ size = 20, color = colors.textPrimary }: IconProps) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Path
-      d="M12 3L1.5 21h21L12 3z"
-      stroke={color}
-      strokeWidth={2.2}
-      strokeLinejoin="round"
-      fill={color}
-      fillOpacity={0.18}
-    />
-    <Line x1={12} y1={10} x2={12} y2={15} stroke={color} strokeWidth={2.2} strokeLinecap="round" />
-    <Circle cx={12} cy={18} r={1.1} fill={color} />
-  </Svg>
-);
 
 export default function IndovinaPlayerGamepad({ roomData, playerId }: PlayerGamepadProps) {
   const gameState = roomData.gameState as IndovinaGameState;
@@ -200,15 +93,11 @@ export default function IndovinaPlayerGamepad({ roomData, playerId }: PlayerGame
 
   if (gameState?.phase !== 'playing') {
     return (
-      <View style={styles.container}>
-        <View style={styles.card}>
-          <View style={styles.cardInner}>
-            <Text style={styles.waitingTitle}>In attesa...</Text>
-            <Text style={styles.waitingText}>
-              L'host non ha ancora avviato la partita.
-            </Text>
-          </View>
-        </View>
+      <View style={styles.centered}>
+        <StatusCard
+          title="In attesa..."
+          message="L'host non ha ancora avviato la partita."
+        />
       </View>
     );
   }
@@ -217,13 +106,11 @@ export default function IndovinaPlayerGamepad({ roomData, playerId }: PlayerGame
 
   if (!myWord) {
     return (
-      <View style={styles.container}>
-        <View style={styles.card}>
-          <View style={styles.cardInner}>
-            <Text style={styles.waitingTitle}>Caricamento...</Text>
-            <Text style={styles.waitingText}>Stiamo assegnando la tua parola.</Text>
-          </View>
-        </View>
+      <View style={styles.centered}>
+        <StatusCard
+          title="Caricamento..."
+          message="Stiamo assegnando la tua parola."
+        />
       </View>
     );
   }
@@ -299,14 +186,8 @@ export default function IndovinaPlayerGamepad({ roomData, playerId }: PlayerGame
 
   return (
     <View style={styles.container}>
-      <View style={styles.metaTop}>
-        <Text style={styles.metaLabel}>Stanza</Text>
-        <Text style={styles.metaValue}>{roomId}</Text>
-      </View>
-      <View style={styles.metaTopRight}>
-        <Text style={styles.metaLabel}>Giocatori</Text>
-        <Text style={styles.metaValue}>{playerCount}</Text>
-      </View>
+      <MetaCorner position="top-left" label="Stanza" value={roomId} />
+      <MetaCorner position="top-right" label="Giocatori" value={String(playerCount)} />
 
       <ScrollView
         style={styles.scrollFlex}
@@ -314,74 +195,68 @@ export default function IndovinaPlayerGamepad({ roomData, playerId }: PlayerGame
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.card}>
-          <View style={styles.cardInner}>
-            <Text style={styles.title}>PAROLE DEGLI ALTRI</Text>
-            <Text style={styles.subtitle}>
-              {displayMode === 'blurred'
-                ? 'Fai domande sì/no per indovinare la tua. Tieni premuto su un giocatore per vedere la sua parola.'
-                : 'Fai domande sì/no per indovinare la tua.'}
-            </Text>
+          <Text style={styles.title}>PAROLE DEGLI ALTRI</Text>
+          <Text style={styles.subtitle}>
+            {displayMode === 'blurred'
+              ? 'Fai domande sì/no per indovinare la tua. Tieni premuto su un giocatore per vedere la sua parola.'
+              : 'Fai domande sì/no per indovinare la tua.'}
+          </Text>
 
-            <View style={styles.modeToggle}>
-              <ModeToggleOption
-                label="Nascoste"
-                active={displayMode === 'blurred'}
-                onPress={() => {
-                  setDisplayMode('blurred');
-                  setRevealedUid(null);
-                }}
-              />
-              <ModeToggleOption
-                label="Visibili"
-                active={displayMode === 'visible'}
-                onPress={() => setDisplayMode('visible')}
-              />
-            </View>
+          <SegmentedControl<DisplayMode>
+            value={displayMode}
+            onChange={(mode) => {
+              setDisplayMode(mode);
+              if (mode === 'blurred') setRevealedUid(null);
+            }}
+            options={[
+              { value: 'blurred', label: 'Nascoste' },
+              { value: 'visible', label: 'Visibili' },
+            ]}
+            style={{ marginBottom: spacing.lg }}
+          />
 
-            <View style={styles.list}>
-              {otherPlayers.length === 0 ? (
-                <Text style={styles.empty}>Sei l'unico giocatore in stanza.</Text>
-              ) : (
-                otherPlayers.map(([uid, p]) => {
-                  const player = p as IndovinaPlayerState;
-                  const name = player.name || 'Senza nome';
-                  const word = player.word;
-                  const shouldReveal = displayMode === 'visible' || revealedUid === uid;
-                  const pressableProps = displayMode === 'blurred'
-                    ? {
-                        onPressIn: () => setRevealedUid(uid),
-                        onPressOut: () => setRevealedUid((cur) => (cur === uid ? null : cur)),
-                        delayLongPress: 120,
-                      }
-                    : {};
-                  return (
-                    <Pressable
-                      key={uid}
-                      style={({ pressed }) => [
-                        styles.row,
-                        displayMode === 'blurred' && (pressed || revealedUid === uid) && styles.rowPressed,
-                      ]}
-                      {...pressableProps}
-                    >
-                      <View style={[styles.avatar, { backgroundColor: avatarColor(uid) }]}>
-                        <Text style={styles.avatarText}>{avatarInitial(name)}</Text>
-                      </View>
-                      <View style={styles.rowContent}>
-                        <Text style={styles.rowName}>{name}</Text>
-                        {shouldReveal && word ? (
-                          <Text style={styles.rowWord}>{capitalize(word)}</Text>
-                        ) : (
-                          <Text style={[styles.rowWord, styles.rowWordBlurred]} selectable={false}>
-                            {BLURRED_PLACEHOLDER}
-                          </Text>
-                        )}
-                      </View>
-                    </Pressable>
-                  );
-                })
-              )}
-            </View>
-
+          <View style={styles.list}>
+            {otherPlayers.length === 0 ? (
+              <Text style={styles.empty}>Sei l'unico giocatore in stanza.</Text>
+            ) : (
+              otherPlayers.map(([uid, p]) => {
+                const player = p as IndovinaPlayerState;
+                const name = player.name || 'Senza nome';
+                const word = player.word;
+                const shouldReveal = displayMode === 'visible' || revealedUid === uid;
+                const pressableProps = displayMode === 'blurred'
+                  ? {
+                      onPressIn: () => setRevealedUid(uid),
+                      onPressOut: () => setRevealedUid((cur) => (cur === uid ? null : cur)),
+                      delayLongPress: 120,
+                    }
+                  : {};
+                return (
+                  <Pressable
+                    key={uid}
+                    style={({ pressed }) => [
+                      styles.row,
+                      displayMode === 'blurred' && (pressed || revealedUid === uid) && styles.rowPressed,
+                    ]}
+                    {...pressableProps}
+                  >
+                    <View style={[styles.avatar, { backgroundColor: avatarColor(uid) }]}>
+                      <Text style={styles.avatarText}>{avatarInitial(name)}</Text>
+                    </View>
+                    <View style={styles.rowContent}>
+                      <Text style={styles.rowName}>{name}</Text>
+                      {shouldReveal && word ? (
+                        <Text style={styles.rowWord}>{capitalize(word)}</Text>
+                      ) : (
+                        <Text style={[styles.rowWord, styles.rowWordBlurred]} selectable={false}>
+                          {BLURRED_PLACEHOLDER}
+                        </Text>
+                      )}
+                    </View>
+                  </Pressable>
+                );
+              })
+            )}
           </View>
         </View>
 
@@ -461,75 +336,62 @@ function CollectingView({ roomData, playerId, playerState }: CollectingViewProps
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.card}>
-          <View style={styles.cardInner}>
-            <Text style={styles.title}>SCRIVI UNA PAROLA</Text>
-            <Text style={styles.subtitle}>
-              La tua parola verrà data a un altro giocatore (mai a te).
-            </Text>
+          <Text style={styles.title}>SCRIVI UNA PAROLA</Text>
+          <Text style={styles.subtitle}>
+            La tua parola verrà data a un altro giocatore (mai a te).
+          </Text>
 
-            {hasSubmitted ? (
-              <View style={styles.submittedBox}>
-                <Text style={styles.submittedLabel}>Hai inviato</Text>
-                <Text style={styles.submittedValue}>
-                  {capitalize(playerState.submittedWord || '')}
-                </Text>
-                <Text style={styles.submittedHint}>
-                  Aspettando gli altri giocatori...
-                </Text>
-              </View>
-            ) : (
-              <View>
-                <Input
-                  placeholder="Es. Cleopatra, pizza, Roma..."
-                  value={draft}
-                  onChangeText={(text) => {
-                    setDraft(text);
-                    if (error) setError(null);
-                  }}
-                  maxLength={60}
-                  style={{ marginBottom: error ? spacing.sm : spacing.md }}
-                />
-                {error ? <Text style={styles.errorText}>{error}</Text> : null}
-                <Button
-                  onPress={handleSubmit}
-                  disabled={submitting || !draft.trim()}
-                  variant="primary"
-                  size="lg"
-                >
-                  {submitting ? 'Invio...' : 'Invia parola'}
-                </Button>
-              </View>
-            )}
+          {hasSubmitted ? (
+            <View style={styles.submittedBox}>
+              <Text style={styles.submittedLabel}>Hai inviato</Text>
+              <Text style={styles.submittedValue}>
+                {capitalize(playerState.submittedWord || '')}
+              </Text>
+              <Text style={styles.submittedHint}>
+                Aspettando gli altri giocatori...
+              </Text>
+            </View>
+          ) : (
+            <View>
+              <Input
+                placeholder="Es. Cleopatra, pizza, Roma..."
+                value={draft}
+                onChangeText={(text) => {
+                  setDraft(text);
+                  if (error) setError(null);
+                }}
+                maxLength={60}
+                style={{ marginBottom: error ? spacing.sm : spacing.md }}
+              />
+              {error ? <Text style={styles.errorText}>{error}</Text> : null}
+              <Button
+                onPress={handleSubmit}
+                disabled={submitting || !draft.trim()}
+                variant="primary"
+                size="lg"
+              >
+                {submitting ? 'Invio...' : 'Invia parola'}
+              </Button>
+            </View>
+          )}
 
-            <Text style={styles.progressText}>
-              {submittedCount}/{totalPlayers} hanno inviato
-            </Text>
-          </View>
+          <Text style={styles.progressText}>
+            {submittedCount}/{totalPlayers} hanno inviato
+          </Text>
         </View>
       </ScrollView>
     </View>
   );
 }
 
-interface ModeToggleOptionProps {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}
-
-function ModeToggleOption({ label, active, onPress }: ModeToggleOptionProps) {
+function HideFooter({ onPress }: { onPress: () => void }) {
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.7}
-      style={[styles.modeToggleSegment, active && styles.modeToggleSegmentActive]}
-    >
-      <Text
-        style={[styles.modeToggleLabel, active && styles.modeToggleLabelActive]}
-      >
-        {label}
-      </Text>
-    </TouchableOpacity>
+    <View style={styles.hideButtonContainer}>
+      <GhostButton onPress={onPress} icon={<EyeOffIcon size={18} color={colors.textPrimary} />}>
+        Nascondi
+      </GhostButton>
+      <Text style={styles.hideHint}>oppure doppio tap sullo schermo</Text>
+    </View>
   );
 }
 
@@ -565,13 +427,7 @@ function CountdownView({ value, onCancel }: { value: number; onCancel: () => voi
           </Text>
         </Pressable>
 
-        <View style={styles.hideButtonContainer}>
-          <TouchableOpacity onPress={onCancel} style={styles.hideButton} activeOpacity={0.7}>
-            <EyeOffIcon size={18} color={colors.textPrimary} />
-            <Text style={styles.hideButtonText}>Nascondi</Text>
-          </TouchableOpacity>
-          <Text style={styles.hideHint}>oppure doppio tap sullo schermo</Text>
-        </View>
+        <HideFooter onPress={onCancel} />
       </View>
     </Modal>
   );
@@ -676,13 +532,7 @@ function MineView({ word, onBack }: { word: string; onBack: () => void }) {
           </Text>
         </Pressable>
 
-        <View style={styles.hideButtonContainer}>
-          <TouchableOpacity onPress={onBack} style={styles.hideButton} activeOpacity={0.7}>
-            <EyeOffIcon size={18} color={colors.textPrimary} />
-            <Text style={styles.hideButtonText}>Nascondi</Text>
-          </TouchableOpacity>
-          <Text style={styles.hideHint}>oppure doppio tap sullo schermo</Text>
-        </View>
+        <HideFooter onPress={onBack} />
       </View>
     </Modal>
   );
@@ -694,31 +544,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     padding: spacing.lg,
   },
-  metaTop: {
-    position: 'absolute',
-    top: spacing.lg,
-    left: spacing.lg,
-    zIndex: 1,
-  },
-  metaTopRight: {
-    position: 'absolute',
-    top: spacing.lg,
-    right: spacing.lg,
-    alignItems: 'flex-end',
-    zIndex: 1,
-  },
-  metaLabel: {
-    color: colors.textMuted,
-    fontSize: 10,
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-    fontWeight: '700',
-  },
-  metaValue: {
-    color: colors.textSecondary,
-    fontSize: fontSize.sm,
-    fontWeight: '600',
-    letterSpacing: 0.5,
+  centered: {
+    flex: 1,
+    backgroundColor: colors.background,
+    padding: spacing.lg,
+    justifyContent: 'center',
   },
   scrollFlex: {
     flex: 1,
@@ -732,57 +562,29 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     padding: spacing.xl,
   },
-  cardInner: {
-    paddingTop: spacing.xs,
-  },
   title: {
     color: colors.textPrimary,
+    fontFamily: fonts.displayHeavy,
     fontSize: fontSize.lg,
-    fontWeight: '800',
     textAlign: 'center',
     letterSpacing: 1.5,
     marginBottom: spacing.xs,
   },
   subtitle: {
     color: colors.textSecondary,
+    fontFamily: fonts.body,
     fontSize: fontSize.sm,
     lineHeight: 20,
     textAlign: 'center',
     marginBottom: spacing.xl,
     paddingHorizontal: spacing.sm,
   },
-  modeToggle: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
-  },
-  modeToggleSegment: {
-    flex: 1,
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: radius.sm,
-    paddingVertical: spacing.sm + 2,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  modeToggleSegmentActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.background,
-  },
-  modeToggleLabel: {
-    color: colors.textSecondary,
-    fontSize: fontSize.sm,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  modeToggleLabelActive: {
-    color: colors.textPrimary,
-  },
   list: {
     gap: spacing.sm + 2,
   },
   startsLine: {
     color: colors.textMuted,
+    fontFamily: fonts.body,
     fontSize: fontSize.xs,
     textAlign: 'center',
     marginTop: spacing.lg,
@@ -790,11 +592,12 @@ const styles = StyleSheet.create({
   },
   startsName: {
     color: colors.textPrimary,
-    fontWeight: '800',
+    fontFamily: fonts.displayHeavy,
     letterSpacing: 0.5,
   },
   empty: {
     color: colors.textMuted,
+    fontFamily: fonts.body,
     fontSize: fontSize.md,
     fontStyle: 'italic',
     textAlign: 'center',
@@ -830,7 +633,7 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     color: '#ffffff',
-    fontWeight: '700',
+    fontFamily: fonts.displayHeavy,
     fontSize: fontSize.md,
   },
   rowContent: {
@@ -843,11 +646,11 @@ const styles = StyleSheet.create({
   },
   rowName: {
     color: colors.textSecondary,
+    fontFamily: fonts.bodySemi,
     fontSize: fontSize.xs,
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 2,
-    fontWeight: '700',
     ...Platform.select({
       web: {
         whiteSpace: 'normal' as const,
@@ -858,8 +661,8 @@ const styles = StyleSheet.create({
   },
   rowWord: {
     color: colors.textPrimary,
+    fontFamily: fonts.displayHeavy,
     fontSize: fontSize.xl,
-    fontWeight: '800',
     letterSpacing: 0.5,
     width: '100%',
     ...Platform.select({
@@ -880,35 +683,22 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  revealCard: {
-    marginTop: spacing.sm,
-  },
   revealActions: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
+    paddingBottom: spacing.xl,
   },
   actionHint: {
     color: colors.textSecondary,
+    fontFamily: fonts.body,
     fontSize: fontSize.xs,
     textAlign: 'center',
     marginTop: spacing.sm,
     fontStyle: 'italic',
   },
-  waitingTitle: {
-    color: colors.textPrimary,
-    fontSize: fontSize.xl,
-    fontWeight: '700',
-    marginBottom: spacing.sm,
-    textAlign: 'center',
-  },
-  waitingText: {
-    color: colors.textSecondary,
-    fontSize: fontSize.md,
-    textAlign: 'center',
-  },
   countdownHint: {
     color: colors.textSecondary,
+    fontFamily: fonts.body,
     fontSize: fontSize.md,
     textAlign: 'center',
     marginBottom: spacing.xl,
@@ -916,8 +706,8 @@ const styles = StyleSheet.create({
   },
   countdownNumber: {
     color: colors.textPrimary,
+    fontFamily: fonts.displayHeavy,
     fontSize: 180,
-    fontWeight: '900',
     letterSpacing: 2,
     textAlign: 'center',
     lineHeight: 200,
@@ -945,7 +735,7 @@ const styles = StyleSheet.create({
   },
   mineWord: {
     color: colors.textPrimary,
-    fontWeight: '900',
+    fontFamily: fonts.displayHeavy,
     letterSpacing: 1,
     textAlign: 'center',
   },
@@ -953,24 +743,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingBottom: spacing.lg,
   },
-  hideButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    borderRadius: radius.sm,
-    backgroundColor: colors.surfaceAlt,
-  },
-  hideButtonText: {
-    color: colors.textPrimary,
-    fontSize: fontSize.md,
-    fontWeight: '600',
-  },
   hideHint: {
     color: colors.textMuted,
+    fontFamily: fonts.body,
     fontSize: fontSize.xs,
     marginTop: spacing.sm,
     fontStyle: 'italic',
@@ -987,38 +762,40 @@ const styles = StyleSheet.create({
   },
   submittedLabel: {
     color: colors.textSecondary,
+    fontFamily: fonts.bodySemi,
     fontSize: fontSize.xs,
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: spacing.sm,
-    fontWeight: '700',
   },
   submittedValue: {
     color: colors.textPrimary,
+    fontFamily: fonts.displayHeavy,
     fontSize: fontSize.xl + 6,
-    fontWeight: '800',
     textAlign: 'center',
     marginBottom: spacing.md,
   },
   submittedHint: {
     color: colors.textSecondary,
+    fontFamily: fonts.body,
     fontSize: fontSize.sm,
     fontStyle: 'italic',
     textAlign: 'center',
   },
   errorText: {
     color: colors.danger,
+    fontFamily: fonts.body,
     fontSize: fontSize.sm,
     marginBottom: spacing.md,
     textAlign: 'center',
   },
   progressText: {
     color: colors.textMuted,
+    fontFamily: fonts.bodySemi,
     fontSize: fontSize.xs,
     textAlign: 'center',
     letterSpacing: 1,
     textTransform: 'uppercase',
     marginTop: spacing.lg,
-    fontWeight: '700',
   },
 });

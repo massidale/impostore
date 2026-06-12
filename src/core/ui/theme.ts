@@ -31,6 +31,11 @@ export const colors = {
   roleImpostor: '#EF4444',
   roleClown: '#F59E0B',
   roleCivilian: '#10B981',
+
+  teamBlue: '#3B82F6',
+  teamBlueTint: 'rgba(59, 130, 246, 0.12)',
+  teamRed: '#EF4444',
+  teamRedTint: 'rgba(239, 68, 68, 0.12)',
 } as const;
 
 export const radius = {
