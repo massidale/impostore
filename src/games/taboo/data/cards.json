@@ -3903,5 +3903,5 @@
   {"word":"Stretta di mano","taboo":["Saluto","Mano","Incontro","Accordo","Gesto"]},
   {"word":"Cinque","taboo":["Gesto","Mano","Palmo","Saluto","Battere"]},
   {"word":"Bacio sulla guancia","taboo":["Saluto","Affetto","Viso","Gesto","Incontro"]},
-  {"word":"Inchino","taboo":["Saluto","Rispetto","Corpo","Piegare","Gesto"]},
+  {"word":"Inchino","taboo":["Saluto","Rispetto","Corpo","Piegare","Gesto"]}
 ]
