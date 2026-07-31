@@ -9,7 +9,12 @@ import {
   applyOutcome,
   winnerFromScores,
   shuffleArray,
+  wordKey,
+  drawDeck,
+  advanceDeck,
+  pickStartTeam,
 } from '../../src/games/taboo/services/tabooPure.ts';
+import type { TabooCard } from '../../src/games/taboo/types.ts';
 
 // Deterministic RNG so tests aren't coupled to a particular shuffle.
 function rngFrom(values: number[]): () => number {
@@ -18,6 +23,12 @@ function rngFrom(values: number[]): () => number {
 }
 
 const UIDS = ['a', 'b', 'c', 'd', 'e'];
+
+function card(word: string): TabooCard {
+  return { word, taboo: [`${word}-1`, `${word}-2`] };
+}
+
+const words = (cards: TabooCard[]) => cards.map((c) => c.word).sort();
 
 test('shuffleArray: returns a permutation without mutating the input', () => {
   const input = [1, 2, 3, 4, 5];
@@ -90,6 +101,18 @@ test('teamForTurn: alternates starting from blue', () => {
   assert.equal(teamForTurn(3), 'red');
 });
 
+test('teamForTurn: alternates from the team that opened the match', () => {
+  assert.equal(teamForTurn(0, 'red'), 'red');
+  assert.equal(teamForTurn(1, 'red'), 'blue');
+  assert.equal(teamForTurn(2, 'red'), 'red');
+  assert.equal(teamForTurn(3, 'red'), 'blue');
+});
+
+test('pickStartTeam: both teams can open the match', () => {
+  assert.equal(pickStartTeam(rngFrom([0.1])), 'blue');
+  assert.equal(pickStartTeam(rngFrom([0.9])), 'red');
+});
+
 test('describerForTurn: rotates round-robin within the team', () => {
   const order = ['x', 'y', 'z'];
   // Turn numbers for blue: 0, 2, 4, 6 → team turn index 0,1,2,3
@@ -133,6 +156,25 @@ test('nextTurn: uneven teams wrap the smaller roster', () => {
   }
 });
 
+test('nextTurn: keeps alternating from the team that opened the match', () => {
+  const turnOrder = { blue: ['a', 'b'], red: ['c', 'd'] };
+  // Red opened, so turn 1 belongs to blue and its first describer.
+  const t1 = nextTurn({ turnNumber: 0, turnsPerTeam: 2, turnOrder, startTeam: 'red' });
+  assert.deepEqual(t1, { kind: 'turn', team: 'blue', describerUid: 'a', turnNumber: 1 });
+
+  const t2 = nextTurn({ turnNumber: 1, turnsPerTeam: 2, turnOrder, startTeam: 'red' });
+  assert.deepEqual(t2, { kind: 'turn', team: 'red', describerUid: 'd', turnNumber: 2 });
+});
+
+test('buildTeams: manual rosters are shuffled so the opener is not always the same player', () => {
+  const manual = { a: 'blue', b: 'blue', c: 'red', d: 'red' } as const;
+  const uids = ['a', 'b', 'c', 'd'];
+  // random() === 0 makes Fisher–Yates swap each element with index 0.
+  const { turnOrder } = buildTeams(uids, manual, rngFrom([0]));
+  assert.deepEqual(turnOrder.blue, ['b', 'a']);
+  assert.deepEqual(turnOrder.red, ['d', 'c']);
+});
+
 test('applyOutcome: correct +1, taboo −1, skip 0', () => {
   const start = { blue: 0, red: 0 };
   assert.deepEqual(applyOutcome(start, 'blue', 'correct'), { blue: 1, red: 0 });
@@ -146,4 +188,58 @@ test('winnerFromScores: picks the higher score or tie', () => {
   assert.equal(winnerFromScores({ blue: 3, red: 1 }), 'blue');
   assert.equal(winnerFromScores({ blue: -1, red: 0 }), 'red');
   assert.equal(winnerFromScores({ blue: 2, red: 2 }), 'tie');
+});
+
+// ── Deck: words already shown in the room never come back ──
+
+test('wordKey: case- and spacing-insensitive, safe as a Firebase key', () => {
+  assert.equal(wordKey('Pizza'), wordKey(' pizza '));
+  assert.equal(/[.$#[\]/]/.test(wordKey('E.T. #1 [$]/x')), false);
+});
+
+test('drawDeck: leaves out the words already used in the room', () => {
+  const all = [card('Pizza'), card('Mare'), card('Sole')];
+  const { deck, cycleReset } = drawDeck(all, { pizza: true }, rngFrom([0.5]));
+  assert.deepEqual(words(deck), ['Mare', 'Sole']);
+  assert.equal(cycleReset, false);
+});
+
+test('drawDeck: recycles the whole set once every word has been used', () => {
+  const all = [card('Pizza'), card('Mare'), card('Sole')];
+  const used = { pizza: true, mare: true, sole: true } as const;
+  const { deck, cycleReset } = drawDeck(all, used, rngFrom([0.5]));
+  assert.deepEqual(words(deck), ['Mare', 'Pizza', 'Sole']);
+  assert.equal(cycleReset, true);
+});
+
+test('drawDeck: the recycled set never opens on the word just seen', () => {
+  const all = [card('Pizza'), card('Mare'), card('Sole')];
+  const used = { pizza: true, mare: true, sole: true } as const;
+  const { deck } = drawDeck(all, used, rngFrom([0.5]), 'Sole');
+  assert.deepEqual(words(deck), ['Mare', 'Pizza']);
+});
+
+test('drawDeck: keeps a single card per word when the source repeats one', () => {
+  const all = [card('Pizza'), card('Pizza'), card('Mare')];
+  const { deck } = drawDeck(all, null, rngFrom([0.5]));
+  assert.deepEqual(words(deck), ['Mare', 'Pizza']);
+});
+
+test('advanceDeck: consumes the current card and moves on to the next', () => {
+  const deck = [card('A'), card('B'), card('C')];
+  const step = advanceDeck({ deck, cursor: 0, allCards: deck, random: rngFrom([0.5]) });
+  assert.equal(step.consumedWord, 'A');
+  assert.equal(step.cursor, 1);
+  assert.equal(step.deck, null); // deck untouched
+});
+
+test('advanceDeck: opens a fresh reshuffled cycle when the deck runs out', () => {
+  const all = [card('A'), card('B'), card('C'), card('D')];
+  const deck = [card('A'), card('B')];
+  const step = advanceDeck({ deck, cursor: 1, allCards: all, random: rngFrom([0.5]) });
+  assert.equal(step.consumedWord, 'B');
+  assert.equal(step.cursor, 0);
+  assert.notEqual(step.deck, null);
+  // Every card comes back except the one just seen.
+  assert.deepEqual(words(step.deck ?? []), ['A', 'C', 'D']);
 });

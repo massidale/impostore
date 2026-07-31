@@ -4,7 +4,7 @@
  * everywhere so tests can be deterministic.
  */
 
-import type { Scores, TeamId } from '../types';
+import type { Scores, TabooCard, TeamId } from '../types';
 
 export type CardOutcome = 'correct' | 'taboo' | 'skip';
 
@@ -91,12 +91,26 @@ export function buildTeams(
     turnOrder[t].push(uid);
   }
 
-  return { teams, turnOrder };
+  // The rosters drive the describer rotation, so shuffle them: the host picks
+  // who is on which team, never who describes first.
+  return {
+    teams,
+    turnOrder: {
+      blue: shuffleArray(turnOrder.blue, random),
+      red: shuffleArray(turnOrder.red, random),
+    },
+  };
 }
 
-/** Blue plays even turns, red plays odd turns. */
-export function teamForTurn(turnNumber: number): TeamId {
-  return turnNumber % 2 === 0 ? 'blue' : 'red';
+/** Coin flip for the team that opens the match. */
+export function pickStartTeam(random: () => number = Math.random): TeamId {
+  return random() < 0.5 ? 'blue' : 'red';
+}
+
+/** The opening team plays even turns, the other one odd turns. */
+export function teamForTurn(turnNumber: number, startTeam: TeamId = 'blue'): TeamId {
+  const other: TeamId = startTeam === 'blue' ? 'red' : 'blue';
+  return turnNumber % 2 === 0 ? startTeam : other;
 }
 
 /** Round-robin describer within a team roster (wraps). */
@@ -112,12 +126,13 @@ export function nextTurn(params: {
   turnNumber: number;
   turnsPerTeam: number;
   turnOrder: { blue: string[]; red: string[] };
+  startTeam?: TeamId;
 }): NextTurnResult | GameOverResult {
   const next = params.turnNumber + 1;
   if (next >= params.turnsPerTeam * 2) {
     return { kind: 'results' };
   }
-  const team = teamForTurn(next);
+  const team = teamForTurn(next, params.startTeam ?? 'blue');
   const teamTurnIndex = Math.floor(next / 2);
   return {
     kind: 'turn',
@@ -131,6 +146,103 @@ export function nextTurn(params: {
 export function applyOutcome(scores: Scores, team: TeamId, outcome: CardOutcome): Scores {
   const delta = outcome === 'correct' ? 1 : outcome === 'taboo' ? -1 : 0;
   return { ...scores, [team]: scores[team] + delta };
+}
+
+// ── Deck drawing ──
+//
+// A room remembers every word it has already shown (`gameData/taboo/usedWords`,
+// keyed by `wordKey`) so a new match never serves them again. When the pool
+// runs dry the whole set comes back, reshuffled.
+
+/**
+ * Identity of a word: case- and spacing-insensitive, and safe to use as a
+ * Firebase key (which cannot contain `.`, `$`, `#`, `[`, `]` or `/`).
+ */
+export function wordKey(word: string): string {
+  return word.trim().toLowerCase().replace(/[.$#[\]/]/g, '_');
+}
+
+export type UsedWords = string[] | Record<string, unknown> | null | undefined;
+
+function usedKeys(used: UsedWords): Set<string> {
+  if (!used) return new Set();
+  const raw = Array.isArray(used) ? used : Object.keys(used);
+  return new Set(raw.map(wordKey));
+}
+
+/** Keeps the first card of each word — the source may list a word twice. */
+function dedupeByWord(cards: TabooCard[]): TabooCard[] {
+  const seen = new Set<string>();
+  return cards.filter((c) => {
+    const key = wordKey(c.word);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+export interface DrawnDeck {
+  deck: TabooCard[];
+  /** True when every word had been used and the set was recycled. */
+  cycleReset: boolean;
+}
+
+/**
+ * Builds a shuffled deck out of the words the room hasn't shown yet.
+ * `avoidWord` (the card just seen) is always left out, so a recycled set
+ * never opens on the word still fresh in everyone's mind.
+ */
+export function drawDeck(
+  allCards: TabooCard[],
+  usedWords: UsedWords,
+  random: () => number = Math.random,
+  avoidWord?: string | null
+): DrawnDeck {
+  const avoid = avoidWord ? wordKey(avoidWord) : null;
+  const pickable = avoid ? allCards.filter((c) => wordKey(c.word) !== avoid) : allCards;
+  const pool = pickable.length > 0 ? pickable : allCards;
+
+  const used = usedKeys(usedWords);
+  const fresh = pool.filter((c) => !used.has(wordKey(c.word)));
+  const cycleReset = fresh.length === 0;
+
+  return {
+    deck: dedupeByWord(shuffleArray(cycleReset ? pool : fresh, random)),
+    cycleReset,
+  };
+}
+
+export interface DeckAdvance {
+  /** Word of the card just consumed — to be marked as used on the room. */
+  consumedWord: string | null;
+  cursor: number;
+  /** Set only when the deck ran out and a fresh cycle was drawn. */
+  deck: TabooCard[] | null;
+}
+
+/**
+ * Consumes the card under the cursor and moves to the next one. The deck was
+ * drawn from the unused pool, so playing it to the end means every word has
+ * been shown: a new, reshuffled cycle starts.
+ */
+export function advanceDeck(params: {
+  deck: TabooCard[] | null | undefined;
+  cursor: number;
+  allCards: TabooCard[];
+  random?: () => number;
+}): DeckAdvance {
+  const deck = params.deck ?? [];
+  const cursor = params.cursor ?? 0;
+  if (deck.length === 0) return { consumedWord: null, cursor: 0, deck: null };
+
+  const consumedWord = deck[cursor]?.word ?? null;
+  const nextCursor = cursor + 1;
+  if (nextCursor < deck.length) {
+    return { consumedWord, cursor: nextCursor, deck: null };
+  }
+
+  const { deck: fresh } = drawDeck(params.allCards, null, params.random, consumedWord);
+  return { consumedWord, cursor: 0, deck: fresh };
 }
 
 export function winnerFromScores(scores: Scores): TeamId | 'tie' {

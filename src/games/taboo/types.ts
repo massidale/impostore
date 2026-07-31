@@ -46,7 +46,9 @@ export interface TabooGameState {
   teams?: { [uid: string]: TeamId };
   /** Describer rotation per team. */
   turnOrder?: { blue: string[]; red: string[] };
-  /** 0-based global turn counter. Even = blue, odd = red. */
+  /** Team that opens the match — drawn at random at every start. */
+  startTeam?: TeamId;
+  /** 0-based global turn counter. Even = startTeam, odd = the other team. */
   turnNumber?: number;
   currentTeam?: TeamId;
   describerUid?: string;
@@ -58,6 +60,16 @@ export interface TabooGameState {
   lastAction?: { outcome: 'correct' | 'taboo' | 'skip'; team: TeamId } | null;
   /** Recap of the last completed turn, shown between turns. */
   lastTurn?: (TurnStats & { team: TeamId; describerUid: string }) | null;
+}
+
+/**
+ * Taboo data that belongs to the room, not to a single match: it lives under
+ * `rooms/{id}/gameData/taboo` so it survives `endTabooGame` and settings
+ * changes, and is only wiped when the room itself goes away.
+ */
+export interface TabooRoomData {
+  /** Words already shown in this room, keyed by `wordKey(word)`. */
+  usedWords?: { [key: string]: true };
 }
 
 export interface TabooSettings {

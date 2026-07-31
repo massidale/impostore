@@ -66,6 +66,10 @@
           ".validate": true
         },
 
+        "gameData": {
+          ".validate": true
+        },
+
         "$other": { ".validate": false }
       }
     }

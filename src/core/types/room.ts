@@ -24,4 +24,10 @@ export interface CoreRoom<TGameState = unknown> {
 
   // Polymorphic game payload — typed per-game via generic
   gameState?: TGameState;
+
+  /**
+   * Per-game data that outlives a single match (e.g. the words a room has
+   * already used). Keyed by game id; only cleared when the room is deleted.
+   */
+  gameData?: { [gameId: string]: unknown };
 }

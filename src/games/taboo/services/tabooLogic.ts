@@ -3,19 +3,69 @@ import { database } from '../../../../config/firebase';
 import { CoreRoom } from '../../../core/types/room';
 import { touchRoom } from '../../../core/services/roomService';
 import { filterActivePlayerUids } from '../../../core/services/playerSelection';
-import { TabooGameState, TabooSettings, TurnStats } from '../types';
+import { TabooGameState, TabooRoomData, TabooSettings, TurnStats } from '../types';
 import { getActiveCards } from './tabooCardService';
 import {
   CardOutcome,
+  DeckAdvance,
+  advanceDeck,
   applyOutcome,
   buildTeams,
   describerForTurn,
+  drawDeck,
   nextTurn,
-  shuffleArray,
-  teamForTurn,
+  pickStartTeam,
+  wordKey,
 } from './tabooPure';
 
 const EMPTY_TURN_STATS: TurnStats = { correct: 0, taboo: 0, skipped: 0 };
+
+/** Words already shown in the room — persists across matches. */
+const usedWordsPath = (roomId: string) => `rooms/${roomId}/gameData/taboo/usedWords`;
+
+function readUsedWords(roomData: CoreRoom<TabooGameState>): TabooRoomData['usedWords'] {
+  return (roomData.gameData?.taboo as TabooRoomData | undefined)?.usedWords ?? {};
+}
+
+/**
+ * Firebase paths for a card that has just been consumed: the cursor moves on,
+ * the word is marked as used for the whole room, and when the pool ran dry the
+ * freshly reshuffled deck replaces the old one.
+ */
+function cardAdvanceUpdates(
+  roomId: string,
+  step: DeckAdvance
+): Record<string, unknown> {
+  const updates: Record<string, unknown> = {
+    [`rooms/${roomId}/gameState/cursor`]: step.cursor,
+  };
+  const key = step.consumedWord ? wordKey(step.consumedWord) : '';
+
+  if (step.deck) {
+    // New cycle: the room history restarts from the word just seen.
+    updates[`rooms/${roomId}/gameState/deck`] = step.deck;
+    updates[usedWordsPath(roomId)] = key ? { [key]: true } : null;
+  } else if (key) {
+    updates[`${usedWordsPath(roomId)}/${key}`] = true;
+  }
+
+  return updates;
+}
+
+/** Consumes the card currently on screen. */
+function consumeCurrentCard(
+  roomId: string,
+  gameState: TabooGameState
+): Record<string, unknown> {
+  return cardAdvanceUpdates(
+    roomId,
+    advanceDeck({
+      deck: gameState.deck,
+      cursor: gameState.cursor ?? 0,
+      allCards: getActiveCards(),
+    })
+  );
+}
 
 export async function initTabooGame(
   roomId: string,
@@ -60,13 +110,16 @@ export async function startTabooGame(roomId: string): Promise<void> {
     );
   }
 
-  const deck = shuffleArray(getActiveCards());
+  // Words already seen in this room stay out until the pool is exhausted.
+  const { deck, cycleReset } = drawDeck(getActiveCards(), readUsedWords(roomData));
   if (deck.length === 0) throw new Error('Nessuna carta disponibile');
 
-  const firstTeam = teamForTurn(0);
+  // Both the opening team and the describer rotation are drawn at random,
+  // so the same player doesn't always start.
+  const firstTeam = pickStartTeam();
   const describerUid = describerForTurn(turnOrder[firstTeam], 0);
 
-  await touchRoom(roomId, {
+  const updates: Record<string, unknown> = {
     [`rooms/${roomId}/status`]: 'active',
     [`rooms/${roomId}/gameState/phase`]: 'ready',
     [`rooms/${roomId}/gameState/deck`]: deck,
@@ -75,12 +128,18 @@ export async function startTabooGame(roomId: string): Promise<void> {
     [`rooms/${roomId}/gameState/teams`]: teams,
     [`rooms/${roomId}/gameState/turnOrder`]: turnOrder,
     [`rooms/${roomId}/gameState/turnNumber`]: 0,
+    [`rooms/${roomId}/gameState/startTeam`]: firstTeam,
     [`rooms/${roomId}/gameState/currentTeam`]: firstTeam,
     [`rooms/${roomId}/gameState/describerUid`]: describerUid,
     [`rooms/${roomId}/gameState/turnEndsAt`]: null,
     [`rooms/${roomId}/gameState/turnStats`]: EMPTY_TURN_STATS,
     [`rooms/${roomId}/gameState/lastTurn`]: null,
-  });
+  };
+
+  // Every word had been used: the set comes back reshuffled, history cleared.
+  if (cycleReset) updates[usedWordsPath(roomId)] = null;
+
+  await touchRoom(roomId, updates);
 }
 
 /** Called by the describer to kick off their turn (starts the timer). */
@@ -126,16 +185,11 @@ export async function resolveTabooCard(
     skipped: stats.skipped + (outcome === 'skip' ? 1 : 0),
   };
 
-  // Wrap around when the deck is exhausted: cards may repeat, the game
-  // never blocks mid-turn.
-  const deckSize = gameState.deck?.length ?? 0;
-  const nextCursor = deckSize > 0 ? ((gameState.cursor ?? 0) + 1) % deckSize : 0;
-
   await touchRoom(roomId, {
     [`rooms/${roomId}/gameState/scores`]: scores,
     [`rooms/${roomId}/gameState/turnStats`]: newStats,
-    [`rooms/${roomId}/gameState/cursor`]: nextCursor,
     [`rooms/${roomId}/gameState/lastAction`]: { outcome, team },
+    ...consumeCurrentCard(roomId, gameState),
   });
 }
 
@@ -162,16 +216,23 @@ export async function undoTabooCard(roomId: string): Promise<void> {
     skipped: Math.max(0, stats.skipped - (last.outcome === 'skip' ? 1 : 0)),
   };
 
-  const deckSize = gameState.deck?.length ?? 0;
-  const prevCursor =
-    deckSize > 0 ? ((gameState.cursor ?? 0) - 1 + deckSize) % deckSize : 0;
-
-  await touchRoom(roomId, {
+  const updates: Record<string, unknown> = {
     [`rooms/${roomId}/gameState/scores`]: scores,
     [`rooms/${roomId}/gameState/turnStats`]: newStats,
-    [`rooms/${roomId}/gameState/cursor`]: prevCursor,
     [`rooms/${roomId}/gameState/lastAction`]: null,
-  });
+  };
+
+  // Put the previous card back and let it be drawn again. At cursor 0 the deck
+  // has just been reshuffled, so only the score and the stats can be reverted.
+  const cursor = gameState.cursor ?? 0;
+  const restored = cursor > 0 ? gameState.deck?.[cursor - 1] : null;
+  const restoredKey = restored ? wordKey(restored.word) : '';
+  if (restored) {
+    updates[`rooms/${roomId}/gameState/cursor`] = cursor - 1;
+    if (restoredKey) updates[`${usedWordsPath(roomId)}/${restoredKey}`] = null;
+  }
+
+  await touchRoom(roomId, updates);
 }
 
 /**
@@ -195,10 +256,15 @@ export async function endTabooTurn(roomId: string): Promise<void> {
     describerUid: gameState.describerUid ?? '',
   };
 
+  // The card still on screen when the time ran out is discarded: the next
+  // describer must never inherit it.
+  const discarded = consumeCurrentCard(roomId, gameState);
+
   const next = nextTurn({
     turnNumber,
     turnsPerTeam: gameState.turnsPerTeam,
     turnOrder,
+    startTeam: gameState.startTeam ?? 'blue',
   });
 
   if (next.kind === 'results') {
@@ -207,6 +273,7 @@ export async function endTabooTurn(roomId: string): Promise<void> {
       [`rooms/${roomId}/gameState/turnEndsAt`]: null,
       [`rooms/${roomId}/gameState/lastAction`]: null,
       [`rooms/${roomId}/gameState/lastTurn`]: lastTurn,
+      ...discarded,
     });
     return;
   }
@@ -220,6 +287,7 @@ export async function endTabooTurn(roomId: string): Promise<void> {
     [`rooms/${roomId}/gameState/turnStats`]: EMPTY_TURN_STATS,
     [`rooms/${roomId}/gameState/lastAction`]: null,
     [`rooms/${roomId}/gameState/lastTurn`]: lastTurn,
+    ...discarded,
   });
 }
 
@@ -238,6 +306,7 @@ export async function endTabooGame(roomId: string): Promise<void> {
     [`rooms/${roomId}/gameState/teams`]: null,
     [`rooms/${roomId}/gameState/turnOrder`]: null,
     [`rooms/${roomId}/gameState/turnNumber`]: null,
+    [`rooms/${roomId}/gameState/startTeam`]: null,
     [`rooms/${roomId}/gameState/currentTeam`]: null,
     [`rooms/${roomId}/gameState/describerUid`]: null,
     [`rooms/${roomId}/gameState/turnEndsAt`]: null,

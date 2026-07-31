@@ -88,7 +88,9 @@ Ruoli segreti: Lupi, Veggente, Guardia, Villici (ruoli e stato vita vivono in `g
 ### Taboo (min 4)
 Due squadre (Blu/Rossa) bilanciate automaticamente. A turno un giocatore descrive le parole alla propria squadra senza usare le 5 parole vietate della carta; gli **avversari vedono la carta** e premono **TABÙ!** se sente una parola vietata. +1 indovinata, −1 tabù, passa = 0. Timer sincronizzato via timestamp RTDB (`turnEndsAt`); il client del descrittore chiude il turno allo scadere (l'host ha un fallback "Termina turno"). Vince la squadra con più punti dopo N turni per squadra.
 
-Logica pura testabile in `src/games/taboo/services/tabooPure.ts` (squadre, rotazione, punteggi), carte in `data/cards.json`, generazione carte AI via `generateTabooCards`.
+Squadra che apre e ordine dei descrittori sono **sorteggiati a ogni partita** (`startTeam` in `gameState`). La carta ancora in mano allo scadere del tempo viene **scartata**, non passata al descrittore successivo. Le parole già uscite sono memorizzate **sulla stanza** (`gameData/taboo/usedWords`), quindi non tornano nemmeno nelle partite successive; esaurito il mazzo, tutte le parole rientrano rimescolate.
+
+Logica pura testabile in `src/games/taboo/services/tabooPure.ts` (squadre, rotazione, punteggi, pesca del mazzo), carte in `data/cards.json`, generazione carte AI via `generateTabooCards`.
 
 ---
 
@@ -105,7 +107,9 @@ Logica pura testabile in `src/games/taboo/services/tabooPure.ts` (squadre, rotaz
 │   ├── joinedAt, name, isHost
 │   ├── waiting?               # entrato a partita in corso
 │   └── …campi specifici del gioco (role, word, …)
-└── gameState/                 # payload polimorfo del gioco corrente
+├── gameState/                 # payload polimorfo del gioco corrente
+└── gameData/{gameId}/         # dati che sopravvivono alla singola partita
+                               # (es. taboo/usedWords: parole già uscite nella stanza)
 ```
 
 Ogni mutazione passa da `touchRoom()` che aggiorna `updatedAt` (cleanup stanze stantie via GitHub Action `cleanup.yml`).
