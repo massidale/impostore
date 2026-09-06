@@ -1,8 +1,14 @@
-import React, { useEffect, useRef } from 'react';
+import { FitContent } from '../../../core/ui/FitContent';
+import { wrappingText } from '../../../core/ui/wrappingText';
+import { useGameViewport } from '../../../core/hooks/useGameViewport';
+import { useGameAction } from '../../../core/hooks/useGameAction';
+import { retryAction } from '../../../core/services/retryAction';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { PlayerGamepadProps } from '../../../core/types/gamePlugin';
 import {
   Button,
+  ErrorBanner,
   CountdownBar,
   ForbiddenIcon,
   GhostButton,
@@ -90,19 +96,19 @@ function ScoreCell({ team, score, active }: { team: TeamId; score: number; activ
 
 // ── Taboo card ──
 
-function TabooCardView({ card, team }: { card: TabooCard; team: TeamId }) {
+function TabooCardView({ card, team, compact }: { card: TabooCard; team: TeamId; compact: boolean }) {
   return (
-    <View style={[styles.tabooCard, { borderColor: TEAM_COLOR[team] }]}>
-      <View style={[styles.tabooCardHeader, { backgroundColor: TEAM_COLOR[team] }]}>
-        <Text style={styles.tabooCardWord} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
+    <View testID="taboo-card" style={[styles.tabooCard, { borderColor: TEAM_COLOR[team] }]}>
+      <View style={[styles.tabooCardHeader, compact && {paddingVertical: spacing.sm, paddingHorizontal: spacing.md}, { backgroundColor: TEAM_COLOR[team] }]}>
+        <Text style={[styles.tabooCardWord, compact && {fontSize: 28}]}>
           {card.word}
         </Text>
       </View>
-      <View style={styles.tabooCardBody}>
+      <View style={[styles.tabooCardBody, compact && {paddingHorizontal: spacing.md, paddingVertical: spacing.xs}]}>
         {card.taboo.map((t, i) => (
-          <View key={`${t}-${i}`} style={[styles.tabooRow, i > 0 && styles.tabooRowDivider]}>
+          <View key={`${t}-${i}`} style={[styles.tabooRow, compact && {paddingVertical: spacing.xs + 2, gap: spacing.sm}, i > 0 && styles.tabooRowDivider]}>
             <ForbiddenIcon size={14} color={colors.danger} />
-            <Text style={styles.tabooWord}>{t}</Text>
+            <Text style={[styles.tabooWord, compact && {fontSize: 18}]}>{t}</Text>
           </View>
         ))}
       </View>
@@ -113,10 +119,12 @@ function TabooCardView({ card, team }: { card: TabooCard; team: TeamId }) {
 // ── Main gamepad ──
 
 export default function TabooPlayerGamepad({ roomData, playerId }: PlayerGamepadProps) {
+  const {onLayout, compact} = useGameViewport();
   const gameState = roomData.gameState as TabooGameState;
   const roomId = roomData.id;
+  const {error, runAction} = useGameAction();
   const playerCount = Object.keys(roomData.players ?? {}).length;
-  const metaRow = <MetaRow roomId={roomId} players={playerCount} />;
+  const metaRow = <><MetaRow roomId={roomId} players={playerCount} />{error ? <ErrorBanner message={error} /> : null}</>;
 
   const scores = gameState.scores ?? { blue: 0, red: 0 };
   const myTeam: TeamId | undefined = gameState.teams?.[playerId];
@@ -130,18 +138,9 @@ export default function TabooPlayerGamepad({ roomData, playerId }: PlayerGamepad
 
   // The describer's client is responsible for closing the turn when the
   // timer hits zero (endTabooTurn is idempotent — duplicates are harmless).
-  const endedRef = useRef(false);
   useEffect(() => {
-    if (gameState.phase !== 'turn') {
-      endedRef.current = false;
-      return;
-    }
-    if (isDescriber && remaining === 0 && !endedRef.current) {
-      endedRef.current = true;
-      endTabooTurn(roomId).catch(() => {
-        endedRef.current = false;
-      });
-    }
+    if (gameState.phase !== 'turn' || !isDescriber || remaining !== 0) return;
+    return retryAction(() => endTabooTurn(roomId));
   }, [gameState.phase, isDescriber, remaining, roomId]);
 
   if (!roomData.players?.[playerId]) return null;
@@ -149,14 +148,14 @@ export default function TabooPlayerGamepad({ roomData, playerId }: PlayerGamepad
   // ── Waiting for the host to start ──
   if (gameState.phase === 'setup' || !gameState.teams) {
     return (
-      <View style={styles.container}>
+      <View onLayout={onLayout} style={[styles.container, compact && styles.compactContainer]}>
         {metaRow}
-        <View style={styles.centerGrow}>
+        <FitContent>
           <StatusCard
             title="In attesa..."
             message="L'host non ha ancora avviato la partita."
           />
-        </View>
+        </FitContent>
       </View>
     );
   }
@@ -164,15 +163,15 @@ export default function TabooPlayerGamepad({ roomData, playerId }: PlayerGamepad
   // Joined mid-game without a team: spectate until the next match.
   if (!myTeam && gameState.phase !== 'results') {
     return (
-      <View style={styles.container}>
+      <View onLayout={onLayout} style={[styles.container, compact && styles.compactContainer]}>
         {metaRow}
-        <View style={styles.centerGrow}>
+        <FitContent>
           <StatusCard
             title="Partita in corso"
             message="Non fai parte di una squadra in questo round. Entrerai alla prossima partita."
             tone="muted"
           />
-        </View>
+        </FitContent>
       </View>
     );
   }
@@ -183,10 +182,10 @@ export default function TabooPlayerGamepad({ roomData, playerId }: PlayerGamepad
     const last = gameState.lastTurn;
 
     return (
-      <View style={styles.container}>
+      <View onLayout={onLayout} style={[styles.container, compact && styles.compactContainer]}>
         <ScoreBoard scores={scores} activeTeam={currentTeam} turnLabel={turnLabel} />
 
-        <View style={styles.centerGrow}>
+        <FitContent>
           {last ? (
             <View style={styles.lastTurnBanner}>
               <Text style={styles.lastTurnText}>
@@ -215,7 +214,7 @@ export default function TabooPlayerGamepad({ roomData, playerId }: PlayerGamepad
                   usare le parole vietate. Gli avversari ti controllano!
                 </Text>
                 <Button
-                  onPress={() => beginTabooTurn(roomId)}
+                  onPress={() => runAction(() => beginTabooTurn(roomId))}
                   variant="primary"
                   size="lg"
                   style={{ marginTop: spacing.lg }}
@@ -237,7 +236,7 @@ export default function TabooPlayerGamepad({ roomData, playerId }: PlayerGamepad
               Sei nella <Text style={{ color: TEAM_COLOR[myTeam], fontFamily: fonts.displayHeavy }}>{TEAM_LABEL[myTeam]}</Text>
             </Text>
           ) : null}
-        </View>
+        </FitContent>
 
         {/* Bottom placement: keeps the scoreboard header untouched. */}
         <MetaRow roomId={roomId} players={playerCount} style={styles.bottomMeta} />
@@ -247,8 +246,7 @@ export default function TabooPlayerGamepad({ roomData, playerId }: PlayerGamepad
 
   // ── Active turn ──
   if (gameState.phase === 'turn') {
-    const deck = gameState.deck ?? [];
-    const card = deck.length > 0 ? deck[(gameState.cursor ?? 0) % deck.length] : null;
+    const card = gameState.currentCard ?? null;
     const seconds = remaining ?? gameState.turnSeconds;
     const isMyTeamTurn = myTeam === currentTeam;
     const seesCard = isDescriber || !isMyTeamTurn;
@@ -256,10 +254,10 @@ export default function TabooPlayerGamepad({ roomData, playerId }: PlayerGamepad
     const skipsLeft = Math.max(0, maxSkips - (gameState.turnStats?.skipped ?? 0));
     const canUndo = !!gameState.lastAction;
 
-    // Fixed layout: scores + timer on top, card centered, actions pinned to
-    // the bottom. Nothing scrolls — card and buttons are always visible.
+    // The card wraps at the available width and scales into the space
+    // between the timer and actions, including when host controls are open.
     return (
-      <View style={styles.container}>
+      <View onLayout={onLayout} style={[styles.container, compact && styles.compactContainer]}>
         <ScoreBoard scores={scores} activeTeam={currentTeam} turnLabel={turnLabel} />
 
         <View style={styles.timerRow}>
@@ -271,7 +269,7 @@ export default function TabooPlayerGamepad({ roomData, playerId }: PlayerGamepad
           />
           {isDescriber && canUndo ? (
             <GhostButton
-              onPress={() => undoTabooCard(roomId)}
+              onPress={() => runAction(() => undoTabooCard(roomId))}
               icon={<UndoIcon size={14} color={colors.textPrimary} />}
               style={styles.undoButton}
             >
@@ -280,15 +278,15 @@ export default function TabooPlayerGamepad({ roomData, playerId }: PlayerGamepad
           ) : null}
         </View>
 
-        <View style={styles.turnBody}>
+        <FitContent testID="taboo-turn-card" minContentWidth={400}>
           {isDescriber && card ? (
-            <TabooCardView card={card} team={currentTeam} />
+            <TabooCardView card={card} team={currentTeam} compact={compact} />
           ) : seesCard && card ? (
             <>
               <Text style={styles.watcherLabel}>
                 {playerName(roomData, describerUid)} sta descrivendo per la {TEAM_LABEL[currentTeam]}
               </Text>
-              <TabooCardView card={card} team={currentTeam} />
+              <TabooCardView card={card} team={currentTeam} compact={compact} />
               <Text style={styles.buzzHint}>
                 Se dice una parola vietata, dillo a voce: la segna{' '}
                 {playerName(roomData, describerUid)} (−1 punto).
@@ -305,25 +303,27 @@ export default function TabooPlayerGamepad({ roomData, playerId }: PlayerGamepad
               </Text>
             </View>
           )}
-        </View>
+        </FitContent>
 
         {isDescriber && card ? (
-          <View style={styles.describerActions}>
-            <Button onPress={() => resolveTabooCard(roomId, 'correct')} variant="success" size="lg">
+          <View style={[styles.describerActions, compact && styles.compactActions]}>
+            <Button onPress={() => runAction(() => resolveTabooCard(roomId, 'correct'))} variant="success" size={compact ? "sm" : "lg"} style={compact ? {flex: 1} : undefined}>
               Indovinata
             </Button>
-            <View style={styles.describerSecondaryRow}>
+            <View style={[styles.describerSecondaryRow, compact && {flex: 2}]}>
               <Button
-                onPress={() => resolveTabooCard(roomId, 'skip')}
+                onPress={() => runAction(() => resolveTabooCard(roomId, 'skip'))}
                 variant="secondary"
+                size={compact ? "sm" : "md"}
                 disabled={skipsLeft === 0}
                 style={{ flex: 1 }}
               >
                 {`Passa (${skipsLeft})`}
               </Button>
               <Button
-                onPress={() => resolveTabooCard(roomId, 'taboo')}
+                onPress={() => runAction(() => resolveTabooCard(roomId, 'taboo'))}
                 variant="dangerMuted"
+                size={compact ? "sm" : "md"}
                 style={{ flex: 1 }}
               >
                 Tabù
@@ -347,9 +347,9 @@ export default function TabooPlayerGamepad({ roomData, playerId }: PlayerGamepad
         : `Vince la ${TEAM_LABEL[winner]}`;
 
     return (
-      <View style={styles.container}>
+      <View onLayout={onLayout} style={[styles.container, compact && styles.compactContainer]}>
         {metaRow}
-        <View style={styles.centerGrow}>
+        <FitContent>
           <View style={[styles.resultsCard, { borderColor: accent }]}>
             <View style={styles.resultsHeader}>
               <TrophyIcon size={14} color={accent} />
@@ -360,7 +360,7 @@ export default function TabooPlayerGamepad({ roomData, playerId }: PlayerGamepad
 
             <ScoreBoard scores={scores} activeTeam={winner === 'tie' ? undefined : winner} />
           </View>
-        </View>
+        </FitContent>
       </View>
     );
   }
@@ -369,7 +369,11 @@ export default function TabooPlayerGamepad({ roomData, playerId }: PlayerGamepad
 }
 
 const styles = StyleSheet.create({
+  compactContainer: {padding: spacing.sm},
+  compactActions: {flexDirection: 'row'},
   container: {
+    minHeight: 0,
+    minWidth: 0,
     flex: 1,
     backgroundColor: colors.background,
     padding: spacing.lg,
@@ -378,10 +382,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
     padding: spacing.lg,
-    justifyContent: 'center',
-  },
-  centerGrow: {
-    flex: 1,
     justifyContent: 'center',
   },
 
@@ -507,12 +507,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
 
-  // Turn phase — fixed (non-scrolling) body between timer and actions
-  turnBody: {
-    flex: 1,
-    justifyContent: 'center',
-    minHeight: 0,
-  },
   tabooCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -525,6 +519,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tabooCardWord: {
+    ...wrappingText,
+    width: '100%',
     color: '#FFFFFF',
     fontFamily: fonts.displayHeavy,
     fontSize: fontSize.xxl,
@@ -547,6 +543,8 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
   tabooWord: {
+    ...wrappingText,
+    flex: 1,
     color: colors.textPrimary,
     fontFamily: fonts.bodySemi,
     fontSize: fontSize.lg,

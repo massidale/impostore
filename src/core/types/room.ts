@@ -15,6 +15,11 @@ export interface CoreRoom<TGameState = unknown> {
   createdAt: number;
   /** Timestamp of last mutation — used by the cleanup job to purge stale rooms */
   updatedAt: number;
+  /** Server-owned command generations. */
+  matchId?: number;
+  cardVersion?: number;
+  /** Canonical lobby settings, restored on every device. */
+  settings?: unknown;
 
   currentGameId: string; // 'impostore', etc.
 

@@ -1,16 +1,16 @@
 import { Platform } from 'react-native';
 import { initializeApp } from 'firebase/app';
-import { getDatabase } from 'firebase/database';
+import { getDatabase, connectDatabaseEmulator } from 'firebase/database';
 import {
   getAuth,
+  connectAuthEmulator,
   initializeAuth,
   getReactNativePersistence,
   type Auth,
-} from '@firebase/auth';
+} from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-console.log('[fb-debug] getReactNativePersistence is:', typeof getReactNativePersistence);
-
+const emulatorHost = process.env.EXPO_PUBLIC_FIREBASE_EMULATOR_HOST;
 const firebaseConfig = {
   apiKey: 'AIzaSyBvMwcuua_w44Ylouf0s_jNzu_j7YgJktc',
   authDomain: 'gameshub-6b1ce.firebaseapp.com',
@@ -22,7 +22,16 @@ const firebaseConfig = {
   measurementId: 'G-RN2WF80N2Q',
 };
 
-const app = initializeApp(firebaseConfig);
+if (emulatorHost) {
+  firebaseConfig.projectId = 'demo-gameshub';
+  firebaseConfig.databaseURL = 'https://demo-gameshub-default-rtdb.firebaseio.com';
+  firebaseConfig.authDomain = 'demo-gameshub.firebaseapp.com';
+}
+
+const devClient = Platform.OS === 'web' && process.env.NODE_ENV !== 'production' && typeof window !== 'undefined'
+  ? new URLSearchParams(window.location.search).get('cid')?.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 32)
+  : null;
+const app = initializeApp(firebaseConfig, devClient ? `dev-${devClient}` : '[DEFAULT]');
 
 export const database = getDatabase(app);
 
@@ -49,4 +58,8 @@ function createAuth(): Auth {
 }
 
 export const auth = createAuth();
+if (emulatorHost) {
+  connectDatabaseEmulator(database, emulatorHost, 9000);
+  connectAuthEmulator(auth, `http://${emulatorHost}:9099`, { disableWarnings: true });
+}
 export default app;

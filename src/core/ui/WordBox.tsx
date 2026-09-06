@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle, StyleProp } from 'react-native';
 import { colors, fonts, fontSize, radius, spacing } from './theme';
+import { wrappingText } from './wrappingText';
 import { capitalize } from '../utils/text';
 
 type Tone = 'neutral' | 'muted' | 'primary' | 'success' | 'danger';
@@ -8,24 +9,14 @@ type Tone = 'neutral' | 'muted' | 'primary' | 'success' | 'danger';
 interface WordBoxProps {
   /** Small uppercase label above the word (e.g. "La parola"). */
   label?: string;
-  /** The word itself. Auto-shrinks to fit on one line. */
+  /** The word itself. Wraps across as many lines as needed. */
   word: string;
   tone?: Tone;
   /** Capitalize the first letter (default true). */
   autoCapitalize?: boolean;
-  /** Base font size — shrinks automatically for long words. */
+  /** Base font size; the enclosing card scales to available space. */
   size?: 'md' | 'lg';
   style?: StyleProp<ViewStyle>;
-}
-
-function fittedFontSize(word: string, base: number): number {
-  const len = word ? word.length : 0;
-  if (len <= 8) return base;
-  if (len <= 11) return Math.round(base * 0.85);
-  if (len <= 14) return Math.round(base * 0.72);
-  if (len <= 18) return Math.round(base * 0.6);
-  if (len <= 24) return Math.round(base * 0.48);
-  return Math.round(base * 0.4);
 }
 
 const toneColor: Record<Tone, string> = {
@@ -38,7 +29,7 @@ const toneColor: Record<Tone, string> = {
 
 /**
  * The "big word" display used across games: secret word, hint,
- * submitted word, taboo word… Label on top, auto-fitted word below.
+ * submitted word, taboo word… Label on top, wrapping word below.
  */
 export function WordBox({
   label,
@@ -55,11 +46,8 @@ export function WordBox({
       <Text
         style={[
           styles.word,
-          { fontSize: fittedFontSize(word, base), color: toneColor[tone] },
+          { fontSize: base, color: toneColor[tone] },
         ]}
-        numberOfLines={1}
-        adjustsFontSizeToFit
-        minimumFontScale={0.5}
       >
         {autoCapitalize ? capitalize(word) : word}
       </Text>
@@ -87,6 +75,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   word: {
+    ...wrappingText,
+    width: '100%',
     fontFamily: fonts.displayHeavy,
     textAlign: 'center',
     letterSpacing: 0.5,

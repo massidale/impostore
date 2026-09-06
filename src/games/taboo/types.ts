@@ -39,6 +39,8 @@ export interface TabooGameState {
   // Session state (set by startGame)
   /** Shuffled deck for this match. The cursor wraps when exhausted. */
   deck?: TabooCard[];
+  /** Only the current card is delivered to authorized players. */
+  currentCard?: TabooCard;
   /** Index of the current card in the deck. */
   cursor?: number;
   scores?: Scores;

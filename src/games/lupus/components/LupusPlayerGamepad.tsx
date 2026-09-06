@@ -392,6 +392,15 @@ export default function LupusPlayerGamepad({ roomData, playerId }: PlayerGamepad
             </Text>
           </PhaseCard>
 
+          {myRole === 'veggente' && gameState.seerVision ? (
+            <PhaseCard title="Ultima visione" tone="cyan">
+              <Text style={styles.seerResult}>
+                {playerName(roomData, gameState.seerVision.targetUid)}
+                {' è '}{ROLE_LABEL[gameState.seerVision.role]}
+              </Text>
+            </PhaseCard>
+          ) : null}
+
           {myRole === 'medium' && deadUids.length > 0 ? (
             <View style={{ marginTop: spacing.md }}>
               <MediumView roomData={roomData} roles={roles} deadUids={deadUids} compact />

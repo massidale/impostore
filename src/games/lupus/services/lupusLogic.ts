@@ -140,6 +140,7 @@ export async function startLupusGame(roomId: string): Promise<void> {
     [`${GS(roomId)}/night`]: null,
     [`${GS(roomId)}/nightEndsAt`]: nightEndsAt,
     [`${GS(roomId)}/lastNight`]: null,
+    [`${GS(roomId)}/seerVision`]: null,
     [`${GS(roomId)}/votes`]: null,
     [`${GS(roomId)}/votingEndsAt`]: null,
     [`${GS(roomId)}/runoffCandidates`]: null,
@@ -188,6 +189,7 @@ export async function submitSeer(roomId: string, targetUid: string): Promise<voi
   await touchRoom(roomId, {
     [`${GS(roomId)}/night/seerTarget`]: targetUid,
     [`${GS(roomId)}/night/seerDone`]: true,
+    [`${GS(roomId)}/seerVision`]: { targetUid, role: gameState.roles?.[targetUid] ?? 'villico', round: gameState.round ?? 1 },
   });
   await maybeResolveNightEarly(roomId);
 }
@@ -416,6 +418,7 @@ export async function startLupusNight(roomId: string): Promise<void> {
     [`${GS(roomId)}/night`]: null,
     [`${GS(roomId)}/nightEndsAt`]: Date.now() + (gameState.nightSeconds ?? 60) * 1000,
     [`${GS(roomId)}/lastNight`]: null,
+    [`${GS(roomId)}/seerVision`]: null,
   });
 }
 
@@ -510,6 +513,7 @@ export async function endLupusGame(roomId: string): Promise<void> {
     [`${GS(roomId)}/night`]: null,
     [`${GS(roomId)}/nightEndsAt`]: null,
     [`${GS(roomId)}/lastNight`]: null,
+    [`${GS(roomId)}/seerVision`]: null,
     [`${GS(roomId)}/votes`]: null,
     [`${GS(roomId)}/votingEndsAt`]: null,
     [`${GS(roomId)}/runoffCandidates`]: null,

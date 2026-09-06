@@ -64,6 +64,8 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
   statusRow: {
+    flexWrap: 'wrap',
+    gap: spacing.xs,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

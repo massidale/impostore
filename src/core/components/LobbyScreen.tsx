@@ -141,6 +141,8 @@ export default function LobbyScreen({
   const [openSheet, setOpenSheet] = useState<OpenSheet>(null);
   const [showGamePicker, setShowGamePicker] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsError, setSettingsError] = useState<string | null>(null);
   const { width: screenWidth } = useWindowDimensions();
   const qrSize = Math.min(screenWidth - spacing.xl * 4, 280);
 
@@ -200,21 +202,29 @@ export default function LobbyScreen({
   };
 
   const handleChangeGame = async (newPlugin: GamePlugin) => {
-    setShowGamePicker(false);
-    if (newPlugin.id === roomData.currentGameId) return;
-    const defaults = newPlugin.getDefaultSettings();
-    // Settings state FIRST: the RTDB subscription may flip currentGameId
-    // before these awaits resolve, and the new SettingsPanel must never
-    // render with the previous game's settings (or null).
-    onSettingsChange(defaults);
-    await resetPlayersToCore(roomId);
-    await newPlugin.initGameState(roomId, defaults);
+    if (savingSettings || newPlugin.id === roomData.currentGameId) return;
+    setSavingSettings(true);
+    setSettingsError(null);
+    try {
+      const defaults = newPlugin.getDefaultSettings();
+      await newPlugin.initGameState(roomId, defaults);
+      onSettingsChange(defaults);
+      setShowGamePicker(false);
+    } catch (error) {
+      setSettingsError(error instanceof Error ? error.message : 'Impossibile cambiare gioco');
+    } finally { setSavingSettings(false); }
   };
 
   const handleSettingsChange = async (newSettings: unknown) => {
-    if (!gamePlugin) return;
-    onSettingsChange(newSettings);
-    await gamePlugin.initGameState(roomId, newSettings);
+    if (!gamePlugin || savingSettings) return;
+    setSavingSettings(true);
+    setSettingsError(null);
+    try {
+      await gamePlugin.initGameState(roomId, newSettings);
+      onSettingsChange(newSettings);
+    } catch (error) {
+      setSettingsError(error instanceof Error ? error.message : 'Impossibile salvare le impostazioni');
+    } finally { setSavingSettings(false); }
   };
 
   const handleDeleteRoom = () => {
@@ -236,7 +246,7 @@ export default function LobbyScreen({
     }
   };
 
-  const canStart = !loading && hasGame && playerCount >= minPlayers;
+  const canStart = !loading && !savingSettings && hasGame && playerCount >= minPlayers;
 
   return (
     <View style={styles.root}>
@@ -343,6 +353,7 @@ export default function LobbyScreen({
           </Button>
         }
       >
+        {settingsError ? <ErrorBanner message={settingsError} /> : null}
         <SectionHeader
           label="Gioco"
           hint={hasGame ? 'Cambialo quando vuoi: la stanza resta.' : 'Scegli il gioco per questa stanza.'}
@@ -387,12 +398,14 @@ export default function LobbyScreen({
                 (room created without one) or after a host re-entry: fall back
                 to the plugin defaults — panels like Impostore's dereference
                 the object and would white-screen on null. */}
+            <View pointerEvents={savingSettings ? 'none' : 'auto'}>
             <SettingsPanel
-              settings={gameSettings ?? gamePlugin.getDefaultSettings()}
+              settings={roomData.settings ?? gamePlugin.getDefaultSettings()}
               onSettingsChange={handleSettingsChange}
               roomId={roomId}
               roomData={roomData}
             />
+            </View>
 
             <GameRules rules={gamePlugin.rules} style={styles.rulesBlock} />
           </>

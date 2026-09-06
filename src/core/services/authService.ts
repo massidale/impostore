@@ -4,7 +4,7 @@ import {
   signInWithEmailAndPassword,
   signOut,
   updateProfile,
-} from '@firebase/auth';
+} from 'firebase/auth';
 import { ref, get, set } from 'firebase/database';
 import { auth } from '../../../config/firebase';
 import { database } from '../../../config/firebase';

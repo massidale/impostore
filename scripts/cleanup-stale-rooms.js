@@ -38,24 +38,24 @@ async function main() {
 
   const db = admin.database();
   const cutoff = Date.now() - STALENESS_MS;
-  const snap = await db.ref('rooms').once('value');
-
-  const removals = {};
   let total = 0;
   let stale = 0;
-
-  snap.forEach((child) => {
-    total += 1;
-    const room = child.val() || {};
-    const last = Number(room.updatedAt ?? room.createdAt ?? 0);
-    if (last < cutoff) {
-      removals[child.key] = null;
-      stale += 1;
+  for (const root of ['rooms', 'roomsV2']) {
+    const snap = await db.ref(root).once('value');
+    const candidates = [];
+    snap.forEach((child) => {
+      total += 1;
+      const room = root === 'roomsV2' ? child.val()?.data : child.val();
+      if (Number(room?.updatedAt ?? room?.createdAt ?? 0) < cutoff) candidates.push(child.key);
+    });
+    for (const id of candidates) {
+      const result = await db.ref(`${root}/${id}`).transaction((value) => {
+        if (!value) return undefined;
+        const room = root === 'roomsV2' ? value.data : value;
+        return Number(room?.updatedAt ?? room?.createdAt ?? 0) < cutoff ? null : undefined;
+      });
+      if (result.committed) stale += 1;
     }
-  });
-
-  if (stale > 0) {
-    await db.ref('rooms').update(removals);
   }
 
   console.log(

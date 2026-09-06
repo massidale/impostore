@@ -13,12 +13,7 @@ interface ScreenProps {
   children: ReactNode;
 }
 
-/**
- * Screen wrapper: applies the top/side safe-area insets but NOT the bottom
- * one. Bottom UI (sticky footers, host actions) anchors to the physical
- * bottom edge with its own small padding — the same reference the bottom
- * Sheet uses (`position: fixed; bottom: 0`), so screens and sheets align.
- */
+/** Keeps the app inside the current browser viewport, including safe areas. */
 export function Screen({ style, children }: ScreenProps) {
   if (Platform.OS !== 'web') {
     return <SafeAreaView style={style}>{children}</SafeAreaView>;
@@ -28,6 +23,10 @@ export function Screen({ style, children }: ScreenProps) {
 
 const styles = StyleSheet.create({
   web: {
+    minHeight: 0,
+    height: '100dvh' as unknown as number,
+    maxHeight: '100dvh' as unknown as number,
+    paddingBottom: 'env(safe-area-inset-bottom)' as unknown as number,
     // react-native-web passes CSS strings through (same trick as its own
     // SafeAreaView implementation).
     paddingTop: 'env(safe-area-inset-top)' as unknown as number,

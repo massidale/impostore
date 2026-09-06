@@ -15,18 +15,21 @@ const config = getDefaultConfig(__dirname);
 //
 // Both manifest as: "Component auth has not been registered yet".
 // Pinning the exact file per package ensures a single module instance.
+const firebaseRoot = path.dirname(require.resolve('firebase/package.json'));
+const authRoot = path.dirname(require.resolve('@firebase/auth/package.json', { paths: [firebaseRoot] }));
+const appRoot = path.dirname(require.resolve('@firebase/app/package.json', { paths: [firebaseRoot] }));
 const aliases = {
   ios: {
-    'firebase/auth': 'node_modules/@firebase/auth/dist/rn/index.js',
-    '@firebase/auth': 'node_modules/@firebase/auth/dist/rn/index.js',
-    'firebase/app': 'node_modules/@firebase/app/dist/index.cjs.js',
-    '@firebase/app': 'node_modules/@firebase/app/dist/index.cjs.js',
+    'firebase/auth': path.join(authRoot, 'dist/rn/index.js'),
+    '@firebase/auth': path.join(authRoot, 'dist/rn/index.js'),
+    'firebase/app': path.join(appRoot, 'dist/index.cjs.js'),
+    '@firebase/app': path.join(appRoot, 'dist/index.cjs.js'),
   },
   android: {
-    'firebase/auth': 'node_modules/@firebase/auth/dist/rn/index.js',
-    '@firebase/auth': 'node_modules/@firebase/auth/dist/rn/index.js',
-    'firebase/app': 'node_modules/@firebase/app/dist/index.cjs.js',
-    '@firebase/app': 'node_modules/@firebase/app/dist/index.cjs.js',
+    'firebase/auth': path.join(authRoot, 'dist/rn/index.js'),
+    '@firebase/auth': path.join(authRoot, 'dist/rn/index.js'),
+    'firebase/app': path.join(appRoot, 'dist/index.cjs.js'),
+    '@firebase/app': path.join(appRoot, 'dist/index.cjs.js'),
   },
 };
 

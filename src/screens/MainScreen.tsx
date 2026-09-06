@@ -6,6 +6,8 @@ import {
   View,
   Text,
   TouchableOpacity,
+  ScrollView,
+  useWindowDimensions,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
@@ -13,7 +15,6 @@ import { createRoom, fetchRoom } from '../core/services/roomService';
 import { sessionStore } from '../core/services/sessionStorage';
 import { useRoomData } from '../core/hooks/useRoomData';
 import { useAuthUser } from '../core/hooks/useAuthUser';
-import { useClientId } from '../core/hooks/useClientId';
 import { getGame, NO_GAME_ID } from '../core/gameRegistry';
 import { AppHeader, Screen, UserIcon, avatarColor, colors, fonts, fontSize, radius } from '../core/ui';
 import AccountSheet from '../core/components/AccountSheet';
@@ -33,12 +34,12 @@ import WebPlayerScreen from '../core/components/WebPlayerScreen';
  * 5. Room active → Game's HostDashboard + PlayerGamepad (via registry)
  */
 export default function MainScreen() {
+  const viewport = useWindowDimensions();
+  const landscapeGame = viewport.width >= 650 && viewport.height < 500;
   const authUser = useAuthUser();
   const uid = authUser.uid;
-  const clientId = useClientId();
-  // Registered accounts carry identity across devices via their auth UID;
-  // anonymous players fall back to the per-device clientId.
-  const identityId = authUser.isRegistered && uid ? uid : clientId;
+  // Every player is bound to Firebase Auth, including anonymous sessions.
+  const identityId = uid;
   const [roomId, setRoomId] = useState<string | null>(null);
   const [isWebPlayer, setIsWebPlayer] = useState(false);
   const { roomData, isFetched } = useRoomData(uid && identityId ? roomId : null);
@@ -78,7 +79,7 @@ export default function MainScreen() {
   // Host re-entry: a host who closed/lost the tab finds their room again.
   // Restores only if the room still exists and this identity is its host.
   useEffect(() => {
-    if (!identityId || roomId || isWebPlayer) return;
+    if (!uid || !identityId || roomId || isWebPlayer) return;
     if (Platform.OS === 'web') {
       // A ?room URL is the guest path — never hijack it.
       const params = new URLSearchParams(window.location.search);
@@ -101,7 +102,7 @@ export default function MainScreen() {
     };
     // Run once identity is ready.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [identityId]);
+  }, [identityId, uid]);
 
   // Detect web player mode from URL params
   useEffect(() => {
@@ -317,11 +318,16 @@ export default function MainScreen() {
         <Screen style={styles.safeArea}>
           <StatusBar style="light" />
           <AppHeader compact />
-          <View style={styles.gameLayout}>
+          <View style={[styles.gameLayout, landscapeGame && styles.gameLandscape]}>
             <View style={styles.gameContent}>
               <PlayerGamepad roomData={roomData} playerId={identityId} />
             </View>
-            <HostDashboard roomData={roomData} hostId={identityId} />
+            <ScrollView
+              style={landscapeGame ? styles.hostSidebar : styles.hostFooter}
+              contentContainerStyle={{flexGrow: 1}}
+            >
+              <HostDashboard roomData={roomData} hostId={identityId} />
+            </ScrollView>
           </View>
         </Screen>
       );
@@ -341,8 +347,11 @@ export default function MainScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  gameLayout: { flex: 1 },
-  gameContent: { flex: 1 },
+  gameLayout: { flex: 1, minHeight: 0, minWidth: 0 },
+  gameContent: { flex: 1, minHeight: 0, minWidth: 0 },
+  gameLandscape: {flexDirection: 'row'},
+  hostSidebar: {width: 230, flexGrow: 0, flexShrink: 0},
+  hostFooter: {flexGrow: 0, flexShrink: 0, maxHeight: '35%'},
   accountButton: {
     width: 36,
     height: 36,

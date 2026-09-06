@@ -4,8 +4,7 @@ import { SettingsPanelProps } from '../../../core/types/gamePlugin';
 import { NumberSelector, colors, fonts, spacing, fontSize } from '../../../core/ui';
 import { AiDictionaryCard } from '../../../core/components/AiDictionaryCard';
 import { generateWordsForTopic } from '../../../core/services/geminiService';
-import { setCustomWords, resetToDefaultWords } from '../services/wordService';
-import { resetImpostoreUsedWords } from '../services/impostoreLogic';
+import { setRoomDictionary } from '../../../core/services/roomCommand';
 
 export interface ImpostoreSettings {
   numImpostors: number;
@@ -25,18 +24,15 @@ export default function ImpostoreSettingsPanel({ settings, onSettingsChange, roo
   const handleGenerate = async (topic: string): Promise<string | null> => {
     const result = await generateWordsForTopic(topic);
     if (result.usedFallback) {
-      resetToDefaultWords();
-      if (roomId) await resetImpostoreUsedWords(roomId).catch(() => {});
+      if (roomId) await setRoomDictionary(roomId, 'impostore', null);
       return null;
     }
-    setCustomWords(result.words);
-    if (roomId) await resetImpostoreUsedWords(roomId).catch(() => {});
+    if (roomId) await setRoomDictionary(roomId, 'impostore', result.words);
     return `Generate ${Object.keys(result.words).length} parole sul tema "${topic}"`;
   };
 
   const handleReset = async () => {
-    resetToDefaultWords();
-    if (roomId) await resetImpostoreUsedWords(roomId).catch(() => {});
+    if (roomId) await setRoomDictionary(roomId, 'impostore', null);
   };
 
   return (

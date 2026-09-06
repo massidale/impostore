@@ -68,6 +68,8 @@ export interface LupusGameState {
   alive?: { [uid: string]: boolean };
 
   night?: LupusNightState | null;
+  /** Retained until the next night so the last actor can read their vision. */
+  seerVision?: { targetUid: string; role: LupusRole; round: number } | null;
   /** Epoch ms when the running night expires (missing actions abstain). */
   nightEndsAt?: number | null;
   /** Dawn announcement: who died last night (names only, no details). */

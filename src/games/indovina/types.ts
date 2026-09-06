@@ -5,6 +5,7 @@ export type IndovinaPhase = 'setup' | 'collecting' | 'playing' | 'results';
 export type WordSource = 'random' | 'players';
 
 export interface IndovinaPlayerState extends CorePlayer {
+  hasSubmittedWord?: boolean;
   word?: string;
   submittedWord?: string;
 }

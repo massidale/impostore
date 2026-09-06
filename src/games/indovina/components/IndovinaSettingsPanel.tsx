@@ -4,8 +4,7 @@ import { SettingsPanelProps } from '../../../core/types/gamePlugin';
 import { SegmentedControl, colors, fonts, radius, spacing, fontSize } from '../../../core/ui';
 import { AiDictionaryCard } from '../../../core/components/AiDictionaryCard';
 import { generateWordsList } from '../../../core/services/geminiService';
-import { setCustomWords, resetToDefaultWords } from '../services/indovinaWordService';
-import { resetIndovinaUsedWords } from '../services/indovinaLogic';
+import { setRoomDictionary } from '../../../core/services/roomCommand';
 import { IndovinaSettings, WordSource } from '../types';
 
 const AI_WORDS_COUNT = 30;
@@ -22,18 +21,15 @@ export default function IndovinaSettingsPanel({ settings, onSettingsChange, room
   const handleGenerate = async (topic: string): Promise<string | null> => {
     const result = await generateWordsList(topic, AI_WORDS_COUNT);
     if (result.usedFallback) {
-      resetToDefaultWords();
-      if (roomId) await resetIndovinaUsedWords(roomId).catch(() => {});
+      if (roomId) await setRoomDictionary(roomId, 'indovina', null);
       return null;
     }
-    setCustomWords(result.words);
-    if (roomId) await resetIndovinaUsedWords(roomId).catch(() => {});
+    if (roomId) await setRoomDictionary(roomId, 'indovina', result.words);
     return `Generate ${result.words.length} parole sul tema "${topic}"`;
   };
 
   const handleReset = async () => {
-    resetToDefaultWords();
-    if (roomId) await resetIndovinaUsedWords(roomId).catch(() => {});
+    if (roomId) await setRoomDictionary(roomId, 'indovina', null);
   };
 
   return (

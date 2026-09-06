@@ -1,3 +1,4 @@
+import { retryAction } from '../../../core/services/retryAction';
 import React, { useEffect, useRef } from 'react';
 import { HostDashboardProps } from '../../../core/types/gamePlugin';
 import {
@@ -24,20 +25,9 @@ export default function ImpostoreHostDashboard({ roomData }: HostDashboardProps)
   // late voters simply aren't counted (closeVotingByTimeout is idempotent).
   const isVoting = gameState.phase === 'voting';
   const remaining = useCountdown(isVoting ? gameState.votingEndsAt : null);
-  const closingRef = useRef(false);
   useEffect(() => {
-    if (!isVoting) {
-      closingRef.current = false;
-      return;
-    }
-    if (remaining === 0 && !closingRef.current) {
-      closingRef.current = true;
-      closeVotingByTimeout(roomId)
-        .catch(() => {})
-        .finally(() => {
-          closingRef.current = false;
-        });
-    }
+    if (!isVoting || remaining !== 0) return;
+    return retryAction(() => closeVotingByTimeout(roomId));
   }, [isVoting, remaining, roomId]);
 
   const handleStartVoting = async () => {

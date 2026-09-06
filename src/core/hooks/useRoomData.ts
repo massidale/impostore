@@ -9,6 +9,7 @@ export function useRoomData(roomId: string | null) {
   useEffect(() => {
     if (roomId) {
       setIsFetched(false);
+      setRoomData(null);
       const unsubscribe = subscribeToRoom(roomId, (room) => {
         setRoomData(room);
         setIsFetched(true);

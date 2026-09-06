@@ -48,3 +48,7 @@ yarn-error.*
 
 # Firebase deploy cache
 .firebase/
+
+functions/lib/
+functions/node_modules/
+*-debug.log

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { onIdTokenChanged, signInAnonymously, type User } from '@firebase/auth';
+import { onIdTokenChanged, signInAnonymously, type User } from 'firebase/auth';
 import { auth } from '../../../config/firebase';
 
 export interface AuthUser {

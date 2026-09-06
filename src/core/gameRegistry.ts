@@ -2,7 +2,6 @@ import { GamePlugin } from './types/gamePlugin';
 import ImpostorePlugin from '../games/impostore';
 import IndovinaPlugin from '../games/indovina';
 import TabooPlugin from '../games/taboo';
-import LupusPlugin from '../games/lupus';
 
 // ── Game Registry ──
 // Central map of all available games. To add a new game:
@@ -20,7 +19,6 @@ const registry: Record<string, GamePlugin> = {
   [ImpostorePlugin.id]: ImpostorePlugin,
   [IndovinaPlugin.id]: IndovinaPlugin,
   [TabooPlugin.id]: TabooPlugin,
-  [LupusPlugin.id]: LupusPlugin,
 };
 
 /**
@@ -28,7 +26,7 @@ const registry: Record<string, GamePlugin> = {
  * Throws if the game is not registered.
  */
 export function getGame(gameId: string): GamePlugin {
-  const plugin = registry[gameId];
+  const plugin = Object.hasOwn(registry, gameId) ? registry[gameId] : undefined;
   if (!plugin) {
     throw new Error(`Game "${gameId}" is not registered in the game registry.`);
   }

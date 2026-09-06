@@ -9,6 +9,7 @@ import {
   TextStyle,
   Platform,
 } from 'react-native';
+import { wrappingText } from './wrappingText';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, fonts, radius, spacing, fontSize } from './theme';
 
@@ -109,7 +110,7 @@ export function Button({
         colors={grad}
         style={[
           styles.base,
-          { paddingVertical: paddingFor[size], borderRadius: radiusFor[size] },
+          { paddingVertical: paddingFor[size], paddingHorizontal: size === 'sm' ? spacing.sm : spacing.lg, borderRadius: radiusFor[size] },
           isOutline && { borderWidth: 1, borderColor: outlineColor, backgroundColor: 'transparent' },
           disabled && isOutline && { opacity: 0.5 },
         ]}
@@ -129,14 +130,19 @@ export function Button({
 
 const styles = StyleSheet.create({
   wrapper: {
+    minWidth: 0,
     width: '100%',
     ...Platform.select({ web: { cursor: 'pointer' as any } }),
   },
   base: {
+    minHeight: 44,
+    justifyContent: 'center',
     paddingHorizontal: spacing.lg,
     alignItems: 'center',
   },
   text: {
+    ...wrappingText,
+    textAlign: 'center',
     color: colors.textPrimary,
     fontFamily: fonts.bodySemi,
   },

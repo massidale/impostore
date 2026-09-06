@@ -14,7 +14,7 @@ import {
 } from '../../../core/ui';
 import { AiDictionaryCard } from '../../../core/components/AiDictionaryCard';
 import { generateTabooCards } from '../../../core/services/geminiService';
-import { setCustomCards, resetToDefaultCards } from '../services/tabooCardService';
+import { setRoomDictionary } from '../../../core/services/roomCommand';
 import { TabooSettings, TeamId, TeamMode } from '../types';
 
 const AI_CARDS_COUNT = 20;
@@ -33,6 +33,7 @@ export default function TabooSettingsPanel({
   settings,
   onSettingsChange,
   roomData,
+  roomId,
 }: SettingsPanelProps) {
   const s = (settings || {}) as TabooSettings;
   const turnSeconds = s.turnSeconds ?? 60;
@@ -59,15 +60,15 @@ export default function TabooSettingsPanel({
   const handleGenerate = async (topic: string): Promise<string | null> => {
     const result = await generateTabooCards(topic, AI_CARDS_COUNT);
     if (result.usedFallback) {
-      resetToDefaultCards();
+      if (roomId) await setRoomDictionary(roomId, 'taboo', null);
       return null;
     }
-    setCustomCards(result.cards);
+    if (roomId) await setRoomDictionary(roomId, 'taboo', result.cards);
     return `Generate ${result.cards.length} carte sul tema "${topic}"`;
   };
 
   const handleReset = async () => {
-    resetToDefaultCards();
+    if (roomId) await setRoomDictionary(roomId, 'taboo', null);
   };
 
   const players = Object.entries(roomData?.players ?? {});

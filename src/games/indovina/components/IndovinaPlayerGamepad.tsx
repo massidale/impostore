@@ -1,25 +1,22 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { FitContent } from '../../../core/ui/FitContent';
+import { wrappingText } from '../../../core/ui/wrappingText';
+import { useGameViewport } from '../../../core/hooks/useGameViewport';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   Pressable,
-  Modal,
-  useWindowDimensions,
   Platform,
-  Alert,
 } from 'react-native';
 import { PlayerGamepadProps } from '../../../core/types/gamePlugin';
 import {
   Button,
-  EyeOffIcon,
-  GhostButton,
   Input,
-  MetaCorner,
+  MetaRow,
   SegmentedControl,
   StatusCard,
-  WarningIcon,
   avatarColor,
   avatarInitial,
   colors,
@@ -29,54 +26,25 @@ import {
   spacing,
 } from '../../../core/ui';
 import { capitalize } from '../../../core/utils/text';
-import { useKeepScreenAwake } from '../../../core/hooks/useKeepScreenAwake';
 import { IndovinaGameState, IndovinaPlayerState } from '../types';
 import { submitPlayerWord } from '../services/indovinaLogic';
 
-type ViewMode = 'others' | 'mine';
 type DisplayMode = 'blurred' | 'visible';
 
 const BLURRED_PLACEHOLDER = '██████';
 
 export default function IndovinaPlayerGamepad({ roomData, playerId }: PlayerGamepadProps) {
+  const {onLayout, compact} = useGameViewport();
   const gameState = roomData.gameState as IndovinaGameState;
   const playerState = roomData.players?.[playerId] as IndovinaPlayerState | undefined;
   const roomId = roomData.id;
 
-  const [viewMode, setViewMode] = useState<ViewMode>('others');
-  const [countdown, setCountdown] = useState<number | null>(null);
   const [revealedUid, setRevealedUid] = useState<string | null>(null);
   const [displayMode, setDisplayMode] = useState<DisplayMode>('blurred');
 
-  const { acquire: acquireKeepAwake, release: releaseKeepAwake } =
-    useKeepScreenAwake();
-
   useEffect(() => {
-    if (countdown === null) return;
-    if (countdown <= 0) {
-      setViewMode('mine');
-      setCountdown(null);
-      return;
-    }
-    const t = setTimeout(() => {
-      setCountdown((c) => (c === null ? null : c - 1));
-    }, 1000);
-    return () => clearTimeout(t);
-  }, [countdown]);
-
-  // When the host ends the round (or starts a new one), the local fullscreen
-  // states must be torn down so a guest who left their phone showing the
-  // previous word doesn't unlock straight onto the new one.
-  useEffect(() => {
-    if (gameState?.phase !== 'playing') {
-      setViewMode('others');
-      setCountdown(null);
-      releaseKeepAwake();
-      setDisplayMode('blurred');
-      setRevealedUid(null);
-    }
-    // releaseKeepAwake is stable (refs-only), no need to depend on it.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setDisplayMode('blurred');
+    setRevealedUid(null);
   }, [gameState?.phase]);
 
   if (!playerState) return null;
@@ -102,46 +70,7 @@ export default function IndovinaPlayerGamepad({ roomData, playerId }: PlayerGame
     );
   }
 
-  const myWord = playerState.word;
-
-  if (!myWord) {
-    return (
-      <View style={styles.centered}>
-        <StatusCard
-          title="Caricamento..."
-          message="Stiamo assegnando la tua parola."
-        />
-      </View>
-    );
-  }
-
-  if (viewMode === 'mine') {
-    return (
-      <MineView
-        word={myWord}
-        onBack={() => {
-          setViewMode('others');
-          releaseKeepAwake();
-          setDisplayMode('blurred');
-          setRevealedUid(null);
-        }}
-      />
-    );
-  }
-
-  if (countdown !== null) {
-    return (
-      <CountdownView
-        value={countdown}
-        onCancel={() => {
-          setCountdown(null);
-          releaseKeepAwake();
-        }}
-      />
-    );
-  }
-
-  const allPlayers = Object.entries(roomData.players || {});
+  const allPlayers = Object.entries(roomData.players || {}).filter(([, p]) => !p.waiting);
   const otherPlayers = allPlayers.filter(([uid]) => uid !== playerId);
   const playerCount = allPlayers.length;
   const firstPlayerId = gameState?.firstPlayerId ?? null;
@@ -153,48 +82,13 @@ export default function IndovinaPlayerGamepad({ roomData, playerId }: PlayerGame
     : null;
   const firstIsMe = firstPlayerEntry?.[0] === playerId;
 
-  const handleReveal = () => {
-    // Request the wake lock NOW, synchronously inside the tap's user-activation
-    // tick. Safari/iOS rejects the request if it happens later (e.g. from a
-    // useEffect triggered by a state update). If the user cancels the confirm
-    // we release it again immediately.
-    acquireKeepAwake();
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm(
-        'Mostrare la tua parola?\n\nLo schermo mostrerà la TUA parola in chiaro: tieni il telefono lontano dai tuoi occhi e mostrala agli altri.'
-      );
-      if (confirmed) {
-        setCountdown(3);
-      } else {
-        releaseKeepAwake();
-      }
-      return;
-    }
-    Alert.alert(
-      'Mostrare la tua parola?',
-      'Lo schermo mostrerà la TUA parola in chiaro: tieni il telefono lontano dai tuoi occhi e mostrala agli altri.',
-      [
-        { text: 'Annulla', style: 'cancel', onPress: releaseKeepAwake },
-        {
-          text: 'Rivela',
-          style: 'destructive',
-          onPress: () => setCountdown(3),
-        },
-      ]
-    );
-  };
 
   return (
-    <View style={styles.container}>
-      <MetaCorner position="top-left" label="Stanza" value={roomId} />
-      <MetaCorner position="top-right" label="Giocatori" value={String(playerCount)} />
+    <View onLayout={onLayout} style={[styles.container, compact && {padding: spacing.sm}]}>
+      <MetaRow roomId={roomId} players={playerCount} />
 
-      <ScrollView
-        style={styles.scrollFlex}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.card}>
+      <FitContent testID="indovina-cards">
+        <View style={[styles.card, compact && {padding: spacing.md}]}>
           <Text style={styles.title}>PAROLE DEGLI ALTRI</Text>
           <Text style={styles.subtitle}>
             {displayMode === 'blurred'
@@ -236,6 +130,7 @@ export default function IndovinaPlayerGamepad({ roomData, playerId }: PlayerGame
                     key={uid}
                     style={({ pressed }) => [
                       styles.row,
+                      compact && {paddingVertical: spacing.sm, paddingHorizontal: spacing.sm},
                       displayMode === 'blurred' && (pressed || revealedUid === uid) && styles.rowPressed,
                     ]}
                     {...pressableProps}
@@ -268,20 +163,9 @@ export default function IndovinaPlayerGamepad({ roomData, playerId }: PlayerGame
             {' è il primo giocatore'}
           </Text>
         )}
-      </ScrollView>
+      </FitContent>
 
-      <View style={styles.revealActions}>
-        <Button
-          onPress={handleReveal}
-          variant="warningMuted"
-          leftIcon={<WarningIcon size={16} color={colors.warning} />}
-        >
-          Rivela parola
-        </Button>
-        <Text style={styles.actionHint}>
-          Lo schermo mostrerà la TUA parola — non guardarlo.
-        </Text>
-      </View>
+
     </View>
   );
 }
@@ -297,10 +181,10 @@ function CollectingView({ roomData, playerId, playerState }: CollectingViewProps
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const players = Object.entries(roomData.players || {});
+  const players = Object.entries(roomData.players || {}).filter(([, p]) => !p.waiting);
   const totalPlayers = players.length;
   const submittedCount = players.filter(
-    ([, p]) => !!(p as IndovinaPlayerState).submittedWord
+    ([, p]) => !!(p as IndovinaPlayerState).hasSubmittedWord
   ).length;
 
   const hasSubmitted = !!playerState.submittedWord;
@@ -384,162 +268,10 @@ function CollectingView({ roomData, playerId, playerState }: CollectingViewProps
   );
 }
 
-function HideFooter({ onPress }: { onPress: () => void }) {
-  return (
-    <View style={styles.hideButtonContainer}>
-      <GhostButton onPress={onPress} icon={<EyeOffIcon size={18} color={colors.textPrimary} />}>
-        Nascondi
-      </GhostButton>
-      <Text style={styles.hideHint}>oppure doppio tap sullo schermo</Text>
-    </View>
-  );
-}
-
-function CountdownView({ value, onCancel }: { value: number; onCancel: () => void }) {
-  const display = value > 0 ? value : 1;
-  const lastTapRef = useRef(0);
-  const handleScreenTap = () => {
-    const now = Date.now();
-    if (now - lastTapRef.current < 400) {
-      lastTapRef.current = 0;
-      onCancel();
-      return;
-    }
-    lastTapRef.current = now;
-  };
-
-  return (
-    <Modal
-      visible
-      transparent={false}
-      animationType="fade"
-      onRequestClose={onCancel}
-      statusBarTranslucent
-    >
-      <View style={styles.mineContainer}>
-        <Pressable
-          style={[styles.mineCenterWrap, styles.tapTarget]}
-          onPress={handleScreenTap}
-        >
-          <Text style={styles.countdownHint}>Preparati a mostrare la parola...</Text>
-          <Text style={styles.countdownNumber} allowFontScaling={false}>
-            {display}
-          </Text>
-        </Pressable>
-
-        <HideFooter onPress={onCancel} />
-      </View>
-    </Modal>
-  );
-}
-
-function MineView({ word, onBack }: { word: string; onBack: () => void }) {
-  const { width, height } = useWindowDimensions();
-  const isPortrait = height > width;
-  const longSide = Math.max(width, height);
-  const shortSide = Math.min(width, height);
-
-  const lastTapRef = useRef(0);
-  const handleScreenTap = () => {
-    const now = Date.now();
-    if (now - lastTapRef.current < 400) {
-      lastTapRef.current = 0;
-      onBack();
-      return;
-    }
-    lastTapRef.current = now;
-  };
-
-  // The word is displayed along the LONG visible axis of the screen.
-  // - In portrait: rotated 90° so the long axis is vertical (top→bottom).
-  // - In landscape: no rotation, long axis is horizontal.
-  // Binary-search the largest font that still fits both axes after a greedy
-  // word-wrap — closed-form area estimates under-count the space "wasted" at
-  // the end of each wrapped line, which caused clipping on 3-line words.
-  const charDensity = 0.6;       // avg char width / fontSize
-  const lineHeightFactor = 1.3;  // text line-height / fontSize
-  const longAxisUsable = 0.92;   // % of long side
-  const shortAxisUsable = 0.6;   // % of short side (leaves room for button)
-
-  const wordsArr = word.split(/\s+/).filter(Boolean);
-  const longestWordLen = wordsArr.reduce((max, w) => Math.max(max, w.length), 1);
-  const maxLineWidth = longSide * longAxisUsable;
-  const maxBlockHeight = shortSide * shortAxisUsable;
-
-  const countLines = (fontSize: number): number => {
-    const charW = fontSize * charDensity;
-    let lines = 1;
-    let used = 0;
-    for (const w of wordsArr) {
-      const wWidth = w.length * charW;
-      const spaceWidth = used > 0 ? charW : 0;
-      if (used + spaceWidth + wWidth <= maxLineWidth) {
-        used += spaceWidth + wWidth;
-      } else {
-        lines++;
-        used = wWidth;
-      }
-    }
-    return lines;
-  };
-
-  const fits = (fontSize: number): boolean => {
-    const charW = fontSize * charDensity;
-    if (longestWordLen * charW > maxLineWidth) return false;
-    const lines = countLines(fontSize);
-    return lines * fontSize * lineHeightFactor <= maxBlockHeight;
-  };
-
-  let lo = 28;
-  let hi = 320;
-  let best = 28;
-  for (let i = 0; i < 28; i++) {
-    const mid = (lo + hi) / 2;
-    if (fits(mid)) {
-      best = mid;
-      lo = mid;
-    } else {
-      hi = mid;
-    }
-  }
-  const wordFontSize = best;
-
-  return (
-    <Modal
-      visible
-      transparent={false}
-      animationType="fade"
-      onRequestClose={onBack}
-      statusBarTranslucent
-    >
-      <View style={styles.mineContainer}>
-        <Pressable
-          style={[styles.mineCenterWrap, styles.tapTarget]}
-          onPress={handleScreenTap}
-        >
-          <Text
-            style={[
-              styles.mineWord,
-              {
-                fontSize: wordFontSize,
-                lineHeight: wordFontSize * lineHeightFactor,
-                transform: isPortrait ? [{ rotate: '90deg' }] : undefined,
-              },
-            ]}
-            allowFontScaling={false}
-          >
-            {capitalize(word)}
-          </Text>
-        </Pressable>
-
-        <HideFooter onPress={onBack} />
-      </View>
-    </Modal>
-  );
-}
-
 const styles = StyleSheet.create({
   container: {
+    minHeight: 0,
+    minWidth: 0,
     flex: 1,
     backgroundColor: colors.background,
     padding: spacing.lg,
@@ -554,7 +286,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingTop: spacing.xxl + spacing.md,
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingTop: spacing.md,
     paddingBottom: spacing.md,
   },
   card: {
@@ -655,7 +389,7 @@ const styles = StyleSheet.create({
       web: {
         whiteSpace: 'normal' as const,
         wordBreak: 'break-word' as const,
-        overflowWrap: 'break-word' as const,
+        overflowWrap: 'anywhere' as const,
       },
     }),
   },
@@ -669,7 +403,7 @@ const styles = StyleSheet.create({
       web: {
         whiteSpace: 'normal' as const,
         wordBreak: 'break-word' as const,
-        overflowWrap: 'break-word' as const,
+        overflowWrap: 'anywhere' as const,
       },
     }),
   },
@@ -769,6 +503,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   submittedValue: {
+    ...wrappingText,
+    width: '100%',
     color: colors.textPrimary,
     fontFamily: fonts.displayHeavy,
     fontSize: fontSize.xl + 6,

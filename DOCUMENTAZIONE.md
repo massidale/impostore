@@ -82,7 +82,7 @@ Tutti conoscono la parola segreta tranne l'impostore (che riceve al massimo un i
 ### Indovina la parola (min 2)
 Ogni giocatore riceve una parola visibile solo agli altri (dal dizionario, dall'AI o scritte dai giocatori e distribuite con permutazione senza punti fissi). A turno si fanno domande sì/no per scoprire la propria.
 
-### Lupus (min 4)
+### Lupus (disabilitato, codice conservato)
 Ruoli segreti: Lupi, Veggente, Guardia, Villici (ruoli e stato vita vivono in `gameState`, non sui player — la whitelist delle regole RTDB ammette solo i campi di Impostore). Alternanza notte/giorno: di notte ogni ruolo agisce dal telefono (lupi scelgono la vittima, veggente scruta, guardia protegge — risoluzione automatica quando tutte le azioni sono inviate); di giorno annuncio dell'alba, discussione e votazione con timer avviata dall'host (pareggio = nessun eliminato). Vince il villaggio eliminando i lupi, i lupi alla parità. Logica pura in `lupusPure.ts`.
 
 ### Taboo (min 4)
@@ -94,32 +94,38 @@ Logica pura testabile in `src/games/taboo/services/tabooPure.ts` (squadre, rotaz
 
 ---
 
-## Schema Database Firebase
+## Schema Database Firebase e autorità
 
-```
-/rooms/{roomId}/
-├── id: string                 # codice stanza (6 char A-Z0-9)
-├── status: 'lobby' | 'active'
-├── hostId: string             # Firebase Auth UID dell'host
-├── createdAt / updatedAt      # updatedAt usato dal job di cleanup
-├── currentGameId: string      # 'impostore' | 'indovina' | 'taboo'
-├── players/{clientId}/        # identity stabile per device (non auth uid)
-│   ├── joinedAt, name, isHost
-│   ├── waiting?               # entrato a partita in corso
-│   └── …campi specifici del gioco (role, word, …)
-├── gameState/                 # payload polimorfo del gioco corrente
-└── gameData/{gameId}/         # dati che sopravvivono alla singola partita
-                               # (es. taboo/usedWords: parole già uscite nella stanza)
-```
+Le stanze correnti usano `roomsV2/{roomId}`:
 
-Ogni mutazione passa da `touchRoom()` che aggiorna `updatedAt` (cleanup stanze stantie via GitHub Action `cleanup.yml`).
+- `data`: stato autorevole, accessibile soltanto al backend.
+- `preview`: codice, stato generale e partecipanti, leggibili per entrare.
+- `views/{authUid}`: vista privata leggibile soltanto da quel giocatore.
+
+La callable `gameCommand` (`functions/index.ts`, regione `europe-west1`)
+verifica Firebase Auth e i permessi dell'azione. Il motore `server/engine.ts`
+esegue le regole in una transazione RTDB che aggiorna insieme stato e viste.
+Il client non può scrivere direttamente nelle stanze. I comandi riportano
+partita, fase e versione della carta per respingere azioni obsolete.
+
+Le impostazioni sono in `data/settings`; i dizionari personalizzati e lo
+storico delle carte appartengono a `data/gameData`. Il client riceve soltanto
+le informazioni necessarie alla propria vista, senza mazzi futuri o storico
+che permetta di ricavare parole segrete.
 
 ## Identità e autenticazione
 
-- Di default l'app usa **auth anonima** Firebase (per le regole RTDB) + un **clientId** per-device in localStorage come identità del giocatore.
-- **Account opzionale** (Google o email+password con email di conferma, vedi `authService.ts` / `AccountSheet`): quando presente, l'identità del giocatore è lo **UID dell'account** (stabile tra dispositivi) e il nickname è il display name.
-- **Rientro host**: la stanza creata è salvata in `lastHostedRoom`; al riavvio, se la stanza esiste ancora e l'identità risulta host, si rientra automaticamente.
-- Hook di test (solo web): `?cid=` isola l'identità per tab, `?name=` precompila il nome e fa entrare in stanza (usati da `scripts/dev-multi.sh`).
+Ogni giocatore è identificato dal proprio Firebase Auth UID, anche con
+accesso anonimo. L'identità non viene accettata dai parametri della richiesta.
+L'account email è opzionale. Il rientro host verifica lo UID autenticato e
+ripristina le impostazioni della stanza. In sviluppo `?cid=` isola anche
+l'istanza Auth per simulare più partecipanti nello stesso browser.
+
+Lupus non è registrato nel catalogo né accettato dal backend; i suoi file
+restano disponibili per sviluppo futuro. In Indovina la propria parola non
+viene inviata al proprio dispositivo: la leggono gli altri partecipanti.
+
+Per la migrazione dalle vecchie stanze e l'ordine di deploy vedere `DEPLOY.md`.
 
 ---
 

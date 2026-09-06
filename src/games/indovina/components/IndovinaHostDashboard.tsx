@@ -22,7 +22,7 @@ export default function IndovinaHostDashboard({ roomData }: HostDashboardProps) 
 
   const isCollecting = gameState?.phase === 'collecting';
   const submittedCount = isCollecting
-    ? activeEntries.filter(([, p]) => !!(p as IndovinaPlayerState).submittedWord).length
+    ? activeEntries.filter(([, p]) => !!(p as IndovinaPlayerState).hasSubmittedWord).length
     : 0;
 
   const waitingUids = getWaitingPlayerUids(roomData);

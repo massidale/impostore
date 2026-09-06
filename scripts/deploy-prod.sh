@@ -40,14 +40,15 @@ echo "[prod] Build web bundle"
 ./scripts/build-web.sh
 
 echo
-read -r -p "[prod] Confermi il DEPLOY in PRODUZIONE su Firebase (hosting + database rules)? [y/N] " confirm
+read -r -p "[prod] Confermi il DEPLOY in PRODUZIONE su Firebase (backend + hosting + database rules)? [y/N] " confirm
 [[ "${confirm:-}" =~ ^[Yy]$ ]] || { echo "[prod] Abortito."; exit 1; }
 
 echo "[prod] git push origin $CURRENT_BRANCH"
 git push origin "$CURRENT_BRANCH"
 
-echo "[prod] firebase deploy --only hosting,database"
-firebase deploy --only hosting,database
+echo "[prod] Deploy backend, then database rules and hosting"
+firebase deploy --only functions
+firebase deploy --only database,hosting
 
 echo
 echo "[prod] Done."

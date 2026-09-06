@@ -250,6 +250,17 @@ export default function WebPlayerScreen({
   // 3. Active game
   if (roomData.status === 'active') {
     const myRecord = roomData.players?.[clientId] as CorePlayer | undefined;
+    // A join/removal can deliver the public preview before the private view.
+    // Effects run after render, so do not mount a gamepad with missing state.
+    if (!myRecord || !roomData.gameState) {
+      return (
+        <View style={styles.activeContainer}>
+          <Card style={styles.card}>
+            <Text style={styles.waitingTitle}>Aggiornamento stanza…</Text>
+          </Card>
+        </View>
+      );
+    }
     if (myRecord?.waiting) {
       return (
         <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
@@ -312,6 +323,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   activeContainer: {
+    minHeight: 0,
+    minWidth: 0,
     flex: 1,
     backgroundColor: colors.background,
   },

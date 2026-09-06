@@ -1,3 +1,6 @@
+import { FitContent } from '../../../core/ui/FitContent';
+import { wrappingText } from '../../../core/ui/wrappingText';
+import { useGameViewport } from '../../../core/hooks/useGameViewport';
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput } from 'react-native';
 import Svg, { Path, Circle, Ellipse } from 'react-native-svg';
@@ -9,7 +12,7 @@ import {
   EyeOffIcon,
   GhostButton,
   InlineConfirm,
-  MetaCorner,
+  MetaRow,
   PhaseCard,
   PlayerSlot,
   ProgressCounter,
@@ -154,6 +157,15 @@ function RoleIcon({ role, size }: { role: PlayerRole; size?: number }) {
   );
 }
 
+function FittedGameScreen({children}: {children: React.ReactNode}) {
+  const {onLayout, compact} = useGameViewport();
+  return (
+    <View onLayout={onLayout} style={[styles.container, compact && {padding: spacing.sm}]}>
+      <FitContent>{children}</FitContent>
+    </View>
+  );
+}
+
 export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGamepadProps) {
   const gameState = roomData.gameState as ImpostoreGameState;
   const roomId = roomData.id;
@@ -221,22 +233,21 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
 
     if (playerState.eliminated) {
       return (
-        <View style={styles.container}>
+        <FittedGameScreen>
           <StatusCard
             tone="muted"
             title="Sei stato eliminato"
             message="La partita continua per gli altri giocatori. Resta in attesa del risultato finale."
           />
-        </View>
+        </FittedGameScreen>
       );
     }
 
     return (
-      <View style={styles.container}>
+      <FittedGameScreen>
         {!showRole ? (
           <>
-            <MetaCorner position="top-left" label="Stanza" value={roomId} />
-            <MetaCorner position="top-right" label="Giocatori" value={String(playerCount)} />
+            <MetaRow roomId={roomId} players={playerCount} />
 
             <View style={styles.card}>
               <View style={styles.cardInner}>
@@ -270,11 +281,7 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
               </Text>
             ) : null}
 
-            <MetaCorner
-              position="bottom-right"
-              label="Pronti"
-              value={`${readyCount}/${playerCount}`}
-            />
+            <ProgressCounter completed={readyCount} total={playerCount} suffix="pronti" style={{marginTop: spacing.sm}} />
           </>
         ) : (
           <>
@@ -353,7 +360,7 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
             </View>
           </>
         )}
-      </View>
+      </FittedGameScreen>
     );
   }
 
@@ -361,13 +368,13 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
   if (gameState.phase === 'voting') {
     if (playerState.eliminated) {
       return (
-        <View style={styles.container}>
+        <FittedGameScreen>
           <StatusCard
             tone="muted"
             title="Sei stato eliminato"
             message="Non puoi votare. Attendi il risultato della votazione."
           />
-        </View>
+        </FittedGameScreen>
       );
     }
 
@@ -483,7 +490,7 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
     const isEliminatedMe = eliminatedUid === playerId;
 
     return (
-      <View style={styles.container}>
+      <FittedGameScreen>
         <StatusCard
           title={isEliminatedMe ? 'Sei stato eliminato.' : `${eliminatedName} eliminato.`}
           tone="neutral"
@@ -517,7 +524,7 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
             </Text>
           )}
         </StatusCard>
-      </View>
+      </FittedGameScreen>
     );
   }
 
@@ -552,7 +559,7 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
       : [];
 
     return (
-      <View style={styles.container}>
+      <FittedGameScreen>
         <View
           style={[
             styles.card,
@@ -592,7 +599,7 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
             />
           </View>
         </View>
-      </View>
+      </FittedGameScreen>
     );
   }
 
@@ -601,6 +608,8 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
 
 const styles = StyleSheet.create({
   container: {
+    minHeight: 0,
+    minWidth: 0,
     backgroundColor: colors.background,
     padding: spacing.lg,
     flex: 1,
@@ -682,6 +691,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   roleText: {
+    ...wrappingText,
+    width: '100%',
     fontFamily: fonts.displayHeavy,
     fontSize: fontSize.xxl,
     marginBottom: spacing.lg,
@@ -717,6 +728,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
   },
   votingScroll: {
+    flex: 0,
     flexGrow: 1,
   },
   voteList: {
