@@ -1,90 +1,86 @@
-# Deploy
+# Deploy su Firebase Spark
 
-Questa versione implementa nove giochi nel catalogo: Impostore, Indovina la parola, Taboo, Che domanda?, Wavelength, Just One, Herd Mentality, Top Ten e Time’s Up. Lupus resta disabilitato. Le modifiche descritte sono nel repository: questo documento non attesta un deploy eseguito.
+L'app usa il piano gratuito **Spark**: Firebase Hosting, Auth e Realtime Database.
+Non richiede Cloud Functions né l'attivazione di Blaze. Tutti i nove giochi usano
+lo stesso motore sul client e sincronizzano le azioni con transazioni RTDB.
 
-La pubblicazione richiede backend, regole database e client aggiornati insieme.
+## Staging
 
-1. `npm ci` e `npm ci --prefix functions`.
-2. `npm run typecheck`, `npm test`, `npm run test:integration` (Java 21).
-3. `npm run build:web`.
-4. `firebase deploy --only functions`.
-5. Dopo il successo del backend: `firebase deploy --only database,hosting`.
+```sh
+npm run deploy:staging
+```
 
-`npm run deploy:prod` esegue build, controlli, push e deploy con conferma.
-Il backend callable `gameCommand` è in `europe-west1`. Le regole negano tutte
-le scritture client sulle stanze: non pubblicare soltanto il nuovo client senza
-aver distribuito il backend.
+Lo script controlla TypeScript e test, compila il bundle e pubblica soltanto il
+canale Hosting `staging`. Poi apre le finestre per il collaudo manuale.
+Il canale usa il database condiviso della produzione; **le regole non vengono
+modificate**. Il sito live rimane invariato.
 
-## Dati e compatibilità
+Anteprima: https://gameshub-6b1ce--staging-5behpio3.web.app
 
-Le nuove stanze risiedono in `roomsV2/{id}`: `data` è una stringa JSON privata,
-accessibile solo al backend. `server/roomCodec.ts` serializza lo stato per conservare
-array e oggetti vuoti che RTDB eliminerebbe; accetta in lettura anche il precedente
-formato a oggetto. La successiva scrittura salva lo stato nel nuovo formato.
-`preview` e `views/{authUid}` restano oggetti RTDB: la preview contiene le informazioni
-di ingresso, ogni vista è leggibile soltanto dal relativo utente autenticato.
-Stato, preview e viste vengono aggiornati nella stessa transazione. Impostazioni e
-contenuti personalizzati rimangono proprietà dello stato della stanza, dentro il JSON;
-non sono percorsi RTDB interrogabili sotto `data`.
+Per una pubblicazione non interattiva, dopo i controlli:
 
-Un eventuale rollback del backend deve conservare il decoder dei due formati:
-le versioni precedenti al codec non leggono le stanze già salvate come stringhe.
-Il codec rifiuta stati privati superiori a 9 MB prima della scrittura.
+```sh
+npm run build:web
+firebase hosting:channel:deploy staging --expires 7d --project gameshub-6b1ce
+```
 
-I sei nuovi giochi sono registrati in `server/gameModules.ts`. I comandi
-`<gameId>.<azione>` passano per `server/gameDispatch.ts`, con controlli di ruolo,
-partecipazione e generazione (`matchId`, `phase`, `roundId`, `phaseVersion`);
-Time’s Up verifica anche `actionVersion` per le azioni sulle carte. I partecipanti
-sono congelati all’avvio: chi entra dopo osserva fino alla prossima partita.
+Le build pubbliche non caricano `.env`, azzerano la chiave Gemini e svuotano la
+cache Metro. La generazione AI non è attiva nel bundle pubblico; sono disponibili
+i contenuti predefiniti e quelli personalizzati. Il codice di sviluppo Gemini
+rimane nel repository.
 
-Le vecchie stanze sotto `rooms` diventano inaccessibili al cambio delle regole:
-è necessario crearne di nuove. Non viene migrata automaticamente l'identità
-`clientId`, che non provava la titolarità del giocatore. La nuova identità è
-sempre Firebase Auth UID, anche per utenti anonimi. Il job di pulizia gestisce
-entrambi gli schemi e ricontrolla l'attività in transazione prima di eliminare.
+## Produzione
 
-Lupus resta nel sorgente ma è escluso dal registro e dalle azioni del backend.
-In Indovina la propria parola non viene inviata al dispositivo: gli altri
-partecipanti la leggono dai loro telefoni. La modalità di visualizzazione della
-propria parola sul proprio telefono è stata rimossa per conservarne la segretezza.
+`npm run deploy:prod` richiede una copia di lavoro pulita, esegue controlli/build,
+chiede la conferma per il sito live, fa push e distribuisce **solo Hosting**.
+Non distribuisce Functions o regole database. Il deploy live non fa parte della
+richiesta corrente di staging.
 
-## Verifica locale
+## Stanze e compatibilità con le regole esistenti
 
-`npm run test:integration` compila il backend ed esegue `tests/integration/*.test.mjs`
-esclusivamente nel progetto emulator `demo-gameshub`. La suite include i sei nuovi
-giochi e le verifiche delle viste private, dei comandi e della persistenza.
-Per aprire l'app contro emulatori avviati localmente, impostare
-`EXPO_PUBLIC_FIREBASE_EMULATOR_HOST=127.0.0.1`. Per testare più giocatori nello
-stesso browser in sviluppo, usare `?cid=p1`, `?cid=p2`: anche Auth è isolata per
-istanza. Per telefoni reali, usare l'IP LAN del computer invece di localhost.
+Le stanze Spark sono salvate sotto `rooms/{codice}`. La radice contiene soltanto
+campi già consentiti dalle regole pubblicate. `gameData.spark.state` conserva lo
+stato completo come JSON, incluse raccolte vuote, impostazioni e versioni delle
+azioni; `gameData.spark.version` e `gameState.protocol` identificano il formato.
+La UI ricava da questo stato la vista del proprio giocatore.
 
-I canali Hosting di anteprima condividono il backend del progetto: lo script
-`deploy:staging` pubblica solo Hosting, quindi richiede già il backend compatibile.
-La build di staging disabilita il caricamento dei file `.env`, azzera la chiave
-Gemini e svuota la cache Metro: le credenziali locali non devono entrare nel bundle
-pubblico. La generazione AI non è disponibile nell'anteprima; restano utilizzabili
-i contenuti predefiniti e personalizzati quando il backend è attivo.
+Le transazioni eseguono il motore condiviso e impediscono aggiornamenti persi o
+punti duplicati. Non mostriamo aggiornamenti ottimistici prima della conferma.
+Host, ruoli e fasi sono controllati dall'app: è una modalità per partite tra amici,
+non un sistema antimanomissione. Tutto lo stato è leggibile dai client autorizzati
+secondo le regole già pubblicate.
 
-Verifica del 6 settembre 2026: nel progetto `gameshub-6b1ce` l'API Cloud Functions
-risulta disabilitata. Un deploy Hosting da solo pubblica l'interfaccia, ma non rende
-giocabile questa versione. Per un collaudo isolato occorre un progetto Firebase di
-staging con Functions, Auth e RTDB; modificare le regole del progetto condiviso
-incide anche sul client live precedente.
+Le stanze create dal client live precedente non vengono convertite o sovrascritte:
+si usa il link della stessa versione dell'host oppure si crea una stanza nuova.
+Lupus resta nel codice ma non è selezionabile.
 
-### Staging sul backend condiviso senza modificare le regole
+## Verifiche locali
 
-La richiesta successiva autorizza il backend condiviso e vieta modifiche alle regole.
-`deploy:staging` compila quindi con `EXPO_PUBLIC_ROOM_TRANSPORT=callable`:
-le letture usano `gameCommand/getRoom`, che restituisce solo la proiezione dell'UID
-autenticato o la preview pubblica per chi non partecipa. Nessun dato autorevole
-viene reso leggibile direttamente nel database. Il client aggiorna la vista ogni
-1,5 secondi e subito dopo i propri comandi; gli errori mantengono la stanza e
-attivano tentativi distanziati fino a 15 secondi. La modalità RTDB resta quella
-predefinita per le build senza questa variabile.
+```sh
+npm ci
+npm run typecheck
+npm test
+npm run test:integration  # Java 21, Auth + RTDB, nessuna Function
+npm run build:web
+```
 
-Il tentativo di deploy delle sole Functions del 6 settembre 2026 è stato bloccato
-dal requisito **Blaze** del progetto. Le regole pubblicate sono state rilette e
-confrontate: nessuna modifica. Per completare lo staging occorre attivare Blaze,
-poi distribuire esclusivamente `functions:gameCommand`; non usare `--only database`.
-La compatibilità è stata verificata negli emulatori con una copia delle regole
-pubblicate, incluse le letture dirette di `roomsV2` negate ai client.
+`firebase.spark-test.json` usa una copia delle regole di produzione in
+`tests/fixtures/spark.rules.json`, solo negli emulatori del progetto `demo-gameshub`.
+La suite usa lo stesso SDK e trasporto dell'app, con utenti Auth distinti,
+partite complete di tutti i giochi, concorrenza, rientro, realtime e chiusura.
+I test chiudono il processo al completamento per i timer residui dell'SDK Firebase.
+
+Per avviare gli emulatori senza eseguire i test:
+
+```sh
+firebase emulators:start --config firebase.spark-test.json --only auth,database --project demo-gameshub
+```
+
+Impostare `EXPO_PUBLIC_FIREBASE_EMULATOR_HOST=127.0.0.1` quando si avvia Expo
+contro gli emulatori; per un telefono usare l'IP LAN. `?cid=p1` / `?cid=p2` separano
+le identità web in sviluppo; in staging usare browser/profili distinti.
+
+La cartella storica `server/` contiene i motori puri ora importati dai client.
+`functions/` conserva l'implementazione server opzionale della fase precedente;
+non è usata dall'app Spark. `npm run test:integration:server` resta disponibile
+per collaudare quella variante, installandone prima le dipendenze.

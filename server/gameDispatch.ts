@@ -1,3 +1,4 @@
+import {cloneState} from '../src/core/utils/cloneState';
 import type { Room } from "./runtime";
 import { check, hostOnly, type GameModule } from "./gameModule";
 
@@ -25,7 +26,7 @@ export function dispatchModule(
   now: number,
   game: GameModule,
 ): Room {
-  let room = structuredClone(input);
+  let room = cloneState(input);
   check(room.players?.[actor], "Non fai parte della stanza");
   if (["init", "setContent", "start", "end", "cancelRound"].includes(action))
     hostOnly(room, actor);

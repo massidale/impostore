@@ -1,3 +1,4 @@
+import {cloneState} from '../src/core/utils/cloneState';
 import {getGameModule} from './gameModules';
 import {dispatchModule} from './gameDispatch';
 import { RoomStore, type Room } from './runtime';
@@ -61,8 +62,8 @@ function cleanDictionary(game: string, data: any): any {
 /** Pure synchronous transition. The caller commits it with an RTDB transaction. */
 export function applyCommand(input: Room, actor: string, request: Command, now: number): Room {
   check(input && actor && request && typeof request.method === 'string','Richiesta non valida');
-  const room: Room = structuredClone(input);
-  const {method} = request;const args:any[] = structuredClone(request.args ?? []);check(Array.isArray(args) && args.length<=6,'Argomenti non validi');
+  const room: Room = cloneState(input);
+  const {method} = request;const args:any[] = cloneState(request.args ?? []);check(Array.isArray(args) && args.length<=6,'Argomenti non validi');
   if (method === 'join') {
     if (room.players?.[actor]) return room;
     const name=text(args[0],30);const players=Object.values(room.players ?? {});
@@ -150,7 +151,7 @@ export function previewRoom(room: Room): Room {
 export function projectRoom(room: Room, actor: string): Room {
   const module=getGameModule(room.currentGameId);
   if(module)return module.project(room,actor);
-  const view=structuredClone(room);delete view.gameData;
+  const view=cloneState(room);delete view.gameData;
   const gs=view.gameState; const me=room.players?.[actor];
   for(const [id,p] of Object.entries(view.players ?? {})) {
     if(room.currentGameId==='impostore' && id!==actor && gs?.phase!=='results') delete p.role;

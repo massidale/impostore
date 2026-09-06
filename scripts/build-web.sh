@@ -8,7 +8,10 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 echo "[build] Expo export (web)"
-npx expo export --platform web "$@"
+# Never publish local AI credentials or reuse a bundle that embedded them.
+export EXPO_NO_DOTENV=1
+export EXPO_PUBLIC_GEMINI_API_KEY=''
+npx expo export --platform web --clear "$@"
 
 echo "[build] PWA icons"
 sips -z 512 512 assets/icon-square.png --out dist/icon-512-v2.png > /dev/null

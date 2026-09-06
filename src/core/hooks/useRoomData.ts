@@ -16,7 +16,7 @@ export function useRoomData(roomId: string | null) {
         setError(null);
         setRoomData(room);
         setIsFetched(true);
-      }, () => setError('Connessione alla stanza non disponibile. Riprovo automaticamente…'));
+      }, error => setError(error instanceof Error ? error.message : 'Connessione alla stanza non disponibile.'));
       return unsubscribe;
     } else {
       setRoomData(null);

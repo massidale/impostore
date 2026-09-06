@@ -1,3 +1,4 @@
+import {cloneState} from '../src/core/utils/cloneState';
 import type { Room } from "./runtime";
 
 export interface GameModule {
@@ -78,7 +79,7 @@ export function publicRoom(room: Room, state: Record<string, unknown>): Room {
     createdAt: room.createdAt,
     updatedAt: room.updatedAt,
     matchId: room.matchId ?? 0,
-    settings: structuredClone(room.settings),
+    settings: cloneState(room.settings),
     players: Object.fromEntries(
       Object.entries(room.players ?? {}).map(([uid, p]) => [
         uid,
@@ -95,7 +96,7 @@ export function publicRoom(room: Room, state: Record<string, unknown>): Room {
       roundId: room.gameState?.roundId ?? 0,
       phaseVersion: room.gameState?.phaseVersion ?? 0,
       participantUids: participants(room),
-      ...structuredClone(state),
+      ...cloneState(state),
     },
   };
 }

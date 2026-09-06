@@ -1,5 +1,9 @@
 # Sei nuovi party game — registro di implementazione
 
+> Aggiornamento 7 settembre 2026: questo documento descrive la prima implementazione.
+> La versione attuale usa Spark e logica client, secondo la decisione successiva
+> dell’utente. Vedi [migrazione Spark](spark-migration.md).
+
 Piano: [nuovi giochi](../superpowers/plans/2026-09-06-new-games.md).
 Base pubblicata: `28df368`. Ramo: `codex/six-party-games`.
 

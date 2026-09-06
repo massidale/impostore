@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 const project = "demo-gameshub";
 async function newUser() {
+  if (process.env.ROOM_TRANSPORT === 'spark') return (await import('../helpers/sparkClient.mjs')).newSparkUser();
   const response = await fetch(
     "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=fake",
     {
@@ -15,6 +16,7 @@ async function newUser() {
   return { uid: u.localId, token: u.idToken };
 }
 async function call(user, id, method, payload, expected) {
+  if (process.env.ROOM_TRANSPORT === 'spark') return user.transport.command(id,{method,args:payload===undefined?[]:[payload],...(expected?{expected}:{})});
   const response = await fetch(
     `http://127.0.0.1:5001/${project}/europe-west1/gameCommand`,
     {
@@ -39,6 +41,7 @@ async function call(user, id, method, payload, expected) {
   return body.result;
 }
 async function view(user, id) {
+  if (process.env.ROOM_TRANSPORT === 'spark') return user.transport.read(id);
   if (process.env.ROOM_TRANSPORT === 'callable') return (await call(user, id, 'getRoom')).room;
   const response = await fetch(
     `http://127.0.0.1:9000/roomsV2/${id}/views/${user.uid}.json?ns=${project}-default-rtdb&auth=${user.token}`,

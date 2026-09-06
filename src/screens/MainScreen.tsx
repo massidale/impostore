@@ -16,7 +16,7 @@ import { sessionStore } from '../core/services/sessionStorage';
 import { useRoomData } from '../core/hooks/useRoomData';
 import { useAuthUser } from '../core/hooks/useAuthUser';
 import { getGame, NO_GAME_ID } from '../core/gameRegistry';
-import { AppHeader, Screen, UserIcon, avatarColor, colors, fonts, fontSize, radius } from '../core/ui';
+import { AppHeader, Button, Screen, UserIcon, avatarColor, colors, fonts, fontSize, radius } from '../core/ui';
 import AccountSheet from '../core/components/AccountSheet';
 
 import LandingScreen from '../core/components/LandingScreen';
@@ -230,6 +230,7 @@ export default function MainScreen() {
     return <Screen style={styles.safeArea}><StatusBar style="light"/><AppHeader compact/>
       <View style={styles.centered}><ActivityIndicator size="large" color={colors.primary}/>
         <Text style={{color: colors.textPrimary, textAlign: 'center', padding: 24}}>{roomReadError}</Text>
+        <Button onPress={async () => {await sessionStore.clearLastHostedRoom().catch(() => {});handleLeftRoom();}}>Torna all’inizio</Button>
       </View>
     </Screen>;
   }

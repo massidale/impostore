@@ -20,6 +20,7 @@ export function loadServer(file: string): any {
   }).outputText;
   vm.runInThisContext("(function(require,module,exports){" + code + "\n})")(
     (id: string) => {
+      if (!id.startsWith('.') && !path.isAbsolute(id)) return require(id);
       let f = path.resolve(path.dirname(file), id);
       if (!path.extname(f)) f += ".ts";
       return loadServer(f);

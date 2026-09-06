@@ -1,3 +1,4 @@
+import {cloneState} from '../src/core/utils/cloneState';
 import impostoreWords from '../src/games/impostore/data/words.json';
 import indovinaWords from '../src/games/indovina/data/words.json';
 import tabooCards from '../src/games/taboo/data/cards.json';
@@ -9,7 +10,7 @@ export class RoomStore {
   read(path: string) {
     const keys = this.keys(path);
     const value = keys.reduce((v: any, k) => v?.[k], this.room);
-    return { exists: () => value != null, val: () => structuredClone(value) };
+    return { exists: () => value != null, val: () => cloneState(value) };
   }
   update(_roomId: string, updates: Record<string, unknown>): void {
     for (const [path, value] of Object.entries(updates)) {
@@ -17,7 +18,7 @@ export class RoomStore {
       let target: any = this.room;
       for (const key of keys.slice(0, -1)) target = target[key] ??= {};
       if (value === null) delete target[keys.at(-1)!];
-      else target[keys.at(-1)!] = structuredClone(value);
+      else target[keys.at(-1)!] = cloneState(value);
     }
     this.room.updatedAt = this.now;
   }

@@ -1,3 +1,4 @@
+import {cloneState} from '../../src/core/utils/cloneState';
 import type { Room } from "../runtime";
 import {
   type GameModule,
@@ -148,7 +149,7 @@ export const herdMentalityModule: GameModule = {
           ids.every((id) => s.groups.some((g: any) => g.id === id)),
           "Gruppo non valido",
         );
-        p.mergeHistory.push(structuredClone(s.groups));
+        p.mergeHistory.push(cloneState(s.groups));
         const selected = s.groups.filter((g: any) => ids.includes(g.id));
         const merged = {
           id: selected[0].id,

@@ -1,0 +1,77 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "nicknames": {
+      "$nick": {
+        ".read": "auth != null",
+        ".write": "auth != null && (!data.exists() || data.child('uid').val() === auth.uid) && newData.child('uid').val() === auth.uid",
+        ".validate": "newData.hasChildren(['uid', 'email'])",
+
+        "uid":   { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128" },
+        "email": { ".validate": "newData.isString() && newData.val().length <= 254" },
+
+        "$other": { ".validate": false }
+      }
+    },
+
+    "rooms": {
+      "$roomId": {
+        ".read":  "auth != null && $roomId.matches(/^[A-Z0-9]{6}$/)",
+
+        ".write": "auth != null && $roomId.matches(/^[A-Z0-9]{6}$/) && (newData.exists() || auth.uid === data.child('hostId').val())",
+
+        ".validate": "!newData.exists() || newData.hasChildren(['id', 'status', 'hostId', 'createdAt', 'updatedAt', 'currentGameId'])",
+
+        "id": {
+          ".validate": "newData.isString() && newData.val() === $roomId"
+        },
+        "status": {
+          ".validate": "newData.isString() && (newData.val() === 'lobby' || newData.val() === 'active')"
+        },
+        "hostId": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128 && (data.exists() ? data.val() === newData.val() : newData.val() === auth.uid)"
+        },
+        "createdAt": {
+          ".validate": "newData.isNumber() && (!data.exists() || data.val() === newData.val())"
+        },
+        "updatedAt": {
+          ".validate": "newData.isNumber()"
+        },
+        "currentGameId": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40"
+        },
+
+        "players": {
+          "$uid": {
+            ".validate": "!newData.exists() || newData.hasChild('joinedAt')",
+
+            "joinedAt": { ".validate": "newData.isNumber()" },
+            "name":     { ".validate": "newData.val() === null || (newData.isString() && newData.val().length <= 30)" },
+            "isHost":   { ".validate": "newData.isBoolean()" },
+            "waiting":  { ".validate": "newData.val() === null || newData.isBoolean()" },
+            "role":     { ".validate": "newData.val() === null || (newData.isString() && newData.val().matches(/^(civilian|impostor|clown)$/))" },
+            "isFirst":  { ".validate": "newData.isBoolean()" },
+            "revealed": { ".validate": "newData.isBoolean()" },
+            "eliminated": { ".validate": "newData.isBoolean()" },
+            "word":     { ".validate": "newData.val() === null || (newData.isString() && newData.val().length <= 60)" },
+            "submittedWord": { ".validate": "newData.val() === null || (newData.isString() && newData.val().length >= 1 && newData.val().length <= 60)" },
+
+            "$other": { ".validate": false }
+          }
+        },
+
+        "gameState": {
+          ".validate": true
+        },
+
+        "gameData": {
+          ".validate": true
+        },
+
+        "$other": { ".validate": false }
+      }
+    }
+  }
+}

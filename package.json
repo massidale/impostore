@@ -16,7 +16,8 @@
     "deploy:staging": "bash scripts/deploy-staging.sh",
     "deploy:prod": "bash scripts/deploy-prod.sh",
     "build:server": "npm --prefix functions run build",
-    "test:integration": "npm run build:server && firebase emulators:exec --only auth,database,functions --project demo-gameshub \"node --test tests/integration/*.test.mjs\""
+    "test:integration": "firebase emulators:exec --config firebase.spark-test.json --only auth,database --project demo-gameshub \"ROOM_TRANSPORT=spark node --test --test-force-exit tests/integration/firebase.test.mjs tests/integration/new-games.test.mjs tests/integration/spark-realtime.test.mjs\"",
+    "test:integration:server": "npm run build:server && firebase emulators:exec --only auth,database,functions --project demo-gameshub \"node --test tests/integration/*.test.mjs\""
   },
   "dependencies": {
     "@expo-google-fonts/bricolage-grotesque": "^0.4.1",

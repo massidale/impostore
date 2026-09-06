@@ -3,10 +3,12 @@ import assert from 'node:assert/strict';
 const project='demo-gameshub';
 const db=`http://127.0.0.1:9000`;
 async function user() {
+  if(process.env.ROOM_TRANSPORT==='spark') return (await import('../helpers/sparkClient.mjs')).newSparkUser();
   const r=await fetch('http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=fake',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({returnSecureToken:true})});
   const u=await r.json();assert.ok(u.idToken,JSON.stringify(u));return {uid:u.localId,token:u.idToken};
 }
 async function command(u,roomId,method,args=[],expected) {
+  if(process.env.ROOM_TRANSPORT==='spark') return u.transport.command(roomId,{method,args,...(expected?{expected}:{})});
   const r=await fetch(`http://127.0.0.1:5001/${project}/europe-west1/gameCommand`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${u.token}`},body:JSON.stringify({data:{roomId,method,args,...(expected?{expected}:{})}})});
   const body=await r.json();if(body.error) throw new Error(body.error.message);assert.ok(r.ok,JSON.stringify(body));return body.result;
 }
@@ -14,7 +16,7 @@ async function read(u,path) {
   const r=await fetch(`${db}/${path}.json?ns=${project}-default-rtdb&auth=${u.token}`);
   if(!r.ok) throw new Error(`RTDB denied ${r.status}`);return r.json();
 }
-async function view(u,id) {return process.env.ROOM_TRANSPORT==='callable' ? (await command(u,id,'getRoom')).room : read(u,`roomsV2/${id}/views/${u.uid}`);}
+async function view(u,id) {if(process.env.ROOM_TRANSPORT==='spark')return u.transport.read(id);return process.env.ROOM_TRANSPORT==='callable' ? (await command(u,id,'getRoom')).room : read(u,`roomsV2/${id}/views/${u.uid}`);}
 function version(r) {return {matchId:r.matchId ?? 0,phase:r.gameState?.phase ?? null,votingEndsAt:r.gameState?.votingEndsAt ?? null,cardVersion:r.cardVersion ?? 0};}
 async function act(u,id,method,args=[]) {return command(u,id,method,args,version(await view(u,id)));}
 
@@ -25,7 +27,7 @@ test('Firebase enforces ownership, private data, late joining, atomic cards and 
   await assert.rejects(read(guest,`roomsV2/${id}/data`),/denied/);
   await assert.rejects(read(guest,`roomsV2/${id}/views/${host.uid}`),/denied/);
   // Shared-production mode preserves access to legacy rooms for the live app.
-  if(process.env.ROOM_TRANSPORT!=='callable') await assert.rejects(read(guest,'rooms/ABC123'),/denied/);
+  if(!['callable','spark'].includes(process.env.ROOM_TRANSPORT)) await assert.rejects(read(guest,'rooms/ABC123'),/denied/);
   const write=await fetch(`${db}/roomsV2/${id}/preview/status.json?ns=${project}-default-rtdb&auth=${guest.token}`,{method:'PUT',body:JSON.stringify('active')});assert.equal(write.ok,false);
   await assert.rejects(act(guest,id,'initImpostoreGame',[1,0,true,true,45]),/host/);
   await act(host,id,'initImpostoreGame',[1,0,true,true,45]);
@@ -55,5 +57,5 @@ test('Firebase enforces ownership, private data, late joining, atomic cards and 
   assert.equal(state.gameState.scores[state.gameState.currentTeam],2);
   await assert.rejects(act(guest,id,'initLupusGame',[{}]),/disponibile/);
   await assert.rejects(command(guest,id,'deleteRoom'),/host/);
-  await command(host,id,'deleteRoom');assert.equal(process.env.ROOM_TRANSPORT==='callable' ? await view(host,id) : await read(host,`roomsV2/${id}/preview`),null);
+  await command(host,id,'deleteRoom');assert.equal(['callable','spark'].includes(process.env.ROOM_TRANSPORT) ? await view(host,id) : await read(host,`roomsV2/${id}/preview`),null);
 });
