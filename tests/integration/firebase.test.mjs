@@ -14,7 +14,7 @@ async function read(u,path) {
   const r=await fetch(`${db}/${path}.json?ns=${project}-default-rtdb&auth=${u.token}`);
   if(!r.ok) throw new Error(`RTDB denied ${r.status}`);return r.json();
 }
-async function view(u,id) {return read(u,`roomsV2/${id}/views/${u.uid}`);}
+async function view(u,id) {return process.env.ROOM_TRANSPORT==='callable' ? (await command(u,id,'getRoom')).room : read(u,`roomsV2/${id}/views/${u.uid}`);}
 function version(r) {return {matchId:r.matchId ?? 0,phase:r.gameState?.phase ?? null,votingEndsAt:r.gameState?.votingEndsAt ?? null,cardVersion:r.cardVersion ?? 0};}
 async function act(u,id,method,args=[]) {return command(u,id,method,args,version(await view(u,id)));}
 
@@ -24,7 +24,8 @@ test('Firebase enforces ownership, private data, late joining, atomic cards and 
   for(let i=1;i<4;i++) await command(users[i],id,'join',[`Player ${i}`]);
   await assert.rejects(read(guest,`roomsV2/${id}/data`),/denied/);
   await assert.rejects(read(guest,`roomsV2/${id}/views/${host.uid}`),/denied/);
-  await assert.rejects(read(guest,'rooms/ABC123'),/denied/);
+  // Shared-production mode preserves access to legacy rooms for the live app.
+  if(process.env.ROOM_TRANSPORT!=='callable') await assert.rejects(read(guest,'rooms/ABC123'),/denied/);
   const write=await fetch(`${db}/roomsV2/${id}/preview/status.json?ns=${project}-default-rtdb&auth=${guest.token}`,{method:'PUT',body:JSON.stringify('active')});assert.equal(write.ok,false);
   await assert.rejects(act(guest,id,'initImpostoreGame',[1,0,true,true,45]),/host/);
   await act(host,id,'initImpostoreGame',[1,0,true,true,45]);
@@ -54,5 +55,5 @@ test('Firebase enforces ownership, private data, late joining, atomic cards and 
   assert.equal(state.gameState.scores[state.gameState.currentTeam],2);
   await assert.rejects(act(guest,id,'initLupusGame',[{}]),/disponibile/);
   await assert.rejects(command(guest,id,'deleteRoom'),/host/);
-  await command(host,id,'deleteRoom');assert.equal(await read(host,`roomsV2/${id}/preview`),null);
+  await command(host,id,'deleteRoom');assert.equal(process.env.ROOM_TRANSPORT==='callable' ? await view(host,id) : await read(host,`roomsV2/${id}/preview`),null);
 });

@@ -31,6 +31,14 @@ export const gameCommand = onCall({region:'europe-west1', maxInstances:10}, asyn
   }
   if(typeof command.roomId!=='string' || !/^[A-Z0-9]{6}$/.test(command.roomId)) throw new HttpsError('invalid-argument','Codice stanza non valido');
   const target=db.ref(`roomsV2/${command.roomId}`);
+  if (command.method === 'getRoom') {
+    const snapshot = await target.child('data').get();
+    if (!snapshot.exists()) return {room: null};
+    const room = decodeRoom(snapshot.val());
+    // The caller can only read their own projection. Non-members get the same
+    // public preview as the join screen, never authoritative state or a deck.
+    return {room: Object.hasOwn(room.players ?? {}, actor) ? projectRoom(room, actor) : previewRoom(room)};
+  }
   // RTDB can invoke the transaction callback first with an empty local cache.
   // Returning null lets the compare-and-set retry with the real server value.
   try {

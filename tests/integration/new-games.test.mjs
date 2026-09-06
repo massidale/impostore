@@ -39,6 +39,7 @@ async function call(user, id, method, payload, expected) {
   return body.result;
 }
 async function view(user, id) {
+  if (process.env.ROOM_TRANSPORT === 'callable') return (await call(user, id, 'getRoom')).room;
   const response = await fetch(
     `http://127.0.0.1:9000/roomsV2/${id}/views/${user.uid}.json?ns=${project}-default-rtdb&auth=${user.token}`,
   );

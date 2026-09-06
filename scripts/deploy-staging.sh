@@ -59,7 +59,7 @@ npm test
 echo "[staging] Build web bundle"
 # Public previews must not embed the local Gemini credential. Built-in and
 # custom dictionaries remain available; AI generation requires a server proxy.
-EXPO_NO_DOTENV=1 EXPO_PUBLIC_GEMINI_API_KEY='' ./scripts/build-web.sh --clear
+EXPO_NO_DOTENV=1 EXPO_PUBLIC_GEMINI_API_KEY='' EXPO_PUBLIC_ROOM_TRANSPORT=callable ./scripts/build-web.sh --clear
 
 if [[ "$MODE" == "live" ]]; then
   echo

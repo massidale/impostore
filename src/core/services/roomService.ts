@@ -1,7 +1,9 @@
 import { ref, onValue, get } from 'firebase/database';
 import { auth, database } from '../../../config/firebase';
 import { CoreRoom } from '../types/room';
-import { roomCommand, rememberRoom } from './roomCommand';
+import { roomCommand, rememberRoom, onRoomCommand } from './roomCommand';
+import { startRoomPolling } from './roomPolling';
+const callableReads = process.env.EXPO_PUBLIC_ROOM_TRANSPORT === 'callable';
 
 export async function createRoom(_authUid: string, _hostClientId: string, _currentGameId: string, hostName: string): Promise<string> {
   const result = await roomCommand(null, 'createRoom', [hostName.trim()]);
@@ -9,6 +11,10 @@ export async function createRoom(_authUid: string, _hostClientId: string, _curre
 }
 export async function fetchRoom(roomId: string): Promise<CoreRoom | null> {
   if (!/^[A-Z0-9]{6}$/.test(roomId) || !auth.currentUser) return null;
+  if (callableReads) {
+    const {room} = await roomCommand(roomId, 'getRoom');
+    rememberRoom(roomId, room);return room;
+  }
   const own = await get(ref(database, `roomsV2/${roomId}/views/${auth.currentUser.uid}`));
   const snapshot = own.exists() ? own : await get(ref(database, `roomsV2/${roomId}/preview`));
   const room = snapshot.exists() ? snapshot.val() as CoreRoom : null;
@@ -32,9 +38,17 @@ export async function resetPlayersToCore(_roomId: string): Promise<void> {}
 export async function touchRoom(_roomId: string, _updates: Record<string, unknown>): Promise<void> {
   throw new Error('Questo gioco non è disponibile');
 }
-export function subscribeToRoom(roomId: string, callback: (room: CoreRoom | null) => void): () => void {
+export function subscribeToRoom(roomId: string, callback: (room: CoreRoom | null) => void, onError: (error: unknown) => void = () => {}): () => void {
   const uid = auth.currentUser?.uid;
   if (!uid || !/^[A-Z0-9]{6}$/.test(roomId)) {callback(null);return () => {};}
+  if (callableReads) {
+    const poll = startRoomPolling(async () => {
+      const {room} = await roomCommand(roomId, 'getRoom');
+      return room as CoreRoom | null;
+    }, room => {rememberRoom(roomId, room);callback(room);}, onError);
+    const stopCommands = onRoomCommand(roomId, poll.refresh);
+    return () => {stopCommands();poll.stop();rememberRoom(roomId, null);};
+  }
   let preview: CoreRoom | null = null;
   let own: CoreRoom | null = null;
   let previewFetched = false;

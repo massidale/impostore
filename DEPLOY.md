@@ -70,3 +70,21 @@ risulta disabilitata. Un deploy Hosting da solo pubblica l'interfaccia, ma non r
 giocabile questa versione. Per un collaudo isolato occorre un progetto Firebase di
 staging con Functions, Auth e RTDB; modificare le regole del progetto condiviso
 incide anche sul client live precedente.
+
+### Staging sul backend condiviso senza modificare le regole
+
+La richiesta successiva autorizza il backend condiviso e vieta modifiche alle regole.
+`deploy:staging` compila quindi con `EXPO_PUBLIC_ROOM_TRANSPORT=callable`:
+le letture usano `gameCommand/getRoom`, che restituisce solo la proiezione dell'UID
+autenticato o la preview pubblica per chi non partecipa. Nessun dato autorevole
+viene reso leggibile direttamente nel database. Il client aggiorna la vista ogni
+1,5 secondi e subito dopo i propri comandi; gli errori mantengono la stanza e
+attivano tentativi distanziati fino a 15 secondi. La modalità RTDB resta quella
+predefinita per le build senza questa variabile.
+
+Il tentativo di deploy delle sole Functions del 6 settembre 2026 è stato bloccato
+dal requisito **Blaze** del progetto. Le regole pubblicate sono state rilette e
+confrontate: nessuna modifica. Per completare lo staging occorre attivare Blaze,
+poi distribuire esclusivamente `functions:gameCommand`; non usare `--only database`.
+La compatibilità è stata verificata negli emulatori con una copia delle regole
+pubblicate, incluse le letture dirette di `roomsV2` negate ai client.

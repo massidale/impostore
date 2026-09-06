@@ -42,7 +42,7 @@ export default function MainScreen() {
   const identityId = uid;
   const [roomId, setRoomId] = useState<string | null>(null);
   const [isWebPlayer, setIsWebPlayer] = useState(false);
-  const { roomData, isFetched } = useRoomData(uid && identityId ? roomId : null);
+  const { roomData, isFetched, error: roomReadError } = useRoomData(uid && identityId ? roomId : null);
   const [loading, setLoading] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
@@ -224,6 +224,14 @@ export default function MainScreen() {
         </View>
       </Screen>
     );
+  }
+
+  if (roomId && roomReadError) {
+    return <Screen style={styles.safeArea}><StatusBar style="light"/><AppHeader compact/>
+      <View style={styles.centered}><ActivityIndicator size="large" color={colors.primary}/>
+        <Text style={{color: colors.textPrimary, textAlign: 'center', padding: 24}}>{roomReadError}</Text>
+      </View>
+    </Screen>;
   }
 
   // Loading state for web player joining via URL
