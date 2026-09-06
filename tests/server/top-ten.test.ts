@@ -37,8 +37,6 @@ test("five complete themes; role, permutation and private projection", () => {
       assert.equal(v.gameState.private, undefined);
     }
     assert.equal(m.project(r, "late").gameState.ownNumber, undefined);
-    for (const uid of s.performanceOrder)
-      m.apply(r, uid, "markPerformed", { playerUid: uid }, 0);
     m.apply(r, "a", "beginOrdering", {}, 0);
     assert.throws(() =>
       m.apply(r, "late", "submitOrder", { uids: ["a", "b", "c", "d"] }, 0),
@@ -54,7 +52,7 @@ test("five complete themes; role, permutation and private projection", () => {
     );
     const order = Object.keys(nums).sort((a, b) => nums[a] - nums[b]);
     m.apply(r, s.captainUid, "submitOrder", { uids: order }, 0);
-    assert.equal(s.roundScore, 3);
+    assert.equal(s.correctOrder, true);
     assert.deepEqual(m.project(r, "late").gameState.numbersByUid, nums);
     assert.throws(() =>
       m.apply(r, s.captainUid, "submitOrder", { uids: order }, 0),
@@ -62,7 +60,7 @@ test("five complete themes; role, permutation and private projection", () => {
     m.apply(r, "a", "nextRound", {}, 0);
   }
   assert.equal(r.gameState.phase, "results");
-  assert.equal(r.gameState.score, 15);
+  assert.equal(r.gameState.score, undefined);
   assert.equal(r.gameState.history.length, 5);
 });
 test("editorial content and validation", () => {
@@ -76,5 +74,5 @@ test("editorial content and validation", () => {
   );
   const r: any = room();
   r.gameData = { "top-ten": { content: data.slice(0, 3) } };
-  assert.throws(() => m.start(r, 0));
+  assert.doesNotThrow(() => m.start(r, 0));
 });

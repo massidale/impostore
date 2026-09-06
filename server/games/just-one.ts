@@ -55,18 +55,17 @@ function begin(room: Room) {
 function finish(room: Room, reason: string, guess = "") {
   const s = room.gameState;
   const correct = reason === "correct";
-  s.score += correct ? 1 : 0;
+  if (room.settings.mode === "teams") s.wordsGuessed += correct ? 1 : 0;
   s.roundResult = {
     word: s.private.current.word,
     guess,
     correct,
     reason,
-    points: correct ? 1 : 0,
   };
   s.history.push({ ...s.roundResult, round: s.roundIndex + 1 });
   phase(room, "roundResults");
 }
-export const justOneModule: GameModule = {
+const cooperativeModule: GameModule = {
   id: "just-one",
   minPlayers: 3,
   maxPlayers: 10,
@@ -112,14 +111,13 @@ export const justOneModule: GameModule = {
       phaseVersion: 0,
       roundId: 0,
       roundIndex: 0,
-      score: 0,
       history: [],
       private: {},
     };
     return room;
   },
   start(room) {
-    const deck = (room.gameData?.["just-one"] as any)?.content ?? words;
+    const deck = words;
     check(
       deck.length >= room.settings.rounds,
       "Non ci sono abbastanza parole per tutti i round",
@@ -210,7 +208,7 @@ export const justOneModule: GameModule = {
         finish(room, "cancelled");
         break;
       case "nextRound":
-        hostOnly(room, actor);
+        if (room.settings.mode !== "teams" || actor !== s.guesserUid) hostOnly(room, actor);
         check(s.phase === "roundResults", "Attendi il risultato");
         s.roundIndex++;
         if (s.roundIndex >= room.settings.rounds) phase(room, "results");
@@ -229,7 +227,6 @@ export const justOneModule: GameModule = {
     const state: any = {
       guesserUid: s.guesserUid ?? null,
       roundIndex: s.roundIndex ?? 0,
-      score: s.score ?? 0,
       history: s.history ?? [],
       submittedUids: Object.keys(p.clues ?? {}),
       readyUids: Object.keys(p.ready ?? {}),
@@ -247,6 +244,71 @@ export const justOneModule: GameModule = {
     if (["guessing", "roundResults", "results"].includes(s.phase))
       state.validClues = s.validClues ?? [];
     if (s.roundResult) state.roundResult = s.roundResult;
+    return publicRoom(room, state);
+  },
+};
+
+
+/** Each team is an independent round machine; only its own members receive its view. */
+export const justOneModule: GameModule = {
+  ...cooperativeModule,
+  validateSettings(input: any) {
+    const mode = input?.mode ?? "cooperative";
+    check(["cooperative", "teams"].includes(mode), "Modalità non valida");
+    return { rounds: int(input?.rounds ?? 8, 5, 20), mode };
+  },
+  start(room, now) {
+    if (room.settings.mode !== "teams") return cooperativeModule.start(room, now);
+    const uids = shuffled(participants(room));
+    check(uids.length >= 4 && uids.length <= 10, "Servono da 4 a 10 giocatori per due squadre");
+    // Disjoint decks prevent one team's revealed word from helping the other team.
+    const deck = shuffled(words);
+    const rounds = room.settings.rounds;
+    const teams: Record<string, any> = {};
+    for (let index = 0; index < 2; index++) {
+      const id = `team-${index + 1}`;
+      const teamRoom: Room = { ...room, gameState: { participantUids: uids.filter((_, i) => i % 2 === index) } };
+      cooperativeModule.init(teamRoom, room.settings, now);
+      const state = teamRoom.gameState;
+      state.id = id;
+      state.name = `Squadra ${index + 1}`;
+      state.wordsGuessed = 0;
+      state.private = { deck: deck.slice(index * rounds, (index + 1) * rounds) };
+      begin(teamRoom);
+      teams[id] = state;
+    }
+    room.gameState = { participantUids: participants(room), phase: "teams", roundId: 1, phaseVersion: 1, teams };
+    return room;
+  },
+  apply(room, actor, action, payload, now) {
+    if (room.settings.mode !== "teams") return cooperativeModule.apply(room, actor, action, payload, now);
+    const teams = room.gameState.teams ?? {};
+    const team = teams[payload?.teamId];
+    check(team, "Squadra non valida");
+    const hostControl = actor === room.hostId && ["nextRound", "cancelRound"].includes(action);
+    check(hostControl || team.participantUids.includes(actor), "Questa non è la tua squadra");
+    check(payload?.teamRoundId === team.roundId && payload?.teamPhaseVersion === team.phaseVersion,
+      "La parola della squadra è cambiata: riprova");
+    cooperativeModule.apply({ ...room, gameState: team }, actor, action, payload, now);
+    if (Object.values(teams).every((t: any) => t.phase === "results")) phase(room, "results");
+    return room;
+  },
+  project(room, viewer) {
+    if (room.settings.mode !== "teams") return cooperativeModule.project(room, viewer);
+    const teams = Object.values(room.gameState.teams ?? {}) as any[];
+    const own = teams.find(t => t.participantUids.includes(viewer));
+    const summaries = teams.map(t => ({ id: t.id, name: t.name, participantUids: t.participantUids,
+      phase: t.phase, roundId: t.roundId, phaseVersion: t.phaseVersion,
+      roundIndex: t.roundIndex, guesserUid: t.guesserUid, wordsGuessed: t.wordsGuessed }));
+    const state: any = { teams: summaries };
+    if (own) {
+      state.myTeam = { ...cooperativeModule.project({ ...room, gameState: own }, viewer).gameState,
+        id: own.id, name: own.name, wordsGuessed: own.wordsGuessed };
+    }
+    if (room.gameState.phase === "results") {
+      const best = Math.max(...teams.map(t => t.wordsGuessed));
+      state.winnerTeamIds = teams.filter(t => t.wordsGuessed === best).map(t => t.id);
+    }
     return publicRoom(room, state);
   },
 };

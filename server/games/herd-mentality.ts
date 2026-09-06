@@ -48,7 +48,6 @@ function finish(room: Room, cancelled = false) {
   const winners = cancelled
     ? []
     : majorityWinners(s.groups.map((g: any) => g.memberUids));
-  for (const u of winners) s.scores[u]++;
   s.roundResult = { winners, cancelled };
   s.history.push({
     round: s.roundIndex + 1,
@@ -86,7 +85,6 @@ export const herdMentalityModule: GameModule = {
       phaseVersion: 0,
       roundId: 0,
       roundIndex: 0,
-      scores: Object.fromEntries(participants(room).map((u) => [u, 0])),
       history: [],
       private: {},
     };
@@ -94,13 +92,10 @@ export const herdMentalityModule: GameModule = {
   },
   start(room) {
     const deck =
-      (room.gameData?.["herd-mentality"] as any)?.content ?? questions;
+      questions;
     check(
       deck.length >= room.settings.rounds,
       "Non ci sono abbastanza domande per tutti i round",
-    );
-    room.gameState.scores = Object.fromEntries(
-      participants(room).map((u) => [u, 0]),
     );
     room.gameState.private = { deck: shuffled(deck) };
     begin(room);
@@ -186,8 +181,6 @@ export const herdMentalityModule: GameModule = {
         check(s.phase === "roundResults", "Attendi il risultato");
         s.roundIndex++;
         if (s.roundIndex >= room.settings.rounds) {
-          const best = Math.max(...(Object.values(s.scores) as number[]));
-          s.winners = participants(room).filter((u) => s.scores[u] === best);
           phase(room, "results");
         } else begin(room);
         break;
@@ -202,7 +195,6 @@ export const herdMentalityModule: GameModule = {
     const state: any = {
       question: s.question ?? null,
       roundIndex: s.roundIndex ?? 0,
-      scores: s.scores ?? {},
       history: s.history ?? [],
       submittedUids: Object.keys(p.answers ?? {}),
     };
@@ -217,7 +209,6 @@ export const herdMentalityModule: GameModule = {
       state.canUndo = !!p.mergeHistory?.length;
     }
     if (s.roundResult) state.roundResult = s.roundResult;
-    if (s.winners) state.winners = s.winners;
     return publicRoom(room, state);
   },
 };

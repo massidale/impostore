@@ -83,11 +83,11 @@ test("complete three rounds same IDs, skips, stale cards and private views", () 
     assert.equal(s.phase, round === 3 ? "results" : "roundResults");
     if (round < 3) m.apply(r, "a", "nextRound", {}, 21);
   }
-  assert.equal(r.gameState.scores.blue + r.gameState.scores.red, 30);
+  assert.equal(r.gameState.scores, undefined);
   assert.equal(r.gameState.roundNumber, 3);
   assert.throws(() => m.apply(r, "a", "nextRound", {}, 99));
 });
-test("deadline preserves unresolved card; expired card cannot score", () => {
+test("deadline preserves unresolved card; expired card cannot be marked correct", () => {
   const m = loadServer("server/games/times-up.ts").timesUpModule,
     r: any = room();
   m.start(r, 0);
@@ -103,38 +103,18 @@ test("deadline preserves unresolved card; expired card cannot score", () => {
   );
   assert.equal(s.phase, "turnResults");
   assert.deepEqual(s.private.pendingCardIds, ids);
-  assert.equal(s.scores.blue, 0);
+  assert.equal(s.scores, undefined);
 });
-test("private player contributions, normalized deduplication, insufficiency and manual validation", () => {
-  const m = loadServer("server/games/times-up.ts").timesUpModule,
-    r: any = room();
+test("bundled deck ignores legacy personalized settings and rejects contributions", () => {
+  const m = loadServer("server/games/times-up.ts").timesUpModule, r: any = room();
   r.settings.contentSource = "players";
   m.start(r, 0);
-  m.apply(r, "a", "submitNames", { names: ["Caffè", "CAFFE"] }, 0);
-  assert.equal(m.project(r, "a").gameState.collectedCount, 1);
-  assert.equal(JSON.stringify(m.project(r, "b")).includes("Caffè"), false);
-  assert.throws(() => m.apply(r, "a", "beginTurn", {}, 0));
-  m.apply(r, "a", "submitNames", { names: ["new"] }, 0);
-  assert.deepEqual(m.project(r, "a").gameState.ownNames, ["new"]);
-  m.apply(
-    r,
-    "b",
-    "submitNames",
-    { names: Array.from({ length: 10 }, (_, i) => `Persona ${i}`) },
-    0,
-  );
-  m.apply(r, "a", "beginTurn", {}, 0);
   assert.equal(r.gameState.phase, "ready");
-  assert.throws(() =>
-    m.validateSettings({ ...r.settings, manualTeams: { a: "blue" } }, [
-      "a",
-      "b",
-      "c",
-      "d",
-    ]),
-  );
+  assert.equal(r.gameState.private.originalDeck.length, 10);
+  assert.throws(() => m.apply(r, "a", "submitNames", { names: ["Custom"] }, 0));
+  assert.throws(() => m.validateSettings({ ...r.settings, manualTeams: { a: "blue" } }, ["a", "b", "c", "d"]));
 });
-test("next describer owns next turn; host cancellation preserves scored and pending cards", () => {
+test("next describer owns next turn; host cancellation preserves resolved and pending cards", () => {
   const m = loadServer("server/games/times-up.ts").timesUpModule,
     r: any = room();
   m.start(r, 0);
@@ -150,7 +130,7 @@ test("next describer owns next turn; host cancellation preserves scored and pend
   );
   const pending = [...s.private.pendingCardIds];
   m.apply(r, "a", "cancelRound", {}, 2);
-  assert.equal(s.scores.blue, 1);
+  assert.equal(s.scores, undefined);
   assert.deepEqual(s.private.pendingCardIds, pending);
   assert.equal(s.describerUid, "c");
   m.apply(r, "c", "beginTurn", {}, 3);
@@ -161,7 +141,7 @@ test("next describer owns next turn; host cancellation preserves scored and pend
   assert.equal(s.team, "blue");
   assert.throws(() => m.apply(r, "b", "endTurn", {}, 6));
 });
-test("editorial and custom decks enforce names, counts and unique IDs", () => {
+test("bundled deck ignores custom content; validation enforces unique IDs", () => {
   const m = loadServer("server/games/times-up.ts").timesUpModule;
   const data = loadServer("server/data/times-up.json");
   assert.ok(data.length >= 100);
@@ -175,7 +155,7 @@ test("editorial and custom decks enforce names, counts and unique IDs", () => {
   assert.throws(() => m.validateContent([""]));
   const r: any = room();
   r.settings.contentSource = "custom";
-  assert.throws(() => m.start(r, 0));
+  assert.doesNotThrow(() => m.start(r, 0));
   r.gameData = {
     "times-up": { content: Array.from({ length: 10 }, (_, i) => `Nome ${i}`) },
   };

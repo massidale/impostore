@@ -2,9 +2,9 @@ import React, { useState, useEffect } from "react";
 import { Text, View } from "react-native";
 import type { PlayerGamepadProps } from "../../../core/types/gamePlugin";
 import { RoundLayout } from "../../../core/components/newGames/RoundLayout";
-import { Button, Input, colors, fonts } from "../../../core/ui";
+import { Button, colors, fonts } from "../../../core/ui";
 import { sendAction } from "../services/timesUpLogic";
-import type { TimesUpSettings, TimesUpView } from "../types";
+import type { TimesUpView } from "../types";
 const rules = [
   "Descrivi liberamente",
   "Una sola parola",
@@ -15,8 +15,7 @@ export default function PlayerGamepad({
   playerId,
 }: PlayerGamepadProps) {
   const s = roomData.gameState as unknown as TimesUpView;
-  const [names, setNames] = useState((s.ownNames ?? []).join("\n")),
-    [busy, setBusy] = useState(false),
+  const [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null),
     [now, setNow] = useState(Date.now());
   useEffect(() => {
@@ -24,7 +23,6 @@ export default function PlayerGamepad({
     return () => clearInterval(t);
   }, []);
   useEffect(() => {
-    setNames((s.ownNames ?? []).join("\n"));
     setError(null);
   }, [roomData.matchId]);
   const run = async (action: string, payload: unknown = {}) => {
@@ -76,9 +74,6 @@ export default function PlayerGamepad({
         Squadra {s.team === "blue" ? "Blu" : "Rossa"} · {s.remaining} carte
         rimaste
       </Text>
-      <Text style={label}>
-        Blu {s.scores?.blue ?? 0} — Rossa {s.scores?.red ?? 0}
-      </Text>
       {!participant && (
         <Text style={label}>
           Spettatore · parteciperai dalla prossima partita
@@ -90,54 +85,9 @@ export default function PlayerGamepad({
     <RoundLayout
       roomData={roomData}
       title={`Time’s Up · round ${s.roundNumber}/3`}
-      card={s.phase === "collecting" ? undefined : content}
+      card={content}
       error={error}
     >
-      {s.phase === "collecting" && (
-        <>
-          <Text style={label}>
-            Ogni nome resta privato. Inserisci un nome per riga. Puoi aggiungere
-            nomi aggiornando il tuo contributo fino alla preparazione del mazzo.
-            Servono almeno{" "}
-            {(roomData.settings as TimesUpSettings)?.deckSize ?? 30} nomi
-            distinti.
-          </Text>
-          <Text style={label}>
-            {s.collectedCount} nomi distinti · {s.submittedCount} partecipanti
-            hanno inviato.
-          </Text>
-          {participant ? (
-            <>
-              <Input
-                multiline
-                value={names}
-                onChangeText={setNames}
-                placeholder="Un nome per riga"
-                style={{ minHeight: 120, textAlignVertical: "top" }}
-              />
-              <Button
-                disabled={busy || !names.trim()}
-                onPress={() =>
-                  run("submitNames", {
-                    names: names
-                      .split(/\r?\n/)
-                      .map((x) => x.trim())
-                      .filter(Boolean),
-                  })
-                }
-              >
-                {s.submitted ? "Aggiorna nomi privati" : "Invia nomi privati"}
-              </Button>
-            </>
-          ) : (
-            <Text style={label}>
-              {s.submitted
-                ? "Nomi inviati. Attendi la preparazione del mazzo."
-                : "Raccolta dei nomi in corso."}
-            </Text>
-          )}
-        </>
-      )}
       {["ready", "turnResults"].includes(s.phase) && (
         <>
           <Text style={label}>
@@ -161,7 +111,7 @@ export default function PlayerGamepad({
               })
             }
           >
-            Indovinata · +1
+            Indovinata
           </Button>
           <View style={{ gap: 8 }}>
             <Button
@@ -208,25 +158,10 @@ export default function PlayerGamepad({
       )}
       {s.phase === "roundResults" && (
         <Text style={label}>
-          Mazzo completato! Punti del round: Blu {s.roundScores.blue}, Rossa{" "}
-          {s.roundScores.red}. Lo stesso mazzo ritorna con la nuova regola.
+          Mazzo completato! Lo stesso mazzo ritorna con la nuova regola.
         </Text>
       )}
-      {s.phase === "results" && (
-        <>
-          <Text style={{ ...label, fontSize: 24 }}>
-            {s.scores.blue === s.scores.red
-              ? "Vittoria condivisa"
-              : `Vince la squadra ${s.scores.blue > s.scores.red ? "Blu" : "Rossa"}!`}
-          </Text>
-          {s.history?.map((h) => (
-            <Text key={h.round} style={label}>
-              Round {h.round}: Blu {h.scores.blue} — Rossa {h.scores.red}
-              {h.cancelled ? " · annullato" : ""}
-            </Text>
-          ))}
-        </>
-      )}
+      {s.phase === "results" && <Text style={label}>Partita conclusa! Avete completato tutti e tre i round.</Text>}
       {(["blue", "red"] as const).map((team) => (
         <Text key={team} style={label}>
           {team === "blue" ? "Blu" : "Rossa"}:{" "}

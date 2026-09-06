@@ -9,7 +9,7 @@ import {
   spacing,
 } from "../../../core/ui";
 import { sendAction } from "../services/justOneLogic";
-import { JustOneSettings, JustOneView } from "../types";
+import { JustOneSettings, JustOneView, JustOneTeamSummary } from "../types";
 
 /** MainScreen supplies the scrollable footer, capped at 35% in portrait. */
 export default function HostDashboard({ roomData }: HostDashboardProps) {
@@ -18,13 +18,15 @@ export default function HostDashboard({ roomData }: HostDashboardProps) {
   const [busy, setBusy] = useState(false);
   const pending = useRef(false);
   const [error, setError] = useState<string | null>(null);
-  const act = async (action: string) => {
+  const act = async (action: string, team?: JustOneTeamSummary) => {
     if (pending.current) return;
     pending.current = true;
     setBusy(true);
     setError(null);
     try {
-      await sendAction(roomData.id, action);
+      await sendAction(roomData.id, action, team ? {
+        teamId: team.id, teamRoundId: team.roundId, teamPhaseVersion: team.phaseVersion,
+      } : {});
     } catch (e) {
       setError(
         e instanceof Error ? e.message : "Azione non riuscita. Riprova.",
@@ -38,6 +40,23 @@ export default function HostDashboard({ roomData }: HostDashboardProps) {
     <HostDashboardShell gameName="Just One">
       {error && <ErrorBanner message={error} />}
       <View style={{ gap: spacing.sm }}>
+        {(s.teams ?? []).map((team) => (
+          <View key={team.id} style={{ gap: spacing.sm }}>
+            <Text style={{ color: colors.textSecondary }}>
+              {team.name} · {team.phase === "results" ? "Terminata" : `Parola ${team.roundIndex + 1}/${settings.rounds}`}
+            </Text>
+            {team.phase === "roundResults" && (
+              <Button disabled={busy} onPress={() => act("nextRound", team)}>
+                {team.roundIndex + 1 >= settings.rounds ? `Concludi ${team.name}` : `Prossima parola · ${team.name}`}
+              </Button>
+            )}
+            {["clues", "review", "guessing"].includes(team.phase) && (
+              <Button disabled={busy} variant="secondary" onPress={() => act("cancelRound", team)}>
+                Annulla parola · {team.name}
+              </Button>
+            )}
+          </View>
+        ))}
         {s.phase === "roundResults" && (
           <Button disabled={busy} onPress={() => act("nextRound")}>
             {(s.roundIndex ?? 0) + 1 >= (settings?.rounds ?? 8)
@@ -51,7 +70,7 @@ export default function HostDashboard({ roomData }: HostDashboardProps) {
             variant="secondary"
             onPress={() => act("cancelRound")}
           >
-            Annulla round senza punti
+            Annulla parola
           </Button>
         )}
         <Button disabled={busy} variant="secondary" onPress={() => act("end")}>

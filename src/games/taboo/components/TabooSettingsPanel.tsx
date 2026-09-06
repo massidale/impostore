@@ -12,12 +12,8 @@ import {
   spacing,
   fontSize,
 } from '../../../core/ui';
-import { AiDictionaryCard } from '../../../core/components/AiDictionaryCard';
-import { generateTabooCards } from '../../../core/services/geminiService';
-import { setRoomDictionary } from '../../../core/services/roomCommand';
 import { TabooSettings, TeamId, TeamMode } from '../types';
 
-const AI_CARDS_COUNT = 20;
 
 const TEAM_LABEL: Record<TeamId, string> = {
   blue: 'Blu',
@@ -55,20 +51,6 @@ export default function TabooSettingsPanel({
 
   const assignTeam = (uid: string, team: TeamId) => {
     update({ manualTeams: { ...manualTeams, [uid]: team } });
-  };
-
-  const handleGenerate = async (topic: string): Promise<string | null> => {
-    const result = await generateTabooCards(topic, AI_CARDS_COUNT);
-    if (result.usedFallback) {
-      if (roomId) await setRoomDictionary(roomId, 'taboo', null);
-      return null;
-    }
-    if (roomId) await setRoomDictionary(roomId, 'taboo', result.cards);
-    return `Generate ${result.cards.length} carte sul tema "${topic}"`;
-  };
-
-  const handleReset = async () => {
-    if (roomId) await setRoomDictionary(roomId, 'taboo', null);
   };
 
   const players = Object.entries(roomData?.players ?? {});
@@ -173,13 +155,6 @@ export default function TabooSettingsPanel({
         )
       ) : null}
 
-      <View style={{ marginTop: spacing.lg }}>
-        <AiDictionaryCard
-          placeholder="Es. Sport e atleti"
-          onGenerate={handleGenerate}
-          onReset={handleReset}
-        />
-      </View>
     </View>
   );
 }

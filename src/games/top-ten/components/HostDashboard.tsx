@@ -19,7 +19,6 @@ export default function HostDashboard({ roomData }: HostDashboardProps) {
       setBusy(false);
     }
   };
-  const current = s.performanceOrder?.[s.performed?.length ?? 0];
   return (
     <HostDashboardShell
       gameName="Top Ten"
@@ -44,13 +43,9 @@ export default function HostDashboard({ roomData }: HostDashboardProps) {
           {s.phase === "performing" && (
             <Button
               disabled={busy}
-              onPress={() =>
-                current
-                  ? run("markPerformed", { playerUid: current })
-                  : run("beginOrdering")
-              }
+              onPress={() => run("beginOrdering")}
             >
-              {current ? "Interpretazione completata" : "Apri ordinamento"}
+              Apri ordinamento
             </Button>
           )}
           {s.phase === "roundResults" && (

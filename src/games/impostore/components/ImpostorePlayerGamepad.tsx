@@ -1,3 +1,4 @@
+import { VotingPanel } from '../../../core/voting/VotingPanel';
 import { FitContent } from '../../../core/ui/FitContent';
 import { wrappingText } from '../../../core/ui/wrappingText';
 import { useGameViewport } from '../../../core/hooks/useGameViewport';
@@ -7,14 +8,9 @@ import Svg, { Path, Circle, Ellipse } from 'react-native-svg';
 import { PlayerGamepadProps } from '../../../core/types/gamePlugin';
 import {
   Button,
-  CheckIcon,
-  CountdownBar,
   EyeOffIcon,
   GhostButton,
-  InlineConfirm,
   MetaRow,
-  PhaseCard,
-  PlayerSlot,
   ProgressCounter,
   StatusCard,
   TrophyIcon,
@@ -25,7 +21,6 @@ import {
   radius,
   spacing,
 } from '../../../core/ui';
-import { useCountdown } from '../../../core/hooks/useCountdown';
 import { ImpostoreGameState, ImpostorePlayerState, PlayerRole } from '../types';
 import { markPlayerAsRevealed, castVote, submitImpostorGuess } from '../services/impostoreLogic';
 
@@ -133,18 +128,6 @@ const MaskIcon = ({ size = 28, color = colors.textMuted }: IconProps) => (
   </Svg>
 );
 
-function VotingTimer({
-  endsAt,
-  totalSeconds,
-}: {
-  endsAt?: number | null;
-  totalSeconds: number;
-}) {
-  const remaining = useCountdown(endsAt ?? null);
-  if (remaining === null) return null;
-  return <CountdownBar seconds={remaining} total={totalSeconds} size="md" style={{ marginBottom: spacing.md }} />;
-}
-
 function RoleIcon({ role, size }: { role: PlayerRole; size?: number }) {
   const color = roleColor(role);
   if (role === 'civilian') return <CivilianIcon size={size} color={color} />;
@@ -173,8 +156,6 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
 
   const [showRole, setShowRole] = useState(false);
   const [guessText, setGuessText] = useState('');
-  // Vote awaiting the inline ✓/✕ confirmation.
-  const [pendingVote, setPendingVote] = useState<string | null>(null);
 
   const handleReveal = () => {
     setShowRole(true);
@@ -383,14 +364,14 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
     const isRunoff = !!(runoff && runoff.length > 0);
 
     const candidates = Object.entries(roomData.players || {}).filter(([uid, p]) => {
-      if ((p as ImpostorePlayerState).eliminated) return false;
+      if (p.waiting || (p as ImpostorePlayerState).eliminated) return false;
       if (isRunoff && !runoff!.includes(uid)) return false;
       return true;
     });
 
     const votesCast = Object.keys(gameState.votes || {}).length;
     const totalVoters = Object.values(roomData.players || {}).filter(
-      (p) => !(p as ImpostorePlayerState).eliminated
+      (p) => !p.waiting && !(p as ImpostorePlayerState).eliminated
     ).length;
 
     const firstPlayerId = gameState.firstPlayerId;
@@ -404,77 +385,14 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
         contentContainerStyle={[styles.container, styles.votingScroll]}
         keyboardShouldPersistTaps="handled"
       >
-        <VotingTimer
-          endsAt={gameState.votingEndsAt}
-          totalSeconds={gameState.votingSeconds ?? 60}
+        <VotingPanel playerId={playerId} candidates={candidates.map(([uid, p]) => ({uid, name: p.name || 'Senza nome'}))}
+          ownVote={myVote} voteCount={votesCast} totalVoters={totalVoters}
+          endsAt={gameState.votingEndsAt ?? 0} totalSeconds={gameState.votingSeconds ?? 60}
+          runoff={isRunoff} canVote={!playerState.waiting} onVote={handleVote}
+          note={isRunoff && firstPlayerName ? <Text style={styles.tiebreakerNote}>
+            In caso di pareggio il voto di <Text style={styles.tiebreakerName}>{firstPlayerName}</Text> vale doppio.
+          </Text> : null}
         />
-
-        <PhaseCard
-          title={isRunoff ? 'Ballottaggio' : 'Votazione'}
-          description={
-            isRunoff
-              ? 'Pareggio. Scegli tra i candidati qui sotto.'
-              : "Tocca il giocatore che pensi sia l'impostore. Puoi cambiare voto finché il tempo non scade."
-          }
-          tone={isRunoff ? 'warning' : 'cyan'}
-        >
-          {isRunoff && firstPlayerName ? (
-            <Text style={styles.tiebreakerNote}>
-              In caso di pareggio il voto di{' '}
-              <Text style={styles.tiebreakerName}>{firstPlayerName}</Text>{' '}
-              vale doppio.
-            </Text>
-          ) : null}
-
-          <View style={styles.voteList}>
-            {candidates.map(([uid, p]) => {
-              const isSelf = uid === playerId;
-              const name = p.name || 'Senza nome';
-              const isMyVote = myVote === uid;
-              const isPending = pendingVote === uid;
-              return (
-                <View
-                  key={uid}
-                  // Colored only once the vote is CONFIRMED — a pending
-                  // pick shows just the ✓/✕ pair, no highlight.
-                  style={[styles.voteRow, isMyVote && styles.voteRowSelected]}
-                >
-                  <PlayerSlot
-                    uid={uid}
-                    name={name}
-                    isMe={isSelf}
-                    subtitle={null}
-                    onPress={
-                      isSelf ? undefined : () => setPendingVote(isPending ? null : uid)
-                    }
-                    disabled={isSelf}
-                    variant={isSelf ? 'dimmed' : isMyVote ? 'selected' : 'default'}
-                    right={
-                      isPending ? (
-                        <InlineConfirm
-                          onConfirm={() => {
-                            setPendingVote(null);
-                            handleVote(uid);
-                          }}
-                          onCancel={() => setPendingVote(null)}
-                        />
-                      ) : isMyVote ? (
-                        <CheckIcon size={20} color={colors.primaryLight} />
-                      ) : undefined
-                    }
-                  />
-                </View>
-              );
-            })}
-          </View>
-
-          <ProgressCounter
-            completed={votesCast}
-            total={totalVoters}
-            suffix="hanno votato"
-            style={styles.voteProgress}
-          />
-        </PhaseCard>
       </ScrollView>
     );
   }
@@ -731,22 +649,6 @@ const styles = StyleSheet.create({
     flex: 0,
     flexGrow: 1,
   },
-  voteList: {
-    width: '100%',
-    marginTop: spacing.sm,
-    marginBottom: spacing.lg,
-  },
-  voteRow: {
-    backgroundColor: colors.background,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  voteRowSelected: {
-    borderColor: colors.primary,
-  },
   tiebreakerNote: {
     color: colors.textSecondary,
     fontFamily: fonts.body,
@@ -786,9 +688,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     letterSpacing: 2,
     textTransform: 'uppercase',
-  },
-  voteProgress: {
-    textAlign: 'center',
   },
   eliminationRole: {
     fontFamily: fonts.display,

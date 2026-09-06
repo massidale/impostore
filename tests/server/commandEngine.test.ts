@@ -34,26 +34,24 @@ test('Lupus is rejected even through a direct command', () => {
   const r=room();r.status='lobby';r.gameState={phase:'setup'};
   assert.throws(()=>command(r,'a','initLupusGame',[{}]), /disponibile|comando/i);
 });
-test('Taboo rejects a second resolution of the same card and keeps the room dictionary', () => {
+test('Taboo rejects duplicate card resolution and refills from bundled cards', () => {
   const r=room('taboo');r.players.d={joinedAt:4};
   const deck=[{word:'Custom A',taboo:['a','b','c','d','e']},{word:'Custom B',taboo:['a','b','c','d','e']}];
   r.gameData={taboo:{dictionary:deck}};
   r.gameState={phase:'turn',deck,cursor:1,turnEndsAt:1000,teams:{a:'blue',b:'blue',c:'red',d:'red'},currentTeam:'blue',describerUid:'a',scores:{blue:0,red:0},turnStats:{correct:0,taboo:0,skipped:0}};
   const request={method:'resolveTabooCard',args:['correct'],expected:{matchId:1,phase:'turn',cardVersion:0,votingEndsAt:null}};
   const next=applyCommand(r,'a',request,100);
-  assert.equal(next.gameState.scores.blue,1);
-  assert.ok(next.gameState.deck.every((c:any)=>c.word.startsWith('Custom')));
+  assert.equal(next.gameState.scores,undefined);
+  assert.ok(next.gameState.deck.every((c:any)=>!c.word.startsWith('Custom')));
   assert.throws(()=>applyCommand(next,'a',request,100),/aggiornata|obsolet/i);
   assert.equal(projectRoom(next,'b').gameState.currentCard,undefined);
-  assert.equal(projectRoom(next,'c').gameState.currentCard.word,'Custom A');
+  assert.equal(projectRoom(next,'c').gameState.currentCard.word,next.gameState.deck[0].word);
   assert.equal(projectRoom(next,'a').gameState.deck,undefined);
 });
 
-test('custom dictionary stores punctuation words as values, not RTDB keys', () => {
+test('custom dictionaries are unavailable even for the host', () => {
   const r=room('impostore');r.status='lobby';r.gameState={phase:'setup'};
-  const next=command(r,'a','setDictionary',['impostore',{'AC/DC':'Rock','Dott. House':'Medico'}]);
-  assert.ok(Array.isArray(next.gameData.impostore.dictionary));
-  assert.equal(next.gameData.impostore.dictionary[0].word,'AC/DC');
+  assert.throws(() => command(r,'a','setDictionary',['impostore',{'AC/DC':'Rock'}]), /personalizzati/);
 });
 test('validated defaults are persisted consistently with game state', () => {
   const r=room('impostore');r.status='lobby';r.gameState={phase:'setup'};

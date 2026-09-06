@@ -7,7 +7,6 @@ export interface WavelengthRoundResult {
   target: number;
   guess: number | null;
   distance: number | null;
-  points: number;
   cancelled: boolean;
 }
 export interface WavelengthView {
@@ -19,12 +18,9 @@ export interface WavelengthView {
   turnIndex: number;
   turnOrder: string[];
   heardUids: string[];
-  scores: Record<string, number>;
   suggestion?: string;
   target?: number;
   guess?: number | null;
   distance?: number | null;
-  roundPoints?: number;
   cancelled?: boolean;
-  winners?: string[];
 }

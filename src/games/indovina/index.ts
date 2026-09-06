@@ -9,11 +9,7 @@ const IndovinaPlugin: GamePlugin = {
   id: 'indovina',
   name: 'Indovina la parola',
   description: 'Tutti vedono la tua parola tranne te. Scoprila con domande sì/no.',
-  rules:
-    'Ogni giocatore riceve una parola segreta che NON può vedere: la vedono tutti gli altri sul proprio telefono.\n\n' +
-    'Le parole arrivano dal dizionario (o da un tema generato con l\'AI), oppure — in modalità "Scelte dai giocatori" — le scrivete voi: ognuno ne invia una e vengono distribuite a caso, mai a chi l\'ha scritta.\n\n' +
-    'A turno, partendo dal primo giocatore indicato, si fanno domande sì/no a voce ("Sono un animale?", "Sono vivo?") per indovinare la propria parola. Gli altri rispondono guardando la parola sul proprio schermo.\n\n' +
-    'Chi indovina la propria parola può continuare a giocare per aiutare gli altri o fermarsi. Vince chi indovina con meno domande... o semplicemente ci si diverte!',
+  rules: "Ogni giocatore riceve dal mazzo una parola che non può vedere: la vedono tutti gli altri. A turno, partendo dal giocatore indicato, fate domande sì/no a voce per indovinare la vostra parola. Gli altri rispondono guardando il proprio schermo. Chi indovina può aiutare gli altri.",
   icon: '🤔',
   minPlayers: 2,
   maxPlayers: 0, // unlimited

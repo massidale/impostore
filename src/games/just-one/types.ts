@@ -1,5 +1,6 @@
 export interface JustOneSettings {
   rounds: number;
+  mode?: "cooperative" | "teams";
 }
 export interface JustOneView {
   phase: string;
@@ -8,7 +9,12 @@ export interface JustOneView {
   participantUids: string[];
   guesserUid: string;
   roundIndex: number;
-  score: number;
+  id?: string;
+  name?: string;
+  wordsGuessed?: number;
+  myTeam?: JustOneView;
+  teams?: JustOneTeamSummary[];
+  winnerTeamIds?: string[];
   submittedUids: string[];
   readyUids: string[];
   target?: string;
@@ -26,7 +32,18 @@ export interface JustOneView {
     guess: string;
     correct: boolean;
     reason: string;
-    points: number;
   };
-  history?: { round: number; word: string; correct: boolean; points: number }[];
+  history?: { round: number; word: string; correct: boolean }[];
+}
+
+export interface JustOneTeamSummary {
+  id: string;
+  name: string;
+  participantUids: string[];
+  phase: string;
+  roundId: number;
+  phaseVersion: number;
+  roundIndex: number;
+  guesserUid: string;
+  wordsGuessed: number;
 }

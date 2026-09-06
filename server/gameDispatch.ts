@@ -51,12 +51,7 @@ export function dispatchModule(
   } else {
     check(room.currentGameId === game.id, "Questo gioco non è selezionato");
     if (action === "setContent") {
-      check(room.status === "lobby", "Modifica i contenuti nella lobby");
-      const content = payload === null ? null : game.validateContent(payload);
-      (room.gameData ??= {})[game.id] = {
-        ...(room.gameData?.[game.id] as object),
-        content,
-      };
+      throw new Error("I contenuti personalizzati non sono disponibili");
     } else {
       const gs = room.gameState;
       check(

@@ -1,41 +1,10 @@
 import React from "react";
-import { Text, View } from "react-native";
-import type { SettingsPanelProps } from "../../../core/types/gamePlugin";
-import { Button, colors } from "../../../core/ui";
-import { ContentEditor } from "../../../core/components/newGames/ContentEditor";
-import type { TopTenSettings } from "../types";
-export default function SettingsPanel({
-  settings,
-  onSettingsChange,
-  roomId,
-}: SettingsPanelProps) {
-  const rounds = (settings as TopTenSettings)?.rounds ?? 5;
-  return (
-    <View style={{ gap: 12 }}>
-      <Text style={{ color: colors.textPrimary }}>
-        Temi: {rounds} · 4–10 giocatori · capitano incluso
-      </Text>
-      <View style={{ gap: 8 }}>
-        <Button
-          disabled={rounds <= 3}
-          onPress={() => onSettingsChange({ rounds: rounds - 1 })}
-        >
-          − Tema
-        </Button>
-        <Button
-          disabled={rounds >= 10}
-          onPress={() => onSettingsChange({ rounds: rounds + 1 })}
-        >
-          + Tema
-        </Button>
-      </View>
-      <ContentEditor
-        roomId={roomId}
-        gameId="top-ten"
-        example={
-          '[{"prompt":"Inventa un saluto","lowLabel":"timido","highLabel":"esuberante"}]'
-        }
-      />
-    </View>
-  );
+import { View, Text } from "react-native";
+import { SettingsPanelProps } from "../../../core/types/gamePlugin";
+import { NumberSelector, colors, spacing } from "../../../core/ui";
+export default function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps) {
+  return <View style={{ gap: spacing.md }}>
+    <NumberSelector label="Temi" min={3} max={10} value={(settings as { rounds?: number } | undefined)?.rounds ?? 5} onChange={(rounds) => onSettingsChange({ rounds })} />
+    <Text style={{ color: colors.textSecondary }}>4–10 giocatori · capitano incluso.</Text>
+  </View>;
 }

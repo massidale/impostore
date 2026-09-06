@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, useWindowDimensions } from 'react-native';
+import { getAllGames } from '../gameRegistry';
+import type { GamePlugin } from '../types/gamePlugin';
 import {
   Button,
   ErrorBanner,
+  GameCard,
+  GameRules,
   Input,
   SectionHeader,
+  Sheet,
   colors,
   fonts,
   fontSize,
@@ -13,26 +18,22 @@ import {
 } from '../ui';
 
 interface LandingScreenProps {
-  /** Player name shared by both flows (create room / join room). */
   name: string;
   onNameChange: (name: string) => void;
-  /** Registered accounts bring their own nickname — the input is hidden. */
   nameLocked?: boolean;
-  onCreate: () => void;
-  /** Called with the normalized 6-char room code. */
+  onCreate: (gameId: string) => void;
   onJoin: (code: string) => void;
   creating?: boolean;
   joining?: boolean;
+  createError?: string | null;
+  onDismissCreateError?: () => void;
   joinError?: string | null;
   onDismissJoinError?: () => void;
 }
 
 const ROOM_CODE_RE = /^[A-Z0-9]{6}$/;
 
-/**
- * App entry point: pick your name once, then create a room (the game is
- * chosen later, from the lobby) or join an existing one by code.
- */
+/** Browse freely; ask for a nickname only once the player chooses to create or join. */
 export default function LandingScreen({
   name,
   onNameChange,
@@ -41,156 +42,153 @@ export default function LandingScreen({
   onJoin,
   creating,
   joining,
+  createError,
+  onDismissCreateError,
   joinError,
   onDismissJoinError,
 }: LandingScreenProps) {
+  const { width } = useWindowDimensions();
   const [code, setCode] = useState('');
+  const [selectedGame, setSelectedGame] = useState<GamePlugin | null>(null);
+  const [creatingSelected, setCreatingSelected] = useState(false);
   const normalized = code.trim().toUpperCase();
   const hasName = name.trim().length > 0;
-  const canCreate = hasName && !creating;
-  const canJoin = hasName && ROOM_CODE_RE.test(normalized) && !joining;
+  const games = getAllGames();
+
+  const closeDetails = () => {
+    if (creating) return;
+    setSelectedGame(null);
+    setCreatingSelected(false);
+    onDismissCreateError?.();
+  };
 
   return (
-    <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Text style={styles.title}>Pronti a giocare?</Text>
-      <Text style={styles.subtitle}>
-        Una stanza, i telefoni in mano e un gioco da tavolo senza tavolo.
-      </Text>
+    <>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <View style={styles.container}>
+          <Text style={styles.title}>A cosa giochiamo stasera?</Text>
+          <Text style={styles.subtitle}>Scegli un gioco, invita gli amici e giocate con i vostri telefoni.</Text>
 
-      {!nameLocked ? (
-        <View style={styles.card}>
-          <SectionHeader
-            label="Il tuo nome"
-            hint="Lo userai per creare una stanza o per unirti."
-          />
-          <Input
-            placeholder="es. Mario"
-            value={name}
-            onChangeText={onNameChange}
-            maxLength={15}
-          />
+          <View style={styles.joinCard}>
+            <SectionHeader label="Hai già un codice?" hint="Entra nella stanza dei tuoi amici." />
+            <View style={styles.joinRow}>
+              <Input
+                placeholder="AB12CD"
+                accessibilityLabel="Codice stanza di 6 caratteri"
+                value={code}
+                onChangeText={(text) => {
+                  setCode(text.toUpperCase().replace(/[^A-Z0-9]/g, ''));
+                  if (joinError) onDismissJoinError?.();
+                }}
+                autoCapitalize="characters"
+                maxLength={6}
+                style={styles.codeInput}
+              />
+              <Button
+                onPress={() => onJoin(normalized)}
+                disabled={!ROOM_CODE_RE.test(normalized) || joining || creating}
+                variant="secondary"
+                style={{ width: 'auto', flexShrink: 0 }}
+              >
+                {joining ? 'Ingresso…' : 'Entra'}
+              </Button>
+            </View>
+            {joinError ? <ErrorBanner message={joinError} onDismiss={onDismissJoinError} style={styles.error} /> : null}
+          </View>
+
+          <SectionHeader label="Scegli il tuo gioco" hint="Tocca una scheda per scoprire come si gioca." />
+          <View style={styles.catalog}>
+            {games.map((game) => (
+              <View key={game.id} style={[styles.gameCell, width >= 760 && styles.gameCellWide]}>
+                <GameCard
+                  icon={game.icon ?? '🎲'}
+                  name={game.name}
+                  description={game.description}
+                  minPlayers={game.minPlayers}
+                  maxPlayers={game.maxPlayers}
+                  style={styles.gameCard}
+                  onPress={() => {
+                    setSelectedGame(game);
+                    setCreatingSelected(false);
+                    onDismissCreateError?.();
+                  }}
+                />
+              </View>
+            ))}
+          </View>
         </View>
-      ) : null}
+      </ScrollView>
 
-      <View style={[styles.card, !nameLocked && { marginTop: spacing.lg }]}>
-        <SectionHeader
-          label="Crea una stanza"
-          hint="Invita gli amici con QR o link. Il gioco lo scegli dopo."
-        />
-        <Button onPress={onCreate} disabled={!canCreate} variant="primary" size="lg">
-          {creating ? 'Creazione…' : 'Crea una stanza'}
-        </Button>
-        {!hasName && !nameLocked ? (
-          <Text style={styles.helper}>Inserisci il tuo nome per continuare</Text>
+      <Sheet
+        visible={selectedGame !== null}
+        onClose={closeDetails}
+        title={selectedGame?.name}
+        footer={selectedGame ? (
+          <View style={styles.sheetWidth}>
+            <Button
+              size="lg"
+              disabled={creating || (creatingSelected && !hasName)}
+              onPress={() => {
+                if (!creatingSelected && !nameLocked) {
+                  setCreatingSelected(true);
+                  return;
+                }
+                onCreate(selectedGame.id);
+              }}
+            >
+              {creating ? 'Creazione…' : creatingSelected ? 'Crea e invita gli amici' : 'Crea una stanza'}
+            </Button>
+          </View>
+        ) : undefined}
+      >
+        {selectedGame ? (
+          <View style={styles.sheetWidth}>
+            <GameCard
+              icon={selectedGame.icon ?? '🎲'}
+              name={selectedGame.name}
+              description={selectedGame.description}
+              minPlayers={selectedGame.minPlayers}
+              maxPlayers={selectedGame.maxPlayers}
+            />
+            <Text style={styles.rulesPreview}>{selectedGame.rules.split(/(?<=[.!?])\s+/).slice(0, 2).join(' ')}</Text>
+            <GameRules key={selectedGame.id} rules={selectedGame.rules} />
+            <Text style={styles.helper}>Nella stanza puoi regolare le impostazioni e invitare gli amici con QR o link.</Text>
+            {creatingSelected && !nameLocked ? (
+              <View style={styles.nameSection}>
+                <SectionHeader label="Come ti chiami?" hint="Gli altri giocatori ti vedranno con questo nome." />
+                <Input
+                  placeholder="es. Mario"
+                  accessibilityLabel="Il tuo nome"
+                  value={name}
+                  onChangeText={onNameChange}
+                  maxLength={15}
+                  autoFocus
+                />
+              </View>
+            ) : null}
+            {createError ? <ErrorBanner message={createError} onDismiss={onDismissCreateError} style={styles.error} /> : null}
+          </View>
         ) : null}
-      </View>
-
-      <View style={styles.dividerRow}>
-        <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>oppure</Text>
-        <View style={styles.dividerLine} />
-      </View>
-
-      <View style={styles.card}>
-        <SectionHeader
-          label="Unisciti a una stanza"
-          hint="Inserisci il codice di 6 caratteri che ti ha dato l'host."
-        />
-        <Input
-          placeholder="es. AB12CD"
-          value={code}
-          onChangeText={(text) => {
-            setCode(text.toUpperCase());
-            if (joinError) onDismissJoinError?.();
-          }}
-          maxLength={6}
-          style={[styles.codeInput, code.length === 0 && styles.codeInputEmpty]}
-        />
-        {joinError ? (
-          <ErrorBanner
-            message={joinError}
-            onDismiss={onDismissJoinError}
-            style={{ marginTop: spacing.md }}
-          />
-        ) : null}
-        <Button
-          onPress={() => onJoin(normalized)}
-          disabled={!canJoin}
-          variant="secondary"
-          style={{ marginTop: spacing.md }}
-        >
-          {joining ? 'Ingresso…' : 'Unisciti'}
-        </Button>
-      </View>
-    </ScrollView>
+      </Sheet>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  content: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.xxl,
-  },
-  title: {
-    color: colors.textPrimary,
-    fontFamily: fonts.displayHeavy,
-    fontSize: fontSize.xxl,
-    letterSpacing: -0.5,
-    textAlign: 'center',
-  },
-  subtitle: {
-    color: colors.textSecondary,
-    fontFamily: fonts.body,
-    fontSize: fontSize.md,
-    lineHeight: 22,
-    textAlign: 'center',
-    marginTop: spacing.sm,
-    marginBottom: spacing.xxl,
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.xl,
-  },
-  helper: {
-    color: colors.textMuted,
-    fontFamily: fonts.body,
-    fontSize: fontSize.sm,
-    textAlign: 'center',
-    marginTop: spacing.sm,
-  },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    marginVertical: spacing.xl,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: colors.border,
-  },
-  dividerText: {
-    color: colors.textMuted,
-    fontFamily: fonts.bodyMedium,
-    fontSize: fontSize.xs,
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-  },
-  codeInput: {
-    fontFamily: fonts.code as string,
-    letterSpacing: 4,
-    textAlign: 'center',
-    fontSize: fontSize.lg,
-  },
-  // The wide-tracked code font looks broken on the placeholder sentence —
-  // fall back to the body font until the user starts typing.
-  codeInputEmpty: {
-    fontFamily: fonts.body,
-    letterSpacing: 0,
-  },
+  content: { flexGrow: 1, paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.xxl },
+  container: { width: '100%', maxWidth: 1040, alignSelf: 'center' },
+  title: { color: colors.textPrimary, fontFamily: fonts.displayHeavy, fontSize: fontSize.xxl, letterSpacing: -0.5 },
+  subtitle: { color: colors.textSecondary, fontFamily: fonts.body, fontSize: fontSize.md, lineHeight: 22, marginTop: spacing.sm, marginBottom: spacing.xl },
+  joinCard: { backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.lg, marginBottom: spacing.xl },
+  joinRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  codeInput: { flex: 1, minWidth: 0, fontFamily: fonts.code as string, letterSpacing: 3, textAlign: 'center', fontSize: fontSize.md },
+  catalog: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
+  gameCell: { width: '100%' },
+  gameCellWide: { width: '48.5%', flexGrow: 1, maxWidth: '50%' },
+  gameCard: { flex: 1 },
+  sheetWidth: { width: '100%', maxWidth: 720, alignSelf: 'center' },
+  rulesPreview: { color: colors.textSecondary, fontFamily: fonts.body, fontSize: fontSize.md, lineHeight: 24, marginVertical: spacing.lg },
+  helper: { color: colors.textMuted, fontFamily: fonts.body, fontSize: fontSize.sm, lineHeight: 20, marginTop: spacing.lg },
+  nameSection: { marginTop: spacing.xl },
+  error: { marginTop: spacing.md },
 });

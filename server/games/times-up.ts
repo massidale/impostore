@@ -79,7 +79,7 @@ export const timesUpModule: GameModule = {
       deckSize: int(input?.deckSize ?? 30, 10, 60),
       teamMode: input?.teamMode ?? "auto",
       manualTeams: input?.manualTeams ?? null,
-      contentSource: input?.contentSource ?? "default",
+      contentSource: "default",
     };
     check(["auto", "manual"].includes(s.teamMode), "Squadre non valide");
     check(
@@ -143,27 +143,16 @@ export const timesUpModule: GameModule = {
       team: "blue",
       rotation: { blue: 0, red: 0 },
       describerUid: teams.blue[0],
-      scores: { blue: 0, red: 0 },
-      roundScores: { blue: 0, red: 0 },
       history: [],
       actionVersion: 0,
       deadline: null,
       private: {
-        contributions: {},
         pendingCardIds: [],
         originalDeck: [],
         undo: null,
       },
     });
-    if (room.settings.contentSource === "players") phase(room, "collecting");
-    else {
-      const content =
-        room.settings.contentSource === "custom"
-          ? (room.gameData?.["times-up"] as any)?.content
-          : data;
-      check(content, "Carica prima i nomi personalizzati");
-      prepare(room, this.validateContent(content));
-    }
+    prepare(room, this.validateContent(data));
     return room;
   },
   end: endGame,
@@ -174,16 +163,7 @@ export const timesUpModule: GameModule = {
       participants(room).includes(actor) || actor === room.hostId,
       "Non partecipi a questa partita",
     );
-    if (action === "submitNames") {
-      check(
-        s.phase === "collecting" && participants(room).includes(actor),
-        "Raccolta terminata",
-      );
-      p.contributions[actor] = cards(payload?.names).map((x) => x.name);
-    } else if (action === "beginTurn" && s.phase === "collecting") {
-      hostOnly(room, actor);
-      prepare(room, cards(Object.values(p.contributions).flat()));
-    } else if (action === "beginTurn") {
+    if (action === "beginTurn") {
       check(
         s.phase === "ready" || s.phase === "turnResults",
         "Fase non valida",
@@ -212,8 +192,6 @@ export const timesUpModule: GameModule = {
       if (action === "undoCard") {
         check(p.undo, "Nessuna azione annullabile");
         p.pendingCardIds = p.undo.queue;
-        s.scores[s.team] = p.undo.score;
-        s.roundScores[s.team] = p.undo.roundScore;
         p.undo = null;
       } else {
         check(
@@ -222,20 +200,14 @@ export const timesUpModule: GameModule = {
         );
         p.undo = {
           queue: [...p.pendingCardIds],
-          score: s.scores[s.team],
-          roundScore: s.roundScores[s.team],
         };
         const id = p.pendingCardIds.shift();
         check(id, "Mazzo esaurito");
-        if (payload.outcome === "correct") {
-          s.scores[s.team]++;
-          s.roundScores[s.team]++;
-        } else p.pendingCardIds.push(id);
+        if (payload.outcome !== "correct") p.pendingCardIds.push(id);
         if (!p.pendingCardIds.length) {
           p.undo = null;
           s.history.push({
             round: s.roundNumber,
-            scores: { ...s.roundScores },
           });
           s.deadline = null;
           if (s.roundNumber === 3) phase(room, "results");
@@ -252,7 +224,6 @@ export const timesUpModule: GameModule = {
       advanceTeam(s);
       s.roundNumber++;
       s.roundId++;
-      s.roundScores = { blue: 0, red: 0 };
       p.pendingCardIds = resetRoundDeck(p.originalDeck.map((x: any) => x.id));
       phase(room, "ready");
     } else if (action === "cancelRound") {
@@ -270,18 +241,10 @@ export const timesUpModule: GameModule = {
       teams: s.teams ?? { blue: [], red: [] },
       team: s.team ?? "blue",
       describerUid: s.describerUid ?? null,
-      scores: s.scores ?? { blue: 0, red: 0 },
-      roundScores: s.roundScores ?? { blue: 0, red: 0 },
       history: s.history ?? [],
       deadline: s.deadline ?? null,
       actionVersion: s.actionVersion ?? 0,
       remaining: p.pendingCardIds?.length ?? 0,
-      collectedCount: cardsCount(p.contributions),
-      submitted: !!p.contributions?.[viewer],
-      ...(s.phase === "collecting" && participants(room).includes(viewer)
-        ? { ownNames: p.contributions?.[viewer] ?? [] }
-        : {}),
-      submittedCount: Object.keys(p.contributions ?? {}).length,
       ...(s.phase === "turn" && viewer === s.describerUid
         ? {
             currentCard:
@@ -293,8 +256,3 @@ export const timesUpModule: GameModule = {
     });
   },
 };
-function cardsCount(contributions: any) {
-  return new Set(
-    (Object.values(contributions ?? {}).flat() as string[]).map(normalize),
-  ).size;
-}

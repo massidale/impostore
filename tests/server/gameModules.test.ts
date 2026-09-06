@@ -113,3 +113,8 @@ test("late joiner and unknown actors cannot submit or configure content", () => 
   );
   assert.throws(() => call(r, "b", "setContent", [], expected(r)), /host/);
 });
+
+test('bundled-only games reject custom content even from the host', () => {
+  const r = call(room(), 'a', 'init', {});
+  assert.throws(() => call(r, 'a', 'setContent', ['custom']), /personalizzati/);
+});

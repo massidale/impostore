@@ -3,7 +3,7 @@ import { Text, View } from "react-native";
 import type { HostDashboardProps } from "../../../core/types/gamePlugin";
 import { HostDashboardShell, Button, colors } from "../../../core/ui";
 import { sendAction } from "../services/timesUpLogic";
-import type { TimesUpView, TimesUpSettings } from "../types";
+import type { TimesUpView } from "../types";
 export default function HostDashboard({ roomData }: HostDashboardProps) {
   const s = roomData.gameState as unknown as TimesUpView;
   const [busy, setBusy] = useState(false),
@@ -31,18 +31,6 @@ export default function HostDashboard({ roomData }: HostDashboardProps) {
           >
             Termina partita
           </Button>
-          {s.phase === "collecting" && (
-            <Button
-              disabled={
-                busy ||
-                s.collectedCount <
-                  ((roomData.settings as TimesUpSettings)?.deckSize ?? 30)
-              }
-              onPress={() => run("beginTurn")}
-            >
-              Prepara mazzo
-            </Button>
-          )}
           {["ready", "turnResults"].includes(s.phase) && (
             <Button disabled={busy} onPress={() => run("beginTurn")}>
               Avvia turno

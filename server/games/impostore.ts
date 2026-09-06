@@ -1,3 +1,4 @@
+import { validateVote, hasEveryoneVoted } from '../../src/core/voting/voting';
 import { CoreRoom } from '../../src/core/types/room';
 import { ImpostoreGameState, ImpostorePlayerState, Winner } from '../../src/games/impostore/types';
 import { assignRoles, selectFirstPlayer } from '../../src/games/impostore/services/roleService';
@@ -158,16 +159,8 @@ function castVote(roomId: string, voterUid: string, votedUid: string): void {
     const roomData = snapshot.val() as CoreRoom<ImpostoreGameState>;
     if (roomData.gameState?.phase !== 'voting') throw new Error('Non è il momento di votare');
 
-    const voter = roomData.players?.[voterUid] as ImpostorePlayerState | undefined;
-    if (voter?.eliminated) throw new Error('I giocatori eliminati non possono votare');
-
-    const voted = roomData.players?.[votedUid] as ImpostorePlayerState | undefined;
-    if (voted?.eliminated) throw new Error('Non puoi votare un giocatore eliminato');
-
-    const runoff = roomData.gameState.runoffCandidates;
-    if (runoff && runoff.length > 0 && !runoff.includes(votedUid)) {
-      throw new Error('Voto non valido in ballottaggio');
-    }
+    const eligible = Object.entries(roomData.players ?? {}).filter(([, p]) => !p.waiting && !(p as ImpostorePlayerState).eliminated).map(([uid]) => uid);
+    validateVote({voter: voterUid, target: votedUid, eligible, candidates: roomData.gameState.runoffCandidates?.length ? roomData.gameState.runoffCandidates : eligible, endsAt: roomData.gameState.votingEndsAt ?? 0, now: store.now});
 
     store.update(roomId, {
       [`rooms/${roomId}/gameState/votes/${voterUid}`]: votedUid,
@@ -176,13 +169,7 @@ function castVote(roomId: string, voterUid: string, votedUid: string): void {
     const updatedSnapshot = store.read(`rooms/${roomId}`);
     const updatedData = updatedSnapshot.val() as CoreRoom<ImpostoreGameState>;
 
-    const alivePlayers = Object.values(updatedData.players || {}).filter(
-      (p) => !p.waiting && !(p as ImpostorePlayerState).eliminated
-    );
-    const playerCount = alivePlayers.length;
-    const voteCount = updatedData.gameState?.votes ? Object.keys(updatedData.gameState.votes).length : 0;
-
-    if (voteCount >= playerCount) {
+    if (hasEveryoneVoted(updatedData.gameState?.votes ?? {}, eligible)) {
       evaluateVotingRound(roomId);
     }
 }

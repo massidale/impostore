@@ -19,7 +19,7 @@ test("all normalized duplicates disappear, related words stay", () => {
   assert.deepEqual(survivingClues({ a: "mare", b: "mare", c: "mare" }), []);
   assert.equal(survivingClues({ a: "mare", b: "marino" }).length, 2);
 });
-test("complete cooperative match, host guesser privacy, aliases and single scoring", () => {
+test("complete cooperative match, host guesser privacy, aliases and outcome history", () => {
   const m = get().justOneModule;
   let r: any = room();
   m.init(r, { rounds: 5 }, 0);
@@ -51,12 +51,12 @@ test("complete cooperative match, host guesser privacy, aliases and single scori
       { text: s.private.current.aliases[0] || s.private.current.word },
       0,
     );
-    assert.equal(s.score, i + 1);
+    assert.equal(s.history.filter((h: any) => h.correct).length, i + 1);
     assert.throws(() => m.apply(r, guesser, "pass", {}, 0));
     m.apply(r, "a", "nextRound", {}, 0);
   }
   assert.equal(r.gameState.phase, "results");
-  assert.equal(r.gameState.score, 5);
+  assert.equal(r.gameState.history.filter((h: any) => h.correct).length, 5);
 });
 test("review requires two distinct flags, validates role and no-clue failure", () => {
   const m = get().justOneModule;
@@ -82,7 +82,7 @@ test("review requires two distinct flags, validates role and no-clue failure", (
   assert.throws(() => m.apply(r, a, "withdrawClue", {}, 0));
   m.apply(r, b, "confirmReview", {}, 0);
   assert.equal(r.gameState.phase, "roundResults");
-  assert.equal(r.gameState.score, 0);
+  assert.equal(r.gameState.history.filter((h: any) => h.correct).length, 0);
 });
 test("content, Unicode, bounds, target rejection and spectator projections", () => {
   const { justOneModule: m, normalizeClue } = get();
@@ -120,7 +120,7 @@ test("content, Unicode, bounds, target rejection and spectator projections", () 
   assert.equal(projected.gameState.private, undefined);
   assert.throws(() => m.apply(r, "b", "cancelRound", {}, 0));
   m.apply(r, "a", "cancelRound", {}, 0);
-  assert.equal(r.gameState.roundResult.points, 0);
+  assert.equal(r.gameState.roundResult.points, undefined);
   m.apply(r, "a", "nextRound", {}, 0);
   assert.equal(r.gameState.roundId, 2);
   m.end(r, 10);
@@ -146,17 +146,11 @@ test("all duplicate clues automatically fail after review; one flag keeps a clue
 test("editorial alias accepted; pass and incorrect guesses consume words without points", () => {
   const m = get().justOneModule;
   const r: any = room();
-  r.gameData = {
-    "just-one": {
-      content: Array.from({ length: 5 }, (_, i) => ({
-        id: String(i),
-        word: `target${i}`,
-        aliases: [`alias${i}`],
-      })),
-    },
-  };
   m.init(r, { rounds: 5 }, 0);
   m.start(r, 0);
+  r.gameState.private.current = loadServer("server/data/just-one.json").find(
+    (entry: any) => entry.aliases.length > 0,
+  );
   for (let i = 0; i < 3; i++) {
     const s = r.gameState;
     const authors = s.participantUids.filter((u: string) => u !== s.guesserUid);
@@ -168,12 +162,12 @@ test("editorial alias accepted; pass and incorrect guesses consume words without
         r,
         s.guesserUid,
         "submitGuess",
-        { text: s.private.current.aliases[0] },
+        { text: s.private.current.aliases[0] || s.private.current.word },
         0,
       );
     if (i === 1) m.apply(r, s.guesserUid, "pass", {}, 0);
     if (i === 2) m.apply(r, s.guesserUid, "submitGuess", { text: "errore" }, 0);
-    assert.equal(s.score, 1);
+    assert.equal(s.history.filter((h: any) => h.correct).length, 1);
     m.apply(r, "a", "nextRound", {}, 0);
   }
   assert.equal(r.gameState.roundIndex, 3);

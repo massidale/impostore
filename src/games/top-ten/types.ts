@@ -10,10 +10,9 @@ export interface TopTenView {
   ownNumber?: number;
   performanceOrder: string[];
   performed: string[];
-  score: number;
-  roundScore?: number;
+  history: { round: number; correctOrder: boolean; cancelled?: boolean }[];
   order: string[];
   numbersByUid?: Record<string, number>;
-  history: { round: number; score: number; cancelled?: boolean }[];
+  correctOrder?: boolean;
   cancelled?: boolean;
 }

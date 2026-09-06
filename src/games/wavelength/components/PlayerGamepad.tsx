@@ -4,7 +4,6 @@ import { PlayerGamepadProps } from "../../../core/types/gamePlugin";
 import { Button, colors, fonts } from "../../../core/ui";
 import { RoundLayout } from "../../../core/components/newGames/RoundLayout";
 import { NumberPad } from "../../../core/components/newGames/NumberPad";
-import { ScoreList } from "../../../core/components/newGames/ScoreList";
 import { roomCommand } from "../../../core/services/roomCommand";
 import { WavelengthView } from "../types";
 export default function PlayerGamepad({
@@ -72,8 +71,8 @@ export default function PlayerGamepad({
       >
         {result
           ? s.cancelled
-            ? "Nessun punto assegnato."
-            : `${name(s.guesserUid)} ha scelto ${s.guess}. Scarto: ${s.distance}. +${s.roundPoints} punti.`
+            ? "Il prossimo turno sta per iniziare."
+            : `${name(s.guesserUid)} ha scelto ${s.guess}. Scarto: ${s.distance}.`
           : guesser
             ? "Fai una domanda a ogni interlocutore. Gli esempi descrivono tutti lo stesso voto da 1 a 10."
             : member
@@ -100,23 +99,8 @@ export default function PlayerGamepad({
               Suggerimento facoltativo: {s.suggestion}
             </Text>
           )}
-          {(s.turnOrder ?? []).map((uid, i) => (
-            <View key={uid} style={{ gap: 8 }}>
-              <Text style={{ color: colors.textPrimary }}>
-                {i + 1}. {name(uid)}{" "}
-                {s.heardUids?.includes(uid) ? "✓ ascoltato" : ""}
-              </Text>
-              {guesser && i === (s.heardUids?.length ?? 0) && (
-                <Button
-                  disabled={busy}
-                  onPress={() => send("markHeard", { targetUid: uid })}
-                >
-                  Ho ascoltato {name(uid)}
-                </Button>
-              )}
-            </View>
-          ))}
-          {guesser && s.heardUids?.length === s.turnOrder?.length && (
+          <Text style={{ color: colors.textPrimary }}>Inizia {name(s.turnOrder?.[0] ?? "")}. Proseguite a voce.</Text>
+          {guesser && (
             <Button disabled={busy} onPress={() => send("beginGuess")}>
               Scegli il numero
             </Button>
@@ -139,20 +123,13 @@ export default function PlayerGamepad({
             {name(s.guesserUid)} sta scegliendo un numero.
           </Text>
         ))}
-      {result && <ScoreList scores={s.scores ?? {}} roomData={roomData} />}
       {result &&
         (s.history ?? []).map((r) => (
           <Text key={r.roundId} style={{ color: colors.textSecondary }}>
             Turno {r.roundId} · {name(r.guesserUid)}:{" "}
-            {r.cancelled ? "annullato" : `${r.guess} → ${r.target}`} ·{" "}
-            {r.points} pt
+            {r.cancelled ? "annullato" : `${r.guess} → ${r.target}`}
           </Text>
         ))}
-      {s.phase === "results" && (
-        <Text style={{ color: colors.textPrimary, fontSize: 20 }}>
-          Vittoria: {(s.winners ?? []).map(name).join(", ")}
-        </Text>
-      )}
       {host && s.phase === "roundResults" && (
         <Button disabled={busy} onPress={() => send("nextRound")}>
           Continua
@@ -164,7 +141,7 @@ export default function PlayerGamepad({
           variant="secondary"
           onPress={() => send("cancelRound")}
         >
-          Annulla questo turno (0 punti)
+          Annulla questo turno
         </Button>
       )}
       {host && (

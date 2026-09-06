@@ -36,62 +36,16 @@ const TEAM_LABEL: Record<TeamId, string> = {
   red: 'Squadra Rossa',
 };
 
-const TEAM_SHORT: Record<TeamId, string> = {
-  blue: 'Blu',
-  red: 'Rossa',
-};
 
 const TEAM_COLOR: Record<TeamId, string> = {
   blue: colors.teamBlue,
   red: colors.teamRed,
 };
 
-const TEAM_TINT: Record<TeamId, string> = {
-  blue: colors.teamBlueTint,
-  red: colors.teamRedTint,
-};
 
 function playerName(roomData: PlayerGamepadProps['roomData'], uid?: string | null): string {
   if (!uid) return 'Giocatore';
   return roomData.players?.[uid]?.name || 'Giocatore';
-}
-
-// ── Scoreboard ──
-
-function ScoreBoard({
-  scores,
-  activeTeam,
-  turnLabel,
-}: {
-  scores: { blue: number; red: number };
-  activeTeam?: TeamId;
-  turnLabel?: string;
-}) {
-  return (
-    <View style={styles.scoreBoard}>
-      <ScoreCell team="blue" score={scores.blue} active={activeTeam === 'blue'} />
-      <View style={styles.scoreCenter}>
-        <Text style={styles.scoreVs}>VS</Text>
-        {turnLabel ? <Text style={styles.scoreTurn}>{turnLabel}</Text> : null}
-      </View>
-      <ScoreCell team="red" score={scores.red} active={activeTeam === 'red'} />
-    </View>
-  );
-}
-
-function ScoreCell({ team, score, active }: { team: TeamId; score: number; active: boolean }) {
-  return (
-    <View
-      style={[
-        styles.scoreCell,
-        { backgroundColor: TEAM_TINT[team] },
-        active && { borderColor: TEAM_COLOR[team] },
-      ]}
-    >
-      <Text style={[styles.scoreTeam, { color: TEAM_COLOR[team] }]}>{TEAM_SHORT[team]}</Text>
-      <Text style={styles.scoreValue}>{score}</Text>
-    </View>
-  );
 }
 
 // ── Taboo card ──
@@ -126,7 +80,6 @@ export default function TabooPlayerGamepad({ roomData, playerId }: PlayerGamepad
   const playerCount = Object.keys(roomData.players ?? {}).length;
   const metaRow = <><MetaRow roomId={roomId} players={playerCount} />{error ? <ErrorBanner message={error} /> : null}</>;
 
-  const scores = gameState.scores ?? { blue: 0, red: 0 };
   const myTeam: TeamId | undefined = gameState.teams?.[playerId];
   const currentTeam = gameState.currentTeam ?? 'blue';
   const describerUid = gameState.describerUid;
@@ -150,6 +103,7 @@ export default function TabooPlayerGamepad({ roomData, playerId }: PlayerGamepad
     return (
       <View onLayout={onLayout} style={[styles.container, compact && styles.compactContainer]}>
         {metaRow}
+        <Text style={{ color: colors.textSecondary }}>{turnLabel}</Text>
         <FitContent>
           <StatusCard
             title="In attesa..."
@@ -165,6 +119,7 @@ export default function TabooPlayerGamepad({ roomData, playerId }: PlayerGamepad
     return (
       <View onLayout={onLayout} style={[styles.container, compact && styles.compactContainer]}>
         {metaRow}
+        <Text style={{ color: colors.textSecondary }}>{turnLabel}</Text>
         <FitContent>
           <StatusCard
             title="Partita in corso"
@@ -183,7 +138,6 @@ export default function TabooPlayerGamepad({ roomData, playerId }: PlayerGamepad
 
     return (
       <View onLayout={onLayout} style={[styles.container, compact && styles.compactContainer]}>
-        <ScoreBoard scores={scores} activeTeam={currentTeam} turnLabel={turnLabel} />
 
         <FitContent>
           {last ? (
@@ -238,7 +192,6 @@ export default function TabooPlayerGamepad({ roomData, playerId }: PlayerGamepad
           ) : null}
         </FitContent>
 
-        {/* Bottom placement: keeps the scoreboard header untouched. */}
         <MetaRow roomId={roomId} players={playerCount} style={styles.bottomMeta} />
       </View>
     );
@@ -258,7 +211,6 @@ export default function TabooPlayerGamepad({ roomData, playerId }: PlayerGamepad
     // between the timer and actions, including when host controls are open.
     return (
       <View onLayout={onLayout} style={[styles.container, compact && styles.compactContainer]}>
-        <ScoreBoard scores={scores} activeTeam={currentTeam} turnLabel={turnLabel} />
 
         <View style={styles.timerRow}>
           <CountdownBar
@@ -289,7 +241,7 @@ export default function TabooPlayerGamepad({ roomData, playerId }: PlayerGamepad
               <TabooCardView card={card} team={currentTeam} compact={compact} />
               <Text style={styles.buzzHint}>
                 Se dice una parola vietata, dillo a voce: la segna{' '}
-                {playerName(roomData, describerUid)} (−1 punto).
+                {playerName(roomData, describerUid)}.
               </Text>
             </>
           ) : (
@@ -336,19 +288,14 @@ export default function TabooPlayerGamepad({ roomData, playerId }: PlayerGamepad
   }
 
   // ── Results ──
-  // Minimal recap, identical for every player: winning team + final scores.
   if (gameState.phase === 'results') {
-    const winner =
-      scores.blue > scores.red ? 'blue' : scores.red > scores.blue ? 'red' : 'tie';
-    const accent = winner === 'tie' ? colors.warning : TEAM_COLOR[winner];
-    const title =
-      winner === 'tie'
-        ? 'Pareggio!'
-        : `Vince la ${TEAM_LABEL[winner]}`;
+    const accent = colors.primary;
+    const title = 'Partita conclusa!';
 
     return (
       <View onLayout={onLayout} style={[styles.container, compact && styles.compactContainer]}>
         {metaRow}
+        <Text style={{ color: colors.textSecondary }}>{turnLabel}</Text>
         <FitContent>
           <View style={[styles.resultsCard, { borderColor: accent }]}>
             <View style={styles.resultsHeader}>
@@ -358,7 +305,6 @@ export default function TabooPlayerGamepad({ roomData, playerId }: PlayerGamepad
 
             <Text style={[styles.resultsTitle, { color: accent }]}>{title}</Text>
 
-            <ScoreBoard scores={scores} activeTeam={winner === 'tie' ? undefined : winner} />
           </View>
         </FitContent>
       </View>
@@ -383,55 +329,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     padding: spacing.lg,
     justifyContent: 'center',
-  },
-
-  // Scoreboard — compact single row: team + score side by side.
-  scoreBoard: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  scoreCell: {
-    flex: 1,
-    flexDirection: 'row',
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: 'transparent',
-    paddingVertical: spacing.xs + 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-  },
-  scoreTeam: {
-    fontFamily: fonts.bodySemi,
-    fontSize: 10,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  scoreValue: {
-    color: colors.textPrimary,
-    fontFamily: fonts.displayHeavy,
-    fontSize: fontSize.md,
-    lineHeight: fontSize.md + 4,
-  },
-  scoreCenter: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: spacing.xs,
-  },
-  scoreVs: {
-    color: colors.textMuted,
-    fontFamily: fonts.displayHeavy,
-    fontSize: fontSize.xs,
-    letterSpacing: 1,
-  },
-  scoreTurn: {
-    color: colors.textMuted,
-    fontFamily: fonts.bodyMedium,
-    fontSize: 9,
-    letterSpacing: 0.5,
-    marginTop: 2,
   },
 
   // Timer + undo (describer) on one compact row

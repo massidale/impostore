@@ -12,9 +12,7 @@ export interface HerdMentalityView {
   myAnswer?: string;
   answersByUid?: Record<string, string>;
   groups?: { id: string; memberUids: string[] }[];
-  scores: Record<string, number>;
   canUndo?: boolean;
-  winners?: string[];
   roundResult?: { winners: string[]; cancelled: boolean };
   history?: {
     round: number;

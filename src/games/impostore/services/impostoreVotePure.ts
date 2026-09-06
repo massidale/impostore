@@ -1,3 +1,4 @@
+import { tallyVotes } from '../../../core/voting/voting';
 /**
  * Pure decision logic for the Impostore voting round, factored out of
  * `impostoreLogic.ts` so it can be exhaustively tested without touching
@@ -31,19 +32,10 @@ export function computeVoteOutcome(input: ComputeVoteOutcomeInput): VoteOutcome 
 
   const isRunoff = !!(runoffCandidates && runoffCandidates.length > 0);
 
-  const counts: Record<string, number> = {};
-  for (const votedUid of Object.values(votes)) {
-    counts[votedUid] = (counts[votedUid] || 0) + 1;
-  }
-
-  if (Object.keys(counts).length === 0) {
-    throw new Error('No votes to evaluate');
-  }
-
-  const maxVotes = Math.max(...Object.values(counts));
-  let topVoted = Object.entries(counts)
-    .filter(([, c]) => c === maxVotes)
-    .map(([uid]) => uid);
+  const tally = tallyVotes(votes);
+  const counts = tally.counts;
+  let topVoted = tally.leaders;
+  if (!topVoted.length) throw new Error('No votes to evaluate');
 
   if (topVoted.length === 1) {
     return { kind: 'eliminate', uid: topVoted[0] };

@@ -10,8 +10,7 @@ const plugin: GamePlugin = {
   description: "Interpretate un tema e ordinate le intensità nascoste.",
   minPlayers: 4,
   maxPlayers: 10,
-  rules:
-    "Ogni partecipante, capitano incluso, riceve un numero diverso da 1 a 10. Interpretate il tema a voce secondo il vostro numero, nell’ordine indicato. Il capitano ordina tutti dal meno al più intenso usando i pulsanti su e giù. Ogni coppia adiacente crescente vale un punto cooperativo. I numeri si rivelano soltanto alla conferma. Il capitano cambia a ogni tema. Partita da 3 a 10 temi, 5 di default. L’host può annullare un tema bloccato senza punti.",
+  rules: "Ogni partecipante, capitano incluso, riceve un numero diverso da 1 a 10. Partendo dal giocatore indicato, interpretate il tema a voce secondo il vostro numero. Il capitano ordina tutti dal meno al più intenso. I numeri si rivelano alla conferma: confrontate il vostro ordine con quello corretto. Il capitano cambia a ogni tema.",
   SettingsPanel,
   PlayerGamepad,
   HostDashboard,

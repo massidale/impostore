@@ -39,7 +39,6 @@ export default function PlayerGamepad({
     });
   const label = { color: colors.textPrimary, fontSize: 18 };
   const reveal = ["roundResults", "results"].includes(s.phase);
-  const current = s.performanceOrder?.[s.performed?.length ?? 0];
   return (
     <RoundLayout
       roomData={roomData}
@@ -79,27 +78,8 @@ export default function PlayerGamepad({
     >
       {s.phase === "performing" && (
         <>
-          <Text style={label}>
-            Interpretazioni: {s.performed?.length ?? 0}/
-            {s.performanceOrder?.length ?? 0}.{" "}
-            {current
-              ? `Ora parla ${name(current)}`
-              : "Tutti hanno interpretato il tema."}
-          </Text>
-          {s.performanceOrder?.map((id, i) => (
-            <Text key={id} style={label}>
-              {i + 1}. {name(id)} {s.performed?.includes(id) ? "✓" : ""}
-            </Text>
-          ))}
-          {participant && current === playerId && (
-            <Button
-              disabled={busy}
-              onPress={() => run("markPerformed", { playerUid: playerId })}
-            >
-              Ho finito
-            </Button>
-          )}
-          {captain && !current && (
+          <Text style={label}>Inizia {name(s.performanceOrder?.[0] ?? "")}. Interpretate il tema a voce, poi il capitano ordina le risposte.</Text>
+          {captain && (
             <Button disabled={busy} onPress={() => run("beginOrdering")}>
               Ordina le interpretazioni
             </Button>
@@ -171,25 +151,14 @@ export default function PlayerGamepad({
           <Text style={label}>
             {s.cancelled
               ? "Tema annullato"
-              : `Punti del tema: ${s.roundScore ?? 0}/${(s.participantUids?.length ?? 1) - 1}`}
+              : s.correctOrder ? "Ordine corretto!" : "Ordine da rivedere"}
           </Text>
           {s.order?.map((id, i) => (
             <Text key={id} style={label}>
               {i + 1}. {name(id)} · {s.numbersByUid?.[id]}
             </Text>
           ))}
-          <Text style={{ ...label, fontSize: 24 }}>
-            Totale cooperativo: {s.score} /{" "}
-            {((s.participantUids?.length ?? 1) - 1) *
-              ((roomData.settings as TopTenSettings)?.rounds ?? 5)}
-          </Text>
-          {s.phase === "results" &&
-            s.history?.map((h) => (
-              <Text key={h.round} style={label}>
-                Tema {h.round}: {h.score} punti{" "}
-                {h.cancelled ? "· annullato" : ""}
-              </Text>
-            ))}
+          <Text style={label}>Ordine corretto: {Object.entries(s.numbersByUid ?? {}).sort((a, b) => a[1] - b[1]).map(([id, number]) => `${name(id)} (${number})`).join(" → ")}</Text>
         </>
       )}
     </RoundLayout>

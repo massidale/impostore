@@ -6,24 +6,17 @@ import {
   ProgressCounter,
   confirmDialog,
 } from '../../../core/ui';
-import { IndovinaGameState, IndovinaPlayerState } from '../types';
 import { endIndovinaGame } from '../services/indovinaLogic';
 import { getWaitingPlayerUids } from '../../../core/services/playerSelection';
 import type { CorePlayer } from '../../../core/types/room';
 
 export default function IndovinaHostDashboard({ roomData }: HostDashboardProps) {
-  const gameState = roomData.gameState as IndovinaGameState;
   const roomId = roomData.id;
   const allPlayers = roomData.players || {};
   const activeEntries = Object.entries(allPlayers).filter(
     ([, p]) => !(p as CorePlayer).waiting
   );
   const playerCount = activeEntries.length;
-
-  const isCollecting = gameState?.phase === 'collecting';
-  const submittedCount = isCollecting
-    ? activeEntries.filter(([, p]) => !!(p as IndovinaPlayerState).hasSubmittedWord).length
-    : 0;
 
   const waitingUids = getWaitingPlayerUids(roomData);
   const waitingNames = waitingUids
@@ -44,21 +37,12 @@ export default function IndovinaHostDashboard({ roomData }: HostDashboardProps) 
     <HostDashboardShell
       gameName="Indovina"
       status={
-        isCollecting ? (
-          <ProgressCounter
-            prefix="Parole"
-            completed={submittedCount}
-            total={playerCount}
-            tone="primary"
-          />
-        ) : (
           <ProgressCounter
             prefix="Giocatori"
             completed={playerCount}
             total={playerCount}
             tone="primary"
           />
-        )
       }
       waitingNames={waitingNames}
       actions={

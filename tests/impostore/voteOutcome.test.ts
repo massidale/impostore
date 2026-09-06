@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeVoteOutcome } from '../../src/games/impostore/services/impostoreVotePure.ts';
+import { loadServer } from '../helpers/serverLoader.ts';
+const { computeVoteOutcome } = loadServer('src/games/impostore/services/impostoreVotePure.ts');
 
 test('vote: single majority eliminates the top-voted player', () => {
   const outcome = computeVoteOutcome({

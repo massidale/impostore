@@ -23,11 +23,9 @@ export class RoomStore {
     this.room.updatedAt = this.now;
   }
   dictionary(game: string): any {
-    const custom = (this.room.gameData?.[game] as any)?.dictionary;
-    if (game === 'impostore' && Array.isArray(custom)) return Object.fromEntries(custom.map(c => [c.word, c.hint]));
-    return custom ??
-      ({impostore: impostoreWords, indovina: indovinaWords, taboo: tabooCards} as any)[game];
+    return ({impostore: impostoreWords, indovina: indovinaWords, taboo: tabooCards} as any)[game];
   }
+
   private keys(path: string): string[] {
     const [root, id, ...keys] = path.split('/');
     if (root !== 'rooms' || id !== this.room.id || keys.some(k => ['__proto__', 'constructor', 'prototype'].includes(k))) throw new Error('Percorso non valido');

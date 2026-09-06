@@ -11,25 +11,13 @@ export function NumberPad({
   disabled?: boolean;
 }) {
   return (
-    <View
-      style={{
-        flexDirection: "row",
-        flexWrap: "wrap",
-        gap: spacing.sm,
-        justifyContent: "center",
-      }}
-    >
-      {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-        <Button
-          key={n}
-          size="sm"
-          style={{ width: 48, minHeight: 44 }}
-          disabled={disabled}
-          variant={value === n ? "primary" : "secondary"}
-          onPress={() => onChange(n)}
-        >
-          {n}
-        </Button>
+    <View style={{ gap: spacing.sm, width: "100%" }}>
+      {[0, 5].map((start) => (
+        <View key={start} style={{ flexDirection: "row", gap: spacing.sm }}>
+          {Array.from({ length: 5 }, (_, i) => start + i + 1).map((n) => (
+            <Button key={n} size="sm" style={{ flex: 1, width: 0, minWidth: 0, minHeight: 48, paddingHorizontal: 0 }} disabled={disabled} variant={value === n ? "primary" : "secondary"} onPress={() => onChange(n)}>{n}</Button>
+          ))}
+        </View>
       ))}
     </View>
   );

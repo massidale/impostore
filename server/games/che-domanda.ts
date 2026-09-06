@@ -1,3 +1,4 @@
+import { tallyVotes, validateVote, hasEveryoneVoted } from '../../src/core/voting/voting';
 import data from "../data/che-domanda.json";
 import type { Room } from "../runtime";
 import {
@@ -74,11 +75,7 @@ function discussion(room: Room) {
 }
 function close(room: Room, now: number) {
   const s = room.gameState as CheDomandaState;
-  const counts: Record<string, number> = {};
-  for (const target of Object.values(s.votesByUid))
-    counts[target] = (counts[target] ?? 0) + 1;
-  const max = Math.max(0, ...Object.values(counts));
-  const tied = Object.keys(counts).filter((id) => counts[id] === max);
+  const { leaders: tied } = tallyVotes(s.votesByUid);
   if (tied.length > 1 && !s.runoff) {
     s.runoff = true;
     s.candidates = tied;
@@ -183,7 +180,7 @@ export const cheDomandaModule: GameModule = {
     const ids = participants(room);
     check(ids.length >= 3 && ids.length <= 12, "Servono 3–12 partecipanti");
     room.settings = this.validateSettings(room.settings, ids);
-    const content = (room.gameData?.["che-domanda"] as any)?.content ?? data;
+    const content = data;
     const pair = shuffled(content)[0];
     room.gameState = {
       ...room.gameState,
@@ -238,8 +235,8 @@ export const cheDomandaModule: GameModule = {
     } else if (action === "startVoting") {
       hostOnly(room, actor);
       check(
-        s.phase === "discussion" && s.speakerIndex === s.speakerOrder.length,
-        "Completa il giro di discussione",
+        s.phase === "discussion",
+        "Discussione non attiva",
       );
       s.votesByUid = {};
       s.candidates = alive(room);
@@ -248,14 +245,10 @@ export const cheDomandaModule: GameModule = {
       phase(room, "voting");
     } else if (action === "castVote") {
       check(s.phase === "voting" && now < s.votingEndsAt, "Votazione chiusa");
-      check(alive(room).includes(actor), "Sei eliminato");
       const target = payload?.targetUid;
-      check(
-        s.candidates.includes(target) && target !== actor,
-        "Vota un altro candidato",
-      );
+      validateVote({voter: actor, target, eligible: alive(room), candidates: s.candidates, endsAt: s.votingEndsAt, now});
       s.votesByUid[actor] = target;
-      if (Object.keys(s.votesByUid).length === alive(room).length)
+      if (hasEveryoneVoted(s.votesByUid, alive(room)))
         close(room, now);
     } else if (action === "closeVoting") {
       hostOnly(room, actor);

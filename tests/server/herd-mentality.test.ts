@@ -13,7 +13,7 @@ const room = () => ({
   ),
   gameState: { participantUids: ["a", "b", "c", "d", "e"] },
 });
-test("unique plurality wins; tied largest groups and all different score zero", () => {
+test("unique plurality identifies popular answers; ties have no unique group", () => {
   const { majorityWinners, normalizeAnswer } = get();
   assert.deepEqual(majorityWinners([["a", "b"], ["c"], ["d"], ["e"]]), [
     "a",
@@ -30,7 +30,7 @@ test("unique plurality wins; tied largest groups and all different score zero", 
   assert.equal(normalizeAnswer("  Caffè!! "), "caffe");
   assert.notEqual(normalizeAnswer("l'ago"), normalizeAnswer("lago"));
 });
-test("five complete rounds preserve private answers and score once", () => {
+test("five complete rounds preserve private answers without accumulated scores", () => {
   const m = get().herdMentalityModule;
   const r: any = room();
   m.init(r, { rounds: 5 }, 0);
@@ -56,12 +56,12 @@ test("five complete rounds preserve private answers and score once", () => {
     assert.equal(m.project(r, "a").gameState.answersByUid.a, "caffè");
     assert.throws(() => m.apply(r, "b", "confirmResults", {}, 0));
     m.apply(r, "a", "confirmResults", {}, 0);
-    assert.equal(r.gameState.scores.a, n + 1);
+    assert.equal(r.gameState.scores, undefined);
     assert.throws(() => m.apply(r, "a", "confirmResults", {}, 0));
     m.apply(r, "a", "nextRound", {}, 0);
   }
   assert.equal(r.gameState.phase, "results");
-  assert.deepEqual(r.gameState.winners, ["a", "b"]);
+  assert.equal(r.gameState.winners, undefined);
 });
 test("host merge and undo preserve originals and partition", () => {
   const m = get().herdMentalityModule;
@@ -82,7 +82,7 @@ test("host merge and undo preserve originals and partition", () => {
   m.apply(r, "a", "undoMerge", {}, 0);
   assert.deepEqual(r.gameState.groups, before);
   m.apply(r, "a", "confirmResults", {}, 0);
-  assert.deepEqual(Object.values(r.gameState.scores), [0, 0, 0, 0, 0]);
+  assert.equal(r.gameState.scores, undefined);
   assert.throws(() =>
     m.apply(r, "a", "mergeGroups", { groupIds: ["g0", "g1"] }, 0),
   );
@@ -113,7 +113,7 @@ test("content validation, lengths, normalization and cancellation", () => {
   assert.equal(m.project(r, "a").gameData, undefined);
   assert.throws(() => m.apply(r, "a", "confirmResults", {}, 0));
   m.apply(r, "a", "cancelRound", {}, 0);
-  assert.deepEqual(Object.values(r.gameState.scores), [0, 0, 0, 0, 0]);
+  assert.equal(r.gameState.scores, undefined);
   m.apply(r, "a", "nextRound", {}, 0);
   assert.equal(r.gameState.roundId, 2);
   assert.equal(m.project(r, "a").gameState.myAnswer, undefined);

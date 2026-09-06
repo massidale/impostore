@@ -282,3 +282,11 @@ test("Custom domains must contain a representable answer with safe scaled bounds
     m.validateContent([{ ...pair, min: 0.29001, max: 0.29999, decimals: 2 }]),
   );
 });
+
+test("Host opens voting after discussion without confirming every speaker", () => {
+  const r = room();
+  answer(r);
+  assert.equal(r.gameState.speakerIndex, 0);
+  m.apply(r, "a", "startVoting", {}, 3);
+  assert.equal(r.gameState.phase, "voting");
+});

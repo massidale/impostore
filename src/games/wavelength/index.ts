@@ -14,8 +14,7 @@ const WavelengthPlugin: GamePlugin = {
     "Un numero comune, tanti esempi: entra in sintonia con il gruppo.",
   minPlayers: 3,
   maxPlayers: 12,
-  rules:
-    "Tutti tranne l’indovino ricevono lo stesso numero da 1 a 10. L’indovino fa a voce una domanda a ogni interlocutore, nell’ordine indicato. Ognuno risponde con un esempio che per lui vale quel voto, senza pronunciare il numero. Le domande possono essere diverse. Dopo avere ascoltato tutti, l’indovino sceglie un solo numero e lo conferma. Numero esatto: 2 punti; scarto di 1: 1 punto; altrimenti 0. Tutti indovinano una volta per giro (1–3 giri). Vince chi ha più punti, anche a pari merito. I numeri possono ripetersi. Chi entra a partita iniziata osserva fino alla prossima partita. L’host può annullare un turno senza punti o terminare la partita.",
+  rules: "Tutti tranne l’indovino ricevono lo stesso numero da 1 a 10. Partendo dal giocatore indicato, date esempi a voce senza dire il numero. L’indovino ascolta e sceglie un numero. Scoprite il numero comune e lo scarto dalla risposta. Tutti indovinano una volta per giro.",
   SettingsPanel,
   HostDashboard,
   PlayerGamepad,

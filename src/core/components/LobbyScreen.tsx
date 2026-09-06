@@ -202,7 +202,11 @@ export default function LobbyScreen({
   };
 
   const handleChangeGame = async (newPlugin: GamePlugin) => {
-    if (savingSettings || newPlugin.id === roomData.currentGameId) return;
+    if (savingSettings) return;
+    if (newPlugin.id === roomData.currentGameId) {
+      setShowGamePicker(false);
+      return;
+    }
     setSavingSettings(true);
     setSettingsError(null);
     try {

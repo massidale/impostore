@@ -27,8 +27,7 @@ import WebPlayerScreen from '../core/components/WebPlayerScreen';
  * MainScreen — thin router that orchestrates the app flow:
  *
  * 1. Auth not ready → spinner
- * 2. No room → LandingScreen (name + join by code / create room immediately;
- *    the game is chosen later from the lobby)
+ * 2. No room → LandingScreen (game catalog + join by code)
  * 3. Web player with room URL or joined by code → WebPlayerScreen
  * 4. Room in lobby → LobbyScreen
  * 5. Room active → Game's HostDashboard + PlayerGamepad (via registry)
@@ -134,17 +133,26 @@ export default function MainScreen() {
     setRoomId(code);
   };
 
-  // The room is created right away, without a game: the host picks one
-  // from the lobby (the match can't start until they do).
-  const handleCreateRoom = async () => {
+  // Initialize the chosen game before opening the lobby.
+  const handleCreateRoom = async (gameId: string) => {
     const name = playerName.trim();
-    if (!name) return;
+    if (!name || loading) return;
     setLoading(true);
     setCreateRoomError(null);
     try {
-      const newRoomId = await createRoom(uid!, identityId!, NO_GAME_ID, name);
+      const plugin = getGame(gameId);
+      const newRoomId = await createRoom(uid!, identityId!, gameId, name);
       await sessionStore.setLastHostedRoom(newRoomId).catch(() => {});
-      setGameSettings(null);
+      const defaults = plugin.getDefaultSettings();
+      try {
+        await plugin.initGameState(newRoomId, defaults);
+        setGameSettings(defaults);
+        setStartGameError(null);
+      } catch (error) {
+        // Keep the newly created room recoverable if game initialization fails.
+        setGameSettings(null);
+        setStartGameError(error instanceof Error ? error.message : 'Impossibile preparare il gioco. Selezionalo dalle impostazioni.');
+      }
       setRoomId(newRoomId);
     } catch (e) {
       console.error(e);
@@ -249,7 +257,7 @@ export default function MainScreen() {
       );
     }
 
-    // Landing — name + join by code or create the room right away
+    // Landing — browse games or join an existing room
     return (
       <Screen style={styles.safeArea}>
         <StatusBar style="light" />
@@ -262,11 +270,10 @@ export default function MainScreen() {
           onJoin={handleJoinByCode}
           creating={loading}
           joining={loading}
-          joinError={joinError ?? createRoomError}
-          onDismissJoinError={() => {
-            setJoinError(null);
-            setCreateRoomError(null);
-          }}
+          joinError={joinError}
+          onDismissJoinError={() => setJoinError(null)}
+          createError={createRoomError}
+          onDismissCreateError={() => setCreateRoomError(null)}
         />
         {accountSheet}
       </Screen>

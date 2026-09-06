@@ -70,7 +70,7 @@ async function act(user, id, game, action, payload) {
     generation(await view(user, id)),
   );
 }
-async function setup(game, settings, content) {
+async function setup(game, settings) {
   const users = await Promise.all(Array.from({ length: 4 }, newUser));
   const host = users[0];
   const { roomId: id } = await call(host, null, "createRoom", "Host");
@@ -78,7 +78,6 @@ async function setup(game, settings, content) {
     await call(users[i], id, "join", `Player ${i}`);
   await assert.rejects(call(users[1], id, game + ".init", settings), /host/);
   await call(host, id, game + ".init", settings);
-  if (content) await act(host, id, game, "setContent", content);
   await act(host, id, game, "start");
   const late = await newUser();
   await call(late, id, "join", "Late");
@@ -105,20 +104,11 @@ async function finish({ host, id }, game) {
 
 test("Che domanda complete game, numeric private answers, elimination and restart", async () => {
   const game = "che-domanda";
-  const ctx = await setup(game, { numImpostors: 1 }, [
-    {
-      id: "q",
-      question: "Quanti cappelli?",
-      alternateQuestion: "Quanti bagni?",
-      min: 0,
-      max: 100,
-      decimals: 0,
-    },
-  ]);
+  const ctx = await setup(game, { numImpostors: 1 });
   const { users, host, id, late } = ctx;
   const views = await Promise.all(users.map((u) => view(u, id)));
   const impostor =
-    users[views.findIndex((v) => v.gameState.ownQuestion === "Quanti bagni?")];
+    users[views.findIndex((v) => views.filter(other => other.gameState.ownQuestion === v.gameState.ownQuestion).length === 1)];
   assert.ok(impostor);
   assert.equal((await view(late, id)).gameState.ownQuestion, undefined);
   assert.equal(views[0].gameState.answersByUid, undefined);
@@ -127,13 +117,11 @@ test("Che domanda complete game, numeric private answers, elimination and restar
     /partecip/,
   );
   await Promise.all(
-    users.map((u, i) => act(u, id, game, "submitAnswer", { value: i })),
+    users.map((u, i) => act(u, id, game, "submitAnswer", { value: views[i].gameState.domain.min })),
   );
   let state = (await view(host, id)).gameState;
   assert.equal(state.phase, "discussion");
   assert.equal(Object.keys(state.answersByUid).length, 4);
-  for (let i = 0; i < 4; i++)
-    await act(host, id, game, "nextSpeaker", { expectedSpeakerIndex: i });
   await act(host, id, game, "startVoting");
   for (const u of users)
     await act(u, id, game, "castVote", {
@@ -163,8 +151,6 @@ test("Wavelength shares one number, hides it from guesser and completes a rotati
       assert.equal((await view(u, id)).gameState.target, target);
     assert.equal((await view(guesser, id)).gameState.target, undefined);
     assert.equal((await view(late, id)).gameState.target, undefined);
-    for (const targetUid of state.turnOrder)
-      await act(guesser, id, game, "markHeard", { targetUid });
     await act(guesser, id, game, "beginGuess");
     const token = generation(await view(guesser, id));
     const requests = await Promise.allSettled([
@@ -172,7 +158,11 @@ test("Wavelength shares one number, hides it from guesser and completes a rotati
       call(guesser, id, game + ".submitGuess", { value: target }, token),
     ]);
     assert.equal(requests.filter((r) => r.status === "fulfilled").length, 1);
-    assert.equal((await view(host, id)).gameState.scores[guesser.uid], 2);
+    const result = (await view(host, id)).gameState;
+    assert.equal(result.phase, "roundResults");
+    assert.equal(result.distance, 0);
+    assert.equal(result.guess, target);
+    assert.equal(result.scores, undefined);
     await act(host, id, game, "nextRound");
   }
   assert.equal((await view(host, id)).gameState.phase, "results");
@@ -181,13 +171,7 @@ test("Wavelength shares one number, hides it from guesser and completes a rotati
 
 test("Just One removes duplicate clues and completes cooperative rounds privately", async () => {
   const game = "just-one";
-  const ctx = await setup(game, { rounds: 5 }, [
-    "Luna",
-    "Stella",
-    "Sole",
-    "Terra",
-    "Marte",
-  ]);
+  const ctx = await setup(game, { rounds: 5 });
   const { users, host, id, late } = ctx;
   for (let round = 0; round < 5; round++) {
     const state = (await view(host, id)).gameState;
@@ -199,29 +183,28 @@ test("Just One removes duplicate clues and completes cooperative rounds privatel
     assert.equal((await view(late, id)).gameState.target, undefined);
     await Promise.all(
       authors.map((u, i) =>
-        act(u, id, game, "submitClue", { text: i < 2 ? "Spazio" : "Pianeta" }),
+        act(u, id, game, "submitClue", { text: i < 2 ? "Indizioidentico" : "Indiziounico" }),
       ),
     );
     assert.equal((await view(guesser, id)).gameState.reviewClues, undefined);
     await Promise.all(authors.map((u) => act(u, id, game, "confirmReview")));
     const guessView = await view(guesser, id);
-    assert.deepEqual(guessView.gameState.validClues, ["Pianeta"]);
+    assert.deepEqual(guessView.gameState.validClues, ["Indiziounico"]);
     assert.equal(guessView.gameState.private, undefined);
     await act(guesser, id, game, "submitGuess", { text: target });
-    assert.equal((await view(host, id)).gameState.score, round + 1);
+    const result = (await view(host, id)).gameState;
+    assert.equal(result.roundResult.correct, true);
+    assert.equal(result.roundResult.word, target);
+    assert.equal(result.score, undefined);
     await act(host, id, game, "nextRound");
   }
   assert.equal((await view(host, id)).gameState.phase, "results");
   await finish(ctx, game);
 });
 
-test("Herd Mentality keeps answers private then groups, merges and scores once", async () => {
+test("Herd Mentality keeps answers private then groups, merges and reveals majority", async () => {
   const game = "herd-mentality";
-  const ctx = await setup(
-    game,
-    { rounds: 5 },
-    Array.from({ length: 5 }, (_, i) => ({ question: `Domanda ${i}?` })),
-  );
+  const ctx = await setup(game, { rounds: 5 });
   const { users, host, id } = ctx;
   for (let round = 0; round < 5; round++) {
     await act(users[0], id, game, "submitAnswer", { text: "Pizza" });
@@ -247,8 +230,9 @@ test("Herd Mentality keeps answers private then groups, merges and scores once",
     );
     await act(host, id, game, "confirmResults");
     state = (await view(host, id)).gameState;
-    assert.equal(state.scores[users[0].uid], round + 1);
-    assert.equal(state.scores[users[1].uid], round + 1);
+    assert.deepEqual(new Set(state.roundResult.winners), new Set([users[0].uid, users[1].uid]));
+    assert.equal(state.roundResult.cancelled, false);
+    assert.equal(state.scores, undefined);
     await act(host, id, game, "nextRound");
   }
   assert.equal((await view(host, id)).gameState.phase, "results");
@@ -268,8 +252,6 @@ test("Top Ten validates captain ordering, private numbers and full cooperative g
     assert.equal(new Set(numbers.map((n) => n[1])).size, 4);
     assert.equal((await view(late, id)).gameState.ownNumber, undefined);
     assert.equal(state.numbersByUid, undefined);
-    for (const playerUid of state.performanceOrder)
-      await act(host, id, game, "markPerformed", { playerUid });
     await act(captain, id, game, "beginOrdering");
     await assert.rejects(
       act(
@@ -285,7 +267,8 @@ test("Top Ten validates captain ordering, private numbers and full cooperative g
       uids: numbers.sort((a, b) => a[1] - b[1]).map((n) => n[0]),
     });
     state = (await view(host, id)).gameState;
-    assert.equal(state.score, (round + 1) * 3);
+    assert.equal(state.correctOrder, true);
+    assert.equal(state.score, undefined);
     assert.equal(Object.keys(state.numbersByUid).length, 4);
     await act(host, id, game, "nextRound");
   }
@@ -295,21 +278,13 @@ test("Top Ten validates captain ordering, private numbers and full cooperative g
 
 test("Time’s Up reuses the same ten cards across all three rounds atomically", async () => {
   const game = "times-up";
-  const cards = Array.from({ length: 10 }, (_, i) => ({
-    id: `name${i}`,
-    name: `Personaggio ${i}`,
-    aliases: [],
-  }));
-  const ctx = await setup(
-    game,
-    {
-      turnSeconds: 90,
-      deckSize: 10,
-      teamMode: "auto",
-      contentSource: "custom",
-    },
-    cards,
-  );
+  const ctx = await setup(game, {
+    turnSeconds: 90,
+    deckSize: 10,
+    teamMode: "auto",
+    contentSource: "default",
+  });
+  let firstRoundCards;
   const { users, host, id, late } = ctx;
   for (let round = 1; round <= 3; round++) {
     let state = (await view(host, id)).gameState;
@@ -341,13 +316,106 @@ test("Time’s Up reuses the same ten cards across all three rounds atomically",
         /aggiornat/,
       );
     }
-    assert.deepEqual(seen.sort(), cards.map((c) => c.id).sort());
+    assert.equal(new Set(seen).size, 10);
+    if (round === 1) firstRoundCards = seen.sort();
+    else assert.deepEqual(seen.sort(), firstRoundCards);
     state = (await view(host, id)).gameState;
-    assert.equal(state.scores.blue + state.scores.red, round * 10);
+    assert.equal(state.remaining, 0);
+    assert.equal(state.scores, undefined);
     if (round < 3) {
       assert.equal(state.phase, "roundResults");
       await act(host, id, game, "nextRound");
     } else assert.equal(state.phase, "results");
   }
   await finish(ctx, game);
+});
+
+test("Just One teams advance concurrently with isolated clues and team-only word totals", async () => {
+  const game = "just-one";
+  const ctx = await setup(game, { rounds: 5, mode: "teams" });
+  const { users, host, id, late } = ctx;
+  const initial = (await view(host, id)).gameState;
+  assert.equal(initial.phase, "teams");
+  assert.equal(initial.teams.length, 2);
+  assert.ok(initial.teams.every(team => team.participantUids.length === 2));
+  const teamIds = initial.teams.map(team => team.id);
+  const teamWords = teamIds.map(() => new Set());
+
+  async function teamAct(actor, teamId, action, payload = {}) {
+    const room = await view(actor, id);
+    const team = room.gameState.teams.find(team => team.id === teamId);
+    return call(actor, id, `${game}.${action}`, {
+      ...payload,
+      teamId,
+      teamRoundId: team.roundId,
+      teamPhaseVersion: team.phaseVersion,
+    }, generation(room));
+  }
+
+  for (let round = 0; round < 5; round++) {
+    const room = await view(host, id);
+    const teams = await Promise.all(teamIds.map(async (teamId, index) => {
+      const summary = room.gameState.teams.find(team => team.id === teamId);
+      const guesser = users.find(user => user.uid === summary.guesserUid);
+      const author = users.find(user => summary.participantUids.includes(user.uid) && user.uid !== guesser.uid);
+      const authorView = await view(author, id);
+      const target = authorView.gameState.myTeam.target;
+      assert.ok(target);
+      teamWords[index].add(target);
+      assert.equal((await view(guesser, id)).gameState.myTeam.target, undefined);
+      const outsider = users.find(user => !summary.participantUids.includes(user.uid));
+      await assert.rejects(teamAct(outsider, teamId, "submitClue", { text: "Intruso" }), /tua squadra/);
+      return { teamId, index, guesser, author, target, clue: index ? "Indizioarancio" : "Indizioblu" };
+    }));
+
+    // Both teams submit independently without waiting for the other team's oral turn.
+    await Promise.all(teams.map(team => teamAct(team.author, team.teamId, "submitClue", { text: team.clue })));
+    for (const team of teams) {
+      const authorView = (await view(team.author, id)).gameState;
+      assert.equal(authorView.myTeam.phase, "review");
+      assert.deepEqual(authorView.myTeam.reviewClues.map(clue => clue.text), [team.clue]);
+      assert.equal((await view(team.guesser, id)).gameState.myTeam.reviewClues, undefined);
+      for (const summary of authorView.teams) {
+        assert.equal(summary.target, undefined);
+        assert.equal(summary.reviewClues, undefined);
+        assert.equal(summary.validClues, undefined);
+        assert.equal(summary.private, undefined);
+      }
+    }
+    assert.equal((await view(late, id)).gameState.myTeam, undefined);
+    await Promise.all(teams.map(team => teamAct(team.author, team.teamId, "confirmReview")));
+    for (const team of teams) {
+      const state = (await view(team.guesser, id)).gameState.myTeam;
+      assert.equal(state.phase, "guessing");
+      assert.equal(state.target, undefined);
+      assert.deepEqual(state.validClues, [team.clue]);
+    }
+    await Promise.all(teams.map(team => teamAct(team.guesser, team.teamId,
+      team.index === 1 && round === 4 ? "pass" : "submitGuess", { text: team.target })));
+    const results = (await view(host, id)).gameState;
+    for (const team of teams) {
+      const expected = round + 1 - (team.index === 1 && round === 4 ? 1 : 0);
+      assert.equal(results.teams.find(summary => summary.id === team.teamId).wordsGuessed, expected);
+      const own = (await view(team.guesser, id)).gameState.myTeam;
+      assert.equal(own.roundResult.correct, !(team.index === 1 && round === 4));
+      assert.equal(own.roundResult.word, team.target);
+    }
+    await Promise.all(teams.map(team => teamAct(team.guesser, team.teamId, "nextRound")));
+  }
+  const result = (await view(host, id)).gameState;
+  assert.equal(result.phase, "results");
+  assert.deepEqual(result.winnerTeamIds, [teamIds[0]]);
+  assert.equal([...teamWords[0]].some(word => teamWords[1].has(word)), false);
+  await finish(ctx, game);
+});
+
+test("Just One teams require at least four participants", async () => {
+  const users = await Promise.all(Array.from({ length: 3 }, newUser));
+  const host = users[0];
+  const { roomId: id } = await call(host, null, "createRoom", "Host");
+  for (let i = 1; i < users.length; i++) await call(users[i], id, "join", `Player ${i}`);
+  await call(host, id, "just-one.init", { rounds: 5, mode: "teams" });
+  await assert.rejects(act(host, id, "just-one", "start"), /4.*10/);
+  assert.equal((await view(host, id)).status, "lobby");
+  await call(host, id, "deleteRoom");
 });

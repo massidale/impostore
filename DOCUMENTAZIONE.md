@@ -1,5 +1,7 @@
 # gamesHub - Documentazione
 
+> Aggiornamento esperienza di gioco (7 settembre 2026): [home, votazione condivisa, niente punteggi/contenuti personalizzati e Just One a squadre](docs/implementation/party-experience.md). Questo aggiornamento sostituisce le descrizioni precedenti delle funzionalità rimosse.
+
 ## Panoramica del Progetto
 
 **gamesHub** è una piattaforma di party game italiani multiplayer costruita con React Native ed Expo (web-first, ospitata su Firebase Hosting). Una stanza condivisa, un host e i giocatori che si collegano dal proprio telefono via QR code o link.

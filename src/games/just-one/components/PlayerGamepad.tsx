@@ -14,7 +14,9 @@ export default function PlayerGamepad({
   roomData,
   playerId,
 }: PlayerGamepadProps) {
-  const s = (roomData.gameState ?? {}) as JustOneView;
+  const state = (roomData.gameState ?? {}) as JustOneView;
+  const s = state.myTeam ?? state;
+  const teamMode = (roomData.settings as JustOneSettings)?.mode === "teams";
   const settings = roomData.settings as JustOneSettings;
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -24,13 +26,16 @@ export default function PlayerGamepad({
     setDraft("");
     setError(null);
   }, [roomData.matchId, s.roundId, s.phase, playerId]);
-  const act = async (action: string, payload: unknown = {}) => {
+  const act = async (action: string, payload: Record<string, unknown> = {}) => {
     if (pending.current) return;
     pending.current = true;
     setBusy(true);
     setError(null);
     try {
-      await sendAction(roomData.id, action, payload);
+      await sendAction(roomData.id, action, {
+        ...payload,
+        ...(s.id ? { teamId: s.id, teamRoundId: s.roundId, teamPhaseVersion: s.phaseVersion } : {}),
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Invio non riuscito. Riprova.");
     } finally {
@@ -45,9 +50,13 @@ export default function PlayerGamepad({
   const ready = (s.readyUids ?? []).includes(playerId);
   const submitted = (s.submittedUids ?? []).includes(playerId);
   const title =
-    s.phase === "results"
+    state.phase === "results"
       ? "Just One · Risultato finale"
-      : `Just One · Parola ${(s.roundIndex ?? 0) + 1}/${settings?.rounds ?? 8}`;
+      : s.phase === "results"
+        ? `${s.name ?? "Just One"} · Parole completate`
+        : teamMode && !state.myTeam
+          ? "Just One · Due squadre"
+          : `${s.name ?? "Just One"} · Parola ${(s.roundIndex ?? 0) + 1}/${settings?.rounds ?? 8}`;
   return (
     <RoundLayout
       roomData={roomData}
@@ -76,9 +85,24 @@ export default function PlayerGamepad({
         ) : undefined
       }
     >
-      <Text style={textStyle}>
-        Punteggio di squadra: {s.score ?? 0}/{settings?.rounds ?? 8}
-      </Text>
+      {teamMode && (
+        <View style={{ gap: spacing.sm }}>
+          {(state.teams ?? []).map((team) => (
+            <Text key={team.id} style={textStyle}>
+              {team.name}: {team.wordsGuessed} parole indovinate · {team.phase === "results" ? "Terminata" : `Parola ${team.roundIndex + 1}/${settings.rounds}`}
+              {"\n"}{team.participantUids.map(name).join(", ")}
+            </Text>
+          ))}
+          {s.name && <Text style={textStyle}>Giochi con {s.name}.</Text>}
+          {state.phase === "results" && (
+            <Text style={[textStyle, { fontSize: 28 }]}>
+              {(state.winnerTeamIds?.length ?? 0) > 1
+                ? "Pareggio!"
+                : `Vince ${state.teams?.find(t => state.winnerTeamIds?.includes(t.id))?.name ?? ""}!`}
+            </Text>
+          )}
+        </View>
+      )}
       {!participant && (
         <Text style={textStyle}>
           Sei spettatore. Giocherai dalla prossima partita.
@@ -135,9 +159,9 @@ export default function PlayerGamepad({
           {participant && !guesser ? (
             <>
               <Text style={textStyle}>
-                I duplicati sono annullati automaticamente. Due autori distinti
-                devono segnalare un altro indizio perché venga escluso. Conferma
-                quando hai finito.
+                {(s.participantUids?.length ?? 0) === 2
+                  ? "Il tuo unico indizio è valido. Puoi ritirarlo oppure confermare per far rispondere l’indovino."
+                  : "I duplicati sono annullati automaticamente. Servono due segnalazioni distinte per escludere un indizio. Conferma quando hai finito."}
               </Text>
               {(s.reviewClues ?? []).map((c) => (
                 <View
@@ -153,6 +177,7 @@ export default function PlayerGamepad({
                     {name(c.authorUid)}: {c.text} ·{" "}
                     {c.invalid ? "Annullato" : "Valido"}
                   </Text>
+                  {(s.participantUids?.length ?? 0) > 2 && <>
                   <Text style={textStyle}>Segnalazioni: {c.flagCount}/2</Text>
                   <Button
                     disabled={
@@ -166,6 +191,7 @@ export default function PlayerGamepad({
                   >
                     Segnala indizio
                   </Button>
+                  </>}
                   {c.authorUid === playerId && (
                     <Button
                       variant="secondary"
@@ -237,25 +263,33 @@ export default function PlayerGamepad({
           </Text>
           <Text style={textStyle}>
             {s.roundResult.correct
-              ? "Indovinata! +1 punto"
+              ? "Indovinata!"
               : s.roundResult.reason === "cancelled"
-                ? "Round annullato: 0 punti"
+                ? "Round annullato"
                 : s.roundResult.reason === "noClues"
-                  ? "Nessun indizio valido: 0 punti"
+                  ? "Nessun indizio valido"
                   : s.roundResult.reason === "passed"
-                    ? "Passaggio: 0 punti"
-                    : `Tentativo: ${s.roundResult.guess}. 0 punti`}
+                    ? "Parola passata"
+                    : `Tentativo: ${s.roundResult.guess}. Parola non indovinata.`}
           </Text>
-          {!isHost && (
-            <Text style={textStyle}>L’host avvia il prossimo round.</Text>
+          {teamMode && guesser && (
+            <Button disabled={busy} onPress={() => act("nextRound")}>
+              {s.roundIndex + 1 >= settings.rounds ? "Concludi la partita della squadra" : "Prossima parola"}
+            </Button>
+          )}
+          {!isHost && !(teamMode && guesser) && (
+            <Text style={textStyle}>{teamMode ? "L’indovino o l’host avvia la prossima parola." : "L’host avvia la prossima parola."}</Text>
           )}
         </>
       )}
       {s.phase === "results" && (
         <>
+          {teamMode && state.phase !== "results" && (
+            <Text style={textStyle}>La tua squadra ha finito. Attendete l’altra squadra.</Text>
+          )}
           {(s.history ?? []).map((h) => (
             <Text key={h.round} style={textStyle}>
-              {h.round}. {h.word} · {h.points} pt
+              {h.round}. {h.word} · {h.correct ? "Indovinata" : "Non indovinata"}
             </Text>
           ))}
         </>

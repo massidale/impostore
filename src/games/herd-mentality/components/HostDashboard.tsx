@@ -51,7 +51,7 @@ export default function HostDashboard({ roomData }: HostDashboardProps) {
             variant="secondary"
             onPress={() => act("cancelRound")}
           >
-            Annulla round senza punti
+            Annulla round
           </Button>
         )}
         <Button disabled={busy} variant="secondary" onPress={() => act("end")}>

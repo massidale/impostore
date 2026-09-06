@@ -2,12 +2,10 @@ import React from "react";
 import { View, Text } from "react-native";
 import { SettingsPanelProps } from "../../../core/types/gamePlugin";
 import { NumberSelector, colors, spacing } from "../../../core/ui";
-import { ContentEditor } from "../../../core/components/newGames/ContentEditor";
 import { HerdMentalitySettings } from "../types";
 export default function SettingsPanel({
   settings,
   onSettingsChange,
-  roomId,
 }: SettingsPanelProps) {
   const s = settings as HerdMentalitySettings;
   return (
@@ -20,14 +18,8 @@ export default function SettingsPanel({
         onChange={(rounds) => onSettingsChange({ rounds })}
       />
       <Text style={{ color: colors.textSecondary }}>
-        3–12 giocatori · Cerca la risposta più popolare. Il gruppo più grande
-        guadagna un punto; in caso di pareggio nessuno segna.
+        3–12 giocatori · Cerca la risposta più popolare. Confrontate le risposte e scoprite chi ha pensato come il gruppo.
       </Text>
-      <ContentEditor
-        roomId={roomId}
-        gameId="herd-mentality"
-        example={'[{"question":"Quale frutto porti a merenda?"}]'}
-      />
     </View>
   );
 }

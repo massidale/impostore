@@ -66,12 +66,11 @@ export const topTenModule: GameModule = {
   start(room) {
     const s = room.gameState;
     const themes = this.validateContent(
-      (room.gameData?.["top-ten"] as any)?.content ?? data,
+      data,
     );
     check(themes.length >= room.settings.rounds, "Temi insufficienti");
     Object.assign(s, {
       roundId: 0,
-      score: 0,
       history: [],
       private: { themes: shuffled(themes).slice(0, room.settings.rounds) },
     });
@@ -92,10 +91,10 @@ export const topTenModule: GameModule = {
         ["performing", "ordering"].includes(s.phase),
         "Round non annullabile",
       );
-      s.roundScore = 0;
+      s.correctOrder = false;
       s.cancelled = true;
       s.order = [];
-      s.history.push({ round: s.roundId, score: 0, cancelled: true });
+      s.history.push({ round: s.roundId, correctOrder: false, cancelled: true });
       phase(room, "roundResults");
     } else if (action === "markPerformed") {
       check(s.phase === "performing", "Fase non valida");
@@ -108,7 +107,7 @@ export const topTenModule: GameModule = {
       s.performed.push(current);
     } else if (action === "beginOrdering") {
       check(
-        s.phase === "performing" && s.performed.length === u.length,
+        s.phase === "performing",
         "Completate tutte le interpretazioni",
       );
       check(
@@ -130,12 +129,11 @@ export const topTenModule: GameModule = {
         "Ordine incompleto o duplicato",
       );
       s.order = [...ids];
-      s.roundScore = countAscendingPairs(
+      s.correctOrder = countAscendingPairs(
         ids.map((id: string) => s.private.numbersByUid[id]),
-      );
-      s.score += s.roundScore;
+      ) === ids.length - 1;
       s.cancelled = false;
-      s.history.push({ round: s.roundId, score: s.roundScore });
+      s.history.push({ round: s.roundId, correctOrder: s.correctOrder });
       phase(room, "roundResults");
     } else if (action === "nextRound") {
       hostOnly(room, actor);
@@ -153,9 +151,8 @@ export const topTenModule: GameModule = {
       captainUid: s.captainUid ?? null,
       performanceOrder: s.performanceOrder ?? [],
       performed: s.performed ?? [],
-      score: s.score ?? 0,
       history: s.history ?? [],
-      roundScore: reveal ? (s.roundScore ?? 0) : null,
+      correctOrder: reveal ? (s.correctOrder ?? false) : null,
       cancelled: reveal ? (s.cancelled ?? false) : false,
       order: reveal ? (s.order ?? []) : [],
       ...(participants(room).includes(viewer) && s.private?.numbersByUid

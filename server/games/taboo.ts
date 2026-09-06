@@ -6,7 +6,6 @@ import {
   CardOutcome,
   DeckAdvance,
   advanceDeck,
-  applyOutcome,
   buildTeams,
   describerForTurn,
   drawDeck,
@@ -126,7 +125,7 @@ function startTabooGame(roomId: string): void {
     [`rooms/${roomId}/gameState/phase`]: 'ready',
     [`rooms/${roomId}/gameState/deck`]: deck,
     [`rooms/${roomId}/gameState/cursor`]: 0,
-    [`rooms/${roomId}/gameState/scores`]: { blue: 0, red: 0 },
+    [`rooms/${roomId}/gameState/scores`]: null,
     [`rooms/${roomId}/gameState/teams`]: teams,
     [`rooms/${roomId}/gameState/turnOrder`]: turnOrder,
     [`rooms/${roomId}/gameState/turnNumber`]: 0,
@@ -179,7 +178,6 @@ function resolveTabooCard(
   if (outcome === 'skip' && stats.skipped >= (gameState.maxSkips ?? 3)) return;
 
   const team = gameState.currentTeam ?? 'blue';
-  const scores = applyOutcome(gameState.scores ?? { blue: 0, red: 0 }, team, outcome);
 
   const newStats: TurnStats = {
     correct: stats.correct + (outcome === 'correct' ? 1 : 0),
@@ -188,7 +186,7 @@ function resolveTabooCard(
   };
 
   store.update(roomId, {
-    [`rooms/${roomId}/gameState/scores`]: scores,
+    [`rooms/${roomId}/gameState/scores`]: null,
     [`rooms/${roomId}/gameState/turnStats`]: newStats,
     [`rooms/${roomId}/gameState/lastAction`]: { outcome, team },
     ...consumeCurrentCard(roomId, gameState),
@@ -207,9 +205,6 @@ function undoTabooCard(roomId: string): void {
   const last = gameState.lastAction;
   if (!last) return;
 
-  const scores = { ...(gameState.scores ?? { blue: 0, red: 0 }) };
-  if (last.outcome === 'correct') scores[last.team] -= 1;
-  if (last.outcome === 'taboo') scores[last.team] += 1;
 
   const stats = gameState.turnStats ?? EMPTY_TURN_STATS;
   const newStats: TurnStats = {
@@ -219,7 +214,7 @@ function undoTabooCard(roomId: string): void {
   };
 
   const updates: Record<string, unknown> = {
-    [`rooms/${roomId}/gameState/scores`]: scores,
+    [`rooms/${roomId}/gameState/scores`]: null,
     [`rooms/${roomId}/gameState/turnStats`]: newStats,
     [`rooms/${roomId}/gameState/lastAction`]: null,
   };

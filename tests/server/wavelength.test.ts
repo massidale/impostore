@@ -1,12 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { loadServer } from "../helpers/serverLoader.ts";
-test("Wavelength punteggio", () => {
-  const { scoreGuess } = loadServer("server/games/wavelength.ts");
-  assert.equal(scoreGuess(8, 8), 2);
-  assert.equal(scoreGuess(8, 7), 1);
-  assert.equal(scoreGuess(8, 5), 0);
-});
 const { wavelengthModule: m } = loadServer("server/games/wavelength.ts");
 function room() {
   const r: any = {
@@ -32,7 +26,7 @@ test("One shared secret, host guesser and late spectator cannot read it", () => 
   assert.ok(!("target" in m.project(r, "z").gameState));
   assert.ok(!JSON.stringify(m.project(r, "a")).includes("gameData"));
 });
-test("Full game rotates everyone, awards once, shared winners and boundaries", () => {
+test("Full game rotates everyone and records guesses without scores", () => {
   const r = room();
   r.players.z = { name: "Z", waiting: true };
   for (const id of ["a", "b", "c"]) {
@@ -48,22 +42,22 @@ test("Full game rotates everyone, awards once, shared winners and boundaries", (
     assert.throws(() => m.apply(r, other, "submitGuess", { value: 8 }, 3));
     m.apply(r, id, "submitGuess", { value: r.gameState.target }, 3);
     assert.throws(() => m.apply(r, id, "submitGuess", { value: 8 }, 3));
-    assert.equal(r.gameState.scores[id], 2);
+    assert.equal(r.gameState.scores, undefined);
     assert.equal(m.project(r, "z").gameState.target, r.gameState.target);
     m.apply(r, "a", "nextRound", {}, 4);
   }
   assert.equal(r.gameState.phase, "results");
-  assert.deepEqual(r.gameState.winners, ["a", "b", "c"]);
-  assert.equal(Object.keys(r.gameState.scores).length, 3);
+  assert.equal(r.gameState.winners, undefined);
 });
-test("Only guesser hears in order; cancellation awards zero; content validated", () => {
+test("Guesser can proceed after oral discussion; cancellation and content validation", () => {
   const r = room();
   assert.throws(() => m.apply(r, "b", "markHeard", { targetUid: "c" }, 1));
   assert.throws(() => m.apply(r, "a", "markHeard", { targetUid: "c" }, 1));
-  assert.throws(() => m.apply(r, "a", "beginGuess", {}, 1));
+  m.apply(r, "a", "beginGuess", {}, 1);
+  assert.equal(r.gameState.phase, "guessing");
   m.apply(r, "a", "cancelRound", {}, 1);
-  assert.equal(r.gameState.roundPoints, 0);
-  assert.equal(r.gameState.scores.a, 0);
+  assert.equal(r.gameState.roundPoints, undefined);
+  assert.equal(r.gameState.scores, undefined);
   assert.throws(() => m.apply(r, "a", "cancelRound", {}, 1));
   assert.equal(
     m.validateContent(loadServer("server/data/wavelength.json")).length,
@@ -170,8 +164,8 @@ test("Engine rejects stale tokens and spectators without mutating input", () => 
     4,
   );
   assert.equal(active.gameState.phase, "guessing");
-  assert.equal(active.gameState.scores.a, 0);
-  assert.equal(r.gameState.scores.a, 2);
+  assert.equal(active.gameState.scores, undefined);
+  assert.equal(r.gameState.scores, undefined);
 });
 test("Completed-round history persists without future secrets and end clears it", () => {
   const r = room();
@@ -188,7 +182,6 @@ test("Completed-round history persists without future secrets and end clears it"
       target: 8,
       guess: 7,
       distance: 1,
-      points: 1,
       cancelled: false,
     },
   ]);

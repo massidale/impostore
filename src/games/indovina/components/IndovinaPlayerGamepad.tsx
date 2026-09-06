@@ -6,14 +6,11 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   Pressable,
   Platform,
 } from 'react-native';
 import { PlayerGamepadProps } from '../../../core/types/gamePlugin';
 import {
-  Button,
-  Input,
   MetaRow,
   SegmentedControl,
   StatusCard,
@@ -27,7 +24,6 @@ import {
 } from '../../../core/ui';
 import { capitalize } from '../../../core/utils/text';
 import { IndovinaGameState, IndovinaPlayerState } from '../types';
-import { submitPlayerWord } from '../services/indovinaLogic';
 
 type DisplayMode = 'blurred' | 'visible';
 
@@ -48,16 +44,6 @@ export default function IndovinaPlayerGamepad({ roomData, playerId }: PlayerGame
   }, [gameState?.phase]);
 
   if (!playerState) return null;
-
-  if (gameState?.phase === 'collecting') {
-    return (
-      <CollectingView
-        roomData={roomData}
-        playerId={playerId}
-        playerState={playerState}
-      />
-    );
-  }
 
   if (gameState?.phase !== 'playing') {
     return (
@@ -174,98 +160,6 @@ interface CollectingViewProps {
   roomData: PlayerGamepadProps['roomData'];
   playerId: string;
   playerState: IndovinaPlayerState;
-}
-
-function CollectingView({ roomData, playerId, playerState }: CollectingViewProps) {
-  const [draft, setDraft] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const players = Object.entries(roomData.players || {}).filter(([, p]) => !p.waiting);
-  const totalPlayers = players.length;
-  const submittedCount = players.filter(
-    ([, p]) => !!(p as IndovinaPlayerState).hasSubmittedWord
-  ).length;
-
-  const hasSubmitted = !!playerState.submittedWord;
-
-  const handleSubmit = async () => {
-    const word = draft.trim();
-    if (!word) {
-      setError('Inserisci una parola');
-      return;
-    }
-    if (word.length > 60) {
-      setError('Massimo 60 caratteri');
-      return;
-    }
-    setSubmitting(true);
-    setError(null);
-    try {
-      await submitPlayerWord(roomData.id, playerId, word);
-      setDraft('');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Errore invio parola');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <View style={styles.container}>
-      <ScrollView
-        style={styles.scrollFlex}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.card}>
-          <Text style={styles.title}>SCRIVI UNA PAROLA</Text>
-          <Text style={styles.subtitle}>
-            La tua parola verrà data a un altro giocatore (mai a te).
-          </Text>
-
-          {hasSubmitted ? (
-            <View style={styles.submittedBox}>
-              <Text style={styles.submittedLabel}>Hai inviato</Text>
-              <Text style={styles.submittedValue}>
-                {capitalize(playerState.submittedWord || '')}
-              </Text>
-              <Text style={styles.submittedHint}>
-                Aspettando gli altri giocatori...
-              </Text>
-            </View>
-          ) : (
-            <View>
-              <Input
-                placeholder="Es. Cleopatra, pizza, Roma..."
-                value={draft}
-                onChangeText={(text) => {
-                  setDraft(text);
-                  if (error) setError(null);
-                }}
-                maxLength={60}
-                style={{ marginBottom: error ? spacing.sm : spacing.md }}
-              />
-              {error ? <Text style={styles.errorText}>{error}</Text> : null}
-              <Button
-                onPress={handleSubmit}
-                disabled={submitting || !draft.trim()}
-                variant="primary"
-                size="lg"
-              >
-                {submitting ? 'Invio...' : 'Invia parola'}
-              </Button>
-            </View>
-          )}
-
-          <Text style={styles.progressText}>
-            {submittedCount}/{totalPlayers} hanno inviato
-          </Text>
-        </View>
-      </ScrollView>
-    </View>
-  );
 }
 
 const styles = StyleSheet.create({

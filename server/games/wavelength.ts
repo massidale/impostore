@@ -20,7 +20,6 @@ export interface WavelengthRoundResult {
   target: number;
   guess: number | null;
   distance: number | null;
-  points: number;
   cancelled: boolean;
 }
 export interface WavelengthState {
@@ -35,16 +34,9 @@ export interface WavelengthState {
   heardUids: string[];
   target: number;
   suggestion: string;
-  scores: Record<string, number>;
   guess?: number;
   distance?: number;
-  roundPoints?: number;
   cancelled?: boolean;
-  winners?: string[];
-}
-export function scoreGuess(target: number, guess: number): number {
-  const d = Math.abs(target - guess);
-  return d === 0 ? 2 : d === 1 ? 1 : 0;
 }
 function next(room: Room): void {
   const s = room.gameState as WavelengthState;
@@ -54,11 +46,10 @@ function next(room: Room): void {
   s.turnOrder = ids.filter((id) => id !== s.guesserUid);
   s.heardUids = [];
   s.target = Math.floor(Math.random() * 10) + 1;
-  const content = (room.gameData?.wavelength as any)?.content ?? data;
+  const content = data;
   s.suggestion = content[s.turnIndex]?.text ?? "";
   delete s.guess;
   delete s.distance;
-  delete s.roundPoints;
   delete s.cancelled;
   phase(room, "clues");
 }
@@ -97,7 +88,6 @@ export const wavelengthModule: GameModule = {
       ...room.gameState,
       participantUids: ids,
       turnIndex: 0,
-      scores: Object.fromEntries(ids.map((id) => [id, 0])),
       history: [],
     };
     next(room);
@@ -128,10 +118,6 @@ export const wavelengthModule: GameModule = {
         s.phase === "clues" && actor === s.guesserUid,
         "Solo l’indovino può rispondere",
       );
-      check(
-        s.heardUids.length === s.turnOrder.length,
-        "Ascolta tutti gli esempi",
-      );
       phase(room, "guessing");
     } else if (action === "submitGuess") {
       check(
@@ -141,15 +127,12 @@ export const wavelengthModule: GameModule = {
       const guess = int(payload?.value, 1, 10);
       s.guess = guess;
       s.distance = Math.abs(guess - s.target);
-      s.roundPoints = scoreGuess(s.target, guess);
-      s.scores[actor] += s.roundPoints;
       s.history.push({
         roundId: s.roundId,
         guesserUid: s.guesserUid,
         target: s.target,
         guess,
         distance: s.distance,
-        points: s.roundPoints,
         cancelled: false,
       });
       phase(room, "roundResults");
@@ -157,14 +140,12 @@ export const wavelengthModule: GameModule = {
       hostOnly(room, actor);
       check(["clues", "guessing"].includes(s.phase), "Turno già chiuso");
       s.cancelled = true;
-      s.roundPoints = 0;
       s.history.push({
         roundId: s.roundId,
         guesserUid: s.guesserUid,
         target: s.target,
         guess: null,
         distance: null,
-        points: 0,
         cancelled: true,
       });
       phase(room, "roundResults");
@@ -173,8 +154,6 @@ export const wavelengthModule: GameModule = {
       check(s.phase === "roundResults", "Attendi il risultato");
       s.turnIndex++;
       if (s.turnIndex >= participants(room).length * room.settings.cycles) {
-        const high = Math.max(...Object.values(s.scores));
-        s.winners = participants(room).filter((id) => s.scores[id] === high);
         phase(room, "results");
       } else next(room);
     } else throw new Error("Azione non valida");
@@ -189,7 +168,6 @@ export const wavelengthModule: GameModule = {
       turnIndex: s.turnIndex ?? 0,
       turnOrder: s.turnOrder ?? [],
       heardUids: s.heardUids ?? [],
-      scores: s.scores ?? {},
       history: s.history ?? [],
       suggestion: s.suggestion ?? null,
       ...(reveal ||
@@ -202,11 +180,9 @@ export const wavelengthModule: GameModule = {
         ? {
             guess: s.guess ?? null,
             distance: s.distance ?? null,
-            roundPoints: s.roundPoints ?? 0,
             cancelled: s.cancelled ?? false,
           }
         : {}),
-      ...(s.phase === "results" ? { winners: s.winners ?? [] } : {}),
     });
   },
 };

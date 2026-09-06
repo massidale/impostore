@@ -33,7 +33,7 @@ function initIndovinaGame(
   roomId: string,
   settings: IndovinaSettings
 ): void {
-  const wordSource: WordSource = settings?.wordSource === 'players' ? 'players' : 'random';
+  const wordSource: WordSource = 'random';
 
   // Preserve session-level used-words tracking when the user just tweaks
   // settings (e.g. toggles wordSource): the dictionary hasn't changed, so the
@@ -78,24 +78,6 @@ function startIndovinaGame(roomId: string): void {
   // Skip players flagged `waiting` — they joined mid-game.
   const playerUids = filterActivePlayerUids(roomData);
   if (playerUids.length === 0) throw new Error('Nessun giocatore');
-
-  const wordSource = roomData.gameState?.wordSource ?? 'random';
-
-  if (wordSource === 'players') {
-    // Players will submit their own words. Move to collecting phase.
-    const updates: { [key: string]: unknown } = {
-      [`rooms/${roomId}/status`]: 'active',
-      [`rooms/${roomId}/gameState/phase`]: 'collecting',
-      [`rooms/${roomId}/gameState/firstPlayerId`]: null,
-    };
-    // Clear any leftover submissions/words from a prior round
-    playerUids.forEach((uid) => {
-      updates[`rooms/${roomId}/players/${uid}/submittedWord`] = null;
-      updates[`rooms/${roomId}/players/${uid}/word`] = null;
-    });
-    store.update(roomId, updates);
-    return;
-  }
 
   // Random mode: assign words from the dictionary right away, skipping any
   // already used during this session.

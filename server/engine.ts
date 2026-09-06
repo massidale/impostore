@@ -38,7 +38,7 @@ export function createRoom(id: string, actor: string, name: unknown, now: number
 function settingsFor(game: string, args: any[], room: Room): any {
   if (game === 'impostore') return {numImpostors:integer(args[0],1,30),numClowns:integer(args[1],0,30),hintEnabled:bool(args[2]),hintOnlyFirst:bool(args[3]),votingSeconds:integer(args[4] ?? 60,15,300)};
   const s = args[0];check(s && typeof s === 'object','Impostazioni mancanti');
-  if (game === 'indovina') {check(['random','players'].includes(s.wordSource),'Sorgente non valida');return {wordSource:s.wordSource};}
+  if (game === 'indovina') {check(['random','players'].includes(s.wordSource),'Sorgente non valida');return {wordSource:'random'};}
   check(['auto','manual'].includes(s.teamMode ?? 'auto'),'Squadre non valide');
   const manualTeams: Record<string,string> = {};
   for (const [uid,team] of Object.entries(s.manualTeams ?? {})) {
@@ -47,18 +47,6 @@ function settingsFor(game: string, args: any[], room: Room): any {
   }
   return {turnSeconds:integer(s.turnSeconds,15,300),turnsPerTeam:integer(s.turnsPerTeam,1,30),maxSkips:integer(s.maxSkips ?? 3,0,30),teamMode:s.teamMode ?? 'auto',manualTeams};
 }
-function cleanDictionary(game: string, data: any): any {
-  if (data === null) return null;
-  if (game === 'impostore') {
-    check(data && !Array.isArray(data) && typeof data === 'object','Dizionario non valido');
-    const entries=Object.entries(data);check(entries.length>0 && entries.length<=10000,'Dimensione dizionario non valida');
-    return entries.map(([word,hint])=>({word:text(word),hint:text(hint)}));
-  }
-  check(Array.isArray(data) && data.length>0 && data.length<=10000,'Dizionario non valido');
-  if (game === 'indovina') return [...new Set(data.map(w=>text(w)))];
-  return data.map(c=>{check(c && Array.isArray(c.taboo) && c.taboo.length===5,'Servono cinque parole vietate');return {word:text(c.word),taboo:c.taboo.map((w:unknown)=>text(w))};});
-}
-
 /** Pure synchronous transition. The caller commits it with an RTDB transaction. */
 export function applyCommand(input: Room, actor: string, request: Command, now: number): Room {
   check(input && actor && request && typeof request.method === 'string','Richiesta non valida');
@@ -87,11 +75,7 @@ export function applyCommand(input: Room, actor: string, request: Command, now: 
   if (hostMethods.has(method)) check(actor===room.hostId,'Solo l’host può eseguire questa azione');
   if (method==='resetPlayersToCore') {check(room.status==='lobby','Partita in corso');return room;}
   if (method==='setDictionary') {
-    check(room.status==='lobby','Cambia dizionario nella lobby');const game=text(args[0],20);check(games.includes(game)&&game===room.currentGameId,'Gioco non disponibile');
-    const dictionary=cleanDictionary(game,args[1]);
-    (room.gameData ??= {})[game]={dictionary};
-    if(room.gameState) delete room.gameState.usedWords;
-    room.updatedAt=now;return room;
+    throw new Error('I contenuti personalizzati non sono disponibili');
   }
   const game=games.find(g=>methodsByGame[g].includes(method));check(game,'Comando non disponibile');
   const isInit=method.startsWith('init');

@@ -3,7 +3,6 @@ import { Text, View } from "react-native";
 import { PlayerGamepadProps } from "../../../core/types/gamePlugin";
 import { Button, Input, colors, fonts, spacing } from "../../../core/ui";
 import { RoundLayout } from "../../../core/components/newGames/RoundLayout";
-import { ScoreList } from "../../../core/components/newGames/ScoreList";
 import { sendAction } from "../services/herdMentalityLogic";
 import { HerdMentalitySettings, HerdMentalityView } from "../types";
 const textStyle = {
@@ -56,7 +55,7 @@ export default function PlayerGamepad({
       roomData={roomData}
       title={
         s.phase === "results"
-          ? "Herd Mentality · Classifica finale"
+          ? "Herd Mentality · Partita conclusa"
           : `Herd Mentality · Domanda ${(s.roundIndex ?? 0) + 1}/${settings?.rounds ?? 8}`
       }
       error={error}
@@ -116,7 +115,7 @@ export default function PlayerGamepad({
         <>
           <Text style={textStyle}>
             {s.phase === "review"
-              ? "Controllate insieme i gruppi. I punti non sono ancora assegnati."
+              ? "Controllate insieme i gruppi di risposte."
               : "Risposte del round"}
           </Text>
           {(s.groups ?? []).map((g) => (
@@ -181,7 +180,7 @@ export default function PlayerGamepad({
                 Annulla ultima fusione
               </Button>
               <Button disabled={busy} onPress={() => act("confirmResults")}>
-                Conferma gruppi e assegna punti
+                Conferma gruppi
               </Button>
             </>
           )}
@@ -196,23 +195,14 @@ export default function PlayerGamepad({
         <>
           <Text style={textStyle}>
             {s.roundResult?.cancelled
-              ? "Round annullato, nessun punto."
+              ? "Round annullato."
               : s.roundResult?.winners?.length
-                ? `+1 punto a ${s.roundResult.winners.map(name).join(", ")}`
-                : "Pareggio al primo posto: nessun punto."}
+                ? `Risposta più popolare: ${s.roundResult.winners.map(name).join(", ")}`
+                : "Nessuna risposta più popolare."}
           </Text>
           {!isHost && <Text style={textStyle}>Attendi l’host.</Text>}
         </>
       )}
-      {s.phase === "results" && (
-        <Text style={[textStyle, { fontSize: 24 }]}>
-          Vince: {(s.winners ?? []).map(name).join(", ")}
-        </Text>
-      )}
-      <Text style={[textStyle, { fontFamily: fonts.bodySemi }]}>
-        Classifica
-      </Text>
-      <ScoreList scores={s.scores ?? {}} roomData={roomData} />
     </RoundLayout>
   );
 }
