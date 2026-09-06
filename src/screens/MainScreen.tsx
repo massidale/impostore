@@ -133,26 +133,17 @@ export default function MainScreen() {
     setRoomId(code);
   };
 
-  // Initialize the chosen game before opening the lobby.
-  const handleCreateRoom = async (gameId: string) => {
+  // Create the room first; choose the game together in the lobby.
+  const handleCreateRoom = async () => {
     const name = playerName.trim();
     if (!name || loading) return;
     setLoading(true);
     setCreateRoomError(null);
     try {
-      const plugin = getGame(gameId);
-      const newRoomId = await createRoom(uid!, identityId!, gameId, name);
+      const newRoomId = await createRoom(uid!, identityId!, NO_GAME_ID, name);
       await sessionStore.setLastHostedRoom(newRoomId).catch(() => {});
-      const defaults = plugin.getDefaultSettings();
-      try {
-        await plugin.initGameState(newRoomId, defaults);
-        setGameSettings(defaults);
-        setStartGameError(null);
-      } catch (error) {
-        // Keep the newly created room recoverable if game initialization fails.
-        setGameSettings(null);
-        setStartGameError(error instanceof Error ? error.message : 'Impossibile preparare il gioco. Selezionalo dalle impostazioni.');
-      }
+      setGameSettings(null);
+      setStartGameError(null);
       setRoomId(newRoomId);
     } catch (e) {
       console.error(e);

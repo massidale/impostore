@@ -35,6 +35,7 @@ interface ButtonProps {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
+  contentStyle?: StyleProp<ViewStyle>;
   leftIcon?: React.ReactNode;
 }
 
@@ -77,6 +78,7 @@ export function Button({
   children,
   style,
   textStyle,
+  contentStyle,
   leftIcon,
 }: ButtonProps) {
   const isDangerOutline = variant === 'dangerOutline';
@@ -115,6 +117,7 @@ export function Button({
           { paddingVertical: paddingFor[size], paddingHorizontal: size === 'sm' ? spacing.sm : spacing.lg, borderRadius: radiusFor[size] },
           isOutline && { borderWidth: 1, borderColor: outlineColor, backgroundColor: 'transparent' },
           disabled && isOutline && { opacity: 0.5 },
+          contentStyle,
         ]}
       >
         {leftIcon ? (
