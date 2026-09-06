@@ -1,3 +1,4 @@
+import {buildTeams} from '../../src/core/utils/teams';
 import data from "../data/times-up.json";
 import {
   check,
@@ -86,25 +87,7 @@ export const timesUpModule: GameModule = {
       ["default", "custom", "players"].includes(s.contentSource),
       "Fonte non valida",
     );
-    if (s.teamMode === "manual") {
-      check(
-        s.manualTeams && typeof s.manualTeams === "object",
-        "Assegna le squadre",
-      );
-      check(
-        u.every((id) => ["blue", "red"].includes(s.manualTeams[id])),
-        "Assegna ogni partecipante",
-      );
-      check(
-        ["blue", "red"].every(
-          (t) => u.filter((id) => s.manualTeams[id] === t).length >= 2,
-        ),
-        "Almeno due giocatori per squadra",
-      );
-      s.manualTeams = Object.fromEntries(
-        u.map((id) => [id, s.manualTeams[id]]),
-      );
-    }
+    s.manualTeams = Object.fromEntries(u.filter(id => ['blue', 'red'].includes(s.manualTeams?.[id])).map(id => [id, s.manualTeams[id]]));
     return s;
   },
   validateContent(input) {
@@ -121,21 +104,11 @@ export const timesUpModule: GameModule = {
     return room;
   },
   start(room) {
-    const s = room.gameState,
-      u = participants(room),
-      order = shuffled(u);
-    const teams = {
-      blue: u.filter((id) =>
-        room.settings.teamMode === "manual"
-          ? room.settings.manualTeams[id] === "blue"
-          : order.indexOf(id) % 2 === 0,
-      ),
-      red: u.filter((id) =>
-        room.settings.teamMode === "manual"
-          ? room.settings.manualTeams[id] === "red"
-          : order.indexOf(id) % 2 === 1,
-      ),
-    };
+    const s = room.gameState;
+    const {turnOrder: teams} = buildTeams(participants(room), room.settings.teamMode === 'manual' ? room.settings.manualTeams : null);
+    const order = participants(room);
+    for (const team of [teams.blue, teams.red]) team.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+    check(teams.blue.length >= 2 && teams.red.length >= 2, 'Ogni squadra deve avere almeno 2 giocatori');
     Object.assign(s, {
       roundId: 1,
       roundNumber: 1,

@@ -112,7 +112,13 @@ test("bundled deck ignores legacy personalized settings and rejects contribution
   assert.equal(r.gameState.phase, "ready");
   assert.equal(r.gameState.private.originalDeck.length, 10);
   assert.throws(() => m.apply(r, "a", "submitNames", { names: ["Custom"] }, 0));
-  assert.throws(() => m.validateSettings({ ...r.settings, manualTeams: { a: "blue" } }, ["a", "b", "c", "d"]));
+  const partial = m.validateSettings({ ...r.settings, manualTeams: { a: "blue" } }, ["a", "b", "c", "d"]);
+  r.settings = partial;
+  m.start(r, 0);
+  assert.ok(r.gameState.teams.blue.includes('a'));
+  assert.equal(r.gameState.teams.red.length, 2);
+  r.settings.manualTeams = {a:'blue', b:'blue', c:'blue', d:'blue'};
+  assert.throws(() => m.start(r, 0), /2 giocatori/);
 });
 test("next describer owns next turn; host cancellation preserves resolved and pending cards", () => {
   const m = loadServer("server/games/times-up.ts").timesUpModule,

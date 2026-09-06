@@ -1,3 +1,4 @@
+import {buildTeams} from '../../src/core/utils/teams';
 import {guesserSetting, restoreGuesser, beginGuesserMatch, completeGuesserMatch} from '../guesserRotation';
 import type { Room } from "../runtime";
 import {
@@ -260,24 +261,29 @@ export const justOneModule: GameModule = {
   validateSettings(input: any, ids) {
     const mode = input?.mode ?? "cooperative";
     check(["cooperative", "teams"].includes(mode), "Modalità non valida");
-    return { rounds: mode === "teams" ? int(input?.rounds ?? 8, 5, 20) : 1, mode,
+    const teamMode = input?.teamMode ?? 'auto';
+    check(['auto', 'manual'].includes(teamMode), 'Squadre non valide');
+    const manualTeams = Object.fromEntries(ids.filter(id => ['blue','red'].includes(input?.manualTeams?.[id])).map(id => [id, input.manualTeams[id]]));
+    return { teamMode, manualTeams, rounds: mode === "teams" ? int(input?.rounds ?? 8, 5, 20) : 1, mode,
       guesserUid: guesserSetting(input?.guesserUid, ids) };
   },
   start(room, now) {
     if (room.settings.mode !== "teams") return cooperativeModule.start(room, now);
     const uids = shuffled(participants(room));
     check(uids.length >= 4 && uids.length <= 10, "Servono da 4 a 10 giocatori per due squadre");
+    const {turnOrder} = buildTeams(uids, room.settings.teamMode === 'manual' ? room.settings.manualTeams : null);
+    check(turnOrder.blue.length >= 2 && turnOrder.red.length >= 2, 'Ogni squadra deve avere almeno 2 giocatori');
     // Disjoint decks prevent one team's revealed word from helping the other team.
     const deck = shuffled(words);
     const rounds = room.settings.rounds;
     const teams: Record<string, any> = {};
     for (let index = 0; index < 2; index++) {
       const id = `team-${index + 1}`;
-      const teamRoom: Room = { ...room, gameState: { participantUids: uids.filter((_, i) => i % 2 === index) } };
+      const teamRoom: Room = { ...room, gameState: { participantUids: index === 0 ? turnOrder.blue : turnOrder.red } };
       cooperativeModule.init(teamRoom, room.settings, now);
       const state = teamRoom.gameState;
       state.id = id;
-      state.name = `Squadra ${index + 1}`;
+      state.name = index === 0 ? 'Squadra Blu' : 'Squadra Rossa';
       state.wordsGuessed = 0;
       state.private = { deck: deck.slice(index * rounds, (index + 1) * rounds) };
       begin(teamRoom);

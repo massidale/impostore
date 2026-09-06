@@ -1,3 +1,4 @@
+import { TeamSettings } from '../../../core/components/TeamSettings';
 import {GuesserSelector} from '../../../core/components/GuesserSelector';
 import React from "react";
 import { View, Text } from "react-native";
@@ -27,9 +28,10 @@ export default function SettingsPanel({
         value={s?.rounds ?? 8}
         onChange={(rounds) => onSettingsChange({ ...s, rounds })}
       /> : <GuesserSelector roomData={roomData} value={s?.guesserUid} onChange={guesserUid => onSettingsChange({...s, guesserUid})} />}
+      {s?.mode === "teams" && <TeamSettings players={roomData?.players} teamMode={s.teamMode} manualTeams={s.manualTeams} onChange={value => onSettingsChange({...s, ...value})} />}
       <Text style={{ color: colors.textSecondary }}>
         {s?.mode === "teams"
-          ? "Due squadre casuali ed equilibrate giocano contemporaneamente, ognuna con le proprie parole e un indovino a rotazione. Vince chi indovina più parole; è possibile pareggiare."
+          ? "Due squadre giocano contemporaneamente, ognuna con le proprie parole e un indovino a rotazione. Vince chi indovina più parole; è possibile pareggiare."
           : "Una parola per indizio. Tutti i duplicati vengono cancellati. Una parola da indovinare per partita; con Gioca ancora cambia l’indovino."}
       </Text>
       <Text style={{ color: colors.textSecondary }}>

@@ -1,5 +1,7 @@
 export interface JustOneSettings {
   rounds: number;
+  teamMode?: "auto" | "manual";
+  manualTeams?: Record<string, "blue" | "red"> | null;
   guesserUid?: string | null;
   mode?: "cooperative" | "teams";
 }

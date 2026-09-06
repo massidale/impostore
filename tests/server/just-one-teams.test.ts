@@ -99,3 +99,17 @@ test('other team phase changes do not invalidate an in-flight command, but own s
   assert.equal(r.gameState.teams[b.id].phase,'review');
   assert.throws(()=>dispatchModule(r,authorA,'confirmReview',tokenA,rootToken,1,m),/cambiata/);
 });
+test('manual teams allow incremental choices, preserve assignments and balance newcomers',()=>{
+  const ids=['a','b','c','d','e'];
+  const settings=m.validateSettings({mode:'teams',rounds:5,teamMode:'manual',manualTeams:{a:'blue',b:'blue',c:'red',d:'red',gone:'blue'}},ids);
+  assert.equal(settings.teamMode,'manual');
+  const r:any={players:Object.fromEntries(ids.map(id=>[id,{name:id}])),gameState:{participantUids:ids}};
+  m.init(r,settings,0); m.start(r,0);
+  const [blue,red]=Object.values(r.gameState.teams) as any[];
+  assert.ok(['a','b'].every(id=>blue.participantUids.includes(id)));
+  assert.ok(['c','d'].every(id=>red.participantUids.includes(id)));
+  assert.deepEqual([blue.participantUids.length,red.participantUids.length].sort(),[2,3]);
+  assert.equal(blue.name,'Squadra Blu');
+  const bad=m.validateSettings({mode:'teams',teamMode:'manual',manualTeams:Object.fromEntries(ids.map(id=>[id,'blue']))},ids);
+  m.init(r,bad,0); assert.throws(()=>m.start(r,0),/2 giocatori/);
+});
