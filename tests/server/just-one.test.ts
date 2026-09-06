@@ -4,6 +4,7 @@ import { loadServer } from "../helpers/serverLoader.ts";
 const get = () => loadServer("server/games/just-one.ts");
 const room = () => ({
   id: "room",
+  currentGameId: "just-one",
   hostId: "a",
   status: "playing",
   matchId: 1,
@@ -25,7 +26,7 @@ test("complete cooperative match, host guesser privacy, aliases and outcome hist
   m.init(r, { rounds: 5 }, 0);
   r.gameState.participantUids = ["a", "b", "c"];
   m.start(r, 0);
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 1; i++) {
     const s = r.gameState;
     const guesser = s.guesserUid;
     const authors = s.participantUids.filter((u: string) => u !== guesser);
@@ -53,10 +54,10 @@ test("complete cooperative match, host guesser privacy, aliases and outcome hist
     );
     assert.equal(s.history.filter((h: any) => h.correct).length, i + 1);
     assert.throws(() => m.apply(r, guesser, "pass", {}, 0));
-    m.apply(r, "a", "nextRound", {}, 0);
+    assert.equal(s.phase, "results");
   }
   assert.equal(r.gameState.phase, "results");
-  assert.equal(r.gameState.history.filter((h: any) => h.correct).length, 5);
+  assert.equal(r.gameState.history.filter((h: any) => h.correct).length, 1);
 });
 test("review requires two distinct flags, validates role and no-clue failure", () => {
   const m = get().justOneModule;
@@ -81,15 +82,15 @@ test("review requires two distinct flags, validates role and no-clue failure", (
   m.apply(r, a, "confirmReview", {}, 0);
   assert.throws(() => m.apply(r, a, "withdrawClue", {}, 0));
   m.apply(r, b, "confirmReview", {}, 0);
-  assert.equal(r.gameState.phase, "roundResults");
+  assert.equal(r.gameState.phase, "results");
   assert.equal(r.gameState.history.filter((h: any) => h.correct).length, 0);
 });
 test("content, Unicode, bounds, target rejection and spectator projections", () => {
   const { justOneModule: m, normalizeClue } = get();
   assert.equal(normalizeClue("L’ÀGO"), "l'ago");
   assert.equal(normalizeClue("caffe\u0300"), "caffe");
-  assert.throws(() => m.validateSettings({ rounds: 4 }, []));
-  assert.throws(() => m.validateSettings({ rounds: 21 }, []));
+  assert.throws(() => m.validateSettings({ rounds: 4, mode: "teams" }, []));
+  assert.throws(() => m.validateSettings({ rounds: 21, mode: "teams" }, []));
   assert.throws(() => m.validateContent(["Caffè", "CAFFE"]));
   assert.throws(() => m.validateContent([{ word: "x", aliases: 42 }]));
   assert.throws(() => m.validateContent(Array(1001).fill("x")));
@@ -121,8 +122,7 @@ test("content, Unicode, bounds, target rejection and spectator projections", () 
   assert.throws(() => m.apply(r, "b", "cancelRound", {}, 0));
   m.apply(r, "a", "cancelRound", {}, 0);
   assert.equal(r.gameState.roundResult.points, undefined);
-  m.apply(r, "a", "nextRound", {}, 0);
-  assert.equal(r.gameState.roundId, 2);
+  assert.equal(r.gameState.phase, "results");
   m.end(r, 10);
   assert.equal(r.status, "lobby");
   assert.deepEqual(r.gameState, {});
@@ -139,7 +139,7 @@ test("all duplicate clues automatically fail after review; one flag keeps a clue
     if (!duplicate) m.apply(r, a, "flagClue", { authorUid: b }, 0);
     m.apply(r, a, "confirmReview", {}, 0);
     m.apply(r, b, "confirmReview", {}, 0);
-    assert.equal(r.gameState.phase, duplicate ? "roundResults" : "guessing");
+    assert.equal(r.gameState.phase, duplicate ? "results" : "guessing");
     if (!duplicate) assert.equal(r.gameState.validClues.length, 2);
   }
 });
@@ -167,11 +167,12 @@ test("editorial alias accepted; pass and incorrect guesses consume words without
       );
     if (i === 1) m.apply(r, s.guesserUid, "pass", {}, 0);
     if (i === 2) m.apply(r, s.guesserUid, "submitGuess", { text: "errore" }, 0);
-    assert.equal(s.history.filter((h: any) => h.correct).length, 1);
-    m.apply(r, "a", "nextRound", {}, 0);
+    assert.equal(s.history.filter((h: any) => h.correct).length, i === 0 ? 1 : 0);
+    assert.equal(s.phase, "results");
+    if (i < 2) { m.end(r, 0); m.init(r, r.settings, 0); m.start(r, 0); }
   }
-  assert.equal(r.gameState.roundIndex, 3);
-  assert.equal(r.gameState.history.length, 3);
+  assert.equal(r.gameState.roundIndex, 0);
+  assert.equal(r.gameState.history.length, 1);
 });
 test("an identical clue retry is idempotent while collection stays open", () => {
   const m = get().justOneModule;

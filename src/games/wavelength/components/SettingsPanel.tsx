@@ -1,10 +1,13 @@
-import React from "react";
-import { View, Text } from "react-native";
-import { SettingsPanelProps } from "../../../core/types/gamePlugin";
-import { NumberSelector, colors, spacing } from "../../../core/ui";
-export default function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps) {
-  return <View style={{ gap: spacing.md }}>
-    <NumberSelector label="Giri completi" min={1} max={3} value={(settings as { cycles?: number } | undefined)?.cycles ?? 1} onChange={(cycles) => onSettingsChange({ cycles })} />
-    <Text style={{ color: colors.textSecondary }}>Tutti indovinano una volta per giro.</Text>
+import React from 'react';
+import {View, Text} from 'react-native';
+import {SettingsPanelProps} from '../../../core/types/gamePlugin';
+import {GuesserSelector} from '../../../core/components/GuesserSelector';
+import {colors, spacing} from '../../../core/ui';
+import type {WavelengthSettings} from '../types';
+export default function SettingsPanel({settings, onSettingsChange, roomData}: SettingsPanelProps) {
+  const s = (settings ?? {}) as WavelengthSettings;
+  return <View style={{gap:spacing.md}}>
+    <GuesserSelector roomData={roomData} value={s.guesserUid} onChange={guesserUid => onSettingsChange({...s, guesserUid})} />
+    <Text style={{color:colors.textSecondary}}>Un numero da indovinare per partita. Con “Gioca ancora” continuate nella stessa stanza.</Text>
   </View>;
 }

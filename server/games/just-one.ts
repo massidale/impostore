@@ -1,3 +1,4 @@
+import {guesserSetting, restoreGuesser, beginGuesserMatch, completeGuesserMatch} from '../guesserRotation';
 import type { Room } from "../runtime";
 import {
   type GameModule,
@@ -42,7 +43,8 @@ function reviewClues(room: Room) {
 function begin(room: Room) {
   const s = room.gameState;
   s.roundId = (s.roundId ?? 0) + 1;
-  s.guesserUid = participants(room)[s.roundIndex % participants(room).length];
+  if (room.settings.mode === "teams") s.guesserUid = participants(room)[s.roundIndex % participants(room).length];
+  else beginGuesserMatch(room);
   s.private.current = s.private.deck[s.roundIndex];
   s.private.clues = {};
   s.private.flags = {};
@@ -63,7 +65,8 @@ function finish(room: Room, reason: string, guess = "") {
     reason,
   };
   s.history.push({ ...s.roundResult, round: s.roundIndex + 1 });
-  phase(room, "roundResults");
+  if (room.settings.mode === "teams") phase(room, "roundResults");
+  else {completeGuesserMatch(room); phase(room, "results");}
 }
 const cooperativeModule: GameModule = {
   id: "just-one",
@@ -105,6 +108,7 @@ const cooperativeModule: GameModule = {
   },
   init(room, settings) {
     room.settings = settings;
+    if (settings.mode !== "teams") restoreGuesser(room);
     room.gameState = {
       participantUids: participants(room),
       phase: "waiting",
@@ -127,6 +131,7 @@ const cooperativeModule: GameModule = {
     return room;
   },
   end(room, now) {
+    if (room.settings.mode !== "teams") completeGuesserMatch(room);
     room.gameState = {};
     return endGame(room, now);
   },
@@ -252,10 +257,11 @@ const cooperativeModule: GameModule = {
 /** Each team is an independent round machine; only its own members receive its view. */
 export const justOneModule: GameModule = {
   ...cooperativeModule,
-  validateSettings(input: any) {
+  validateSettings(input: any, ids) {
     const mode = input?.mode ?? "cooperative";
     check(["cooperative", "teams"].includes(mode), "Modalità non valida");
-    return { rounds: int(input?.rounds ?? 8, 5, 20), mode };
+    return { rounds: mode === "teams" ? int(input?.rounds ?? 8, 5, 20) : 1, mode,
+      guesserUid: guesserSetting(input?.guesserUid, ids) };
   },
   start(room, now) {
     if (room.settings.mode !== "teams") return cooperativeModule.start(room, now);

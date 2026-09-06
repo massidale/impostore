@@ -14,12 +14,12 @@ const WavelengthPlugin: GamePlugin = {
     "Un numero comune, tanti esempi: entra in sintonia con il gruppo.",
   minPlayers: 3,
   maxPlayers: 12,
-  rules: "Tutti tranne l’indovino ricevono lo stesso numero da 1 a 10. Partendo dal giocatore indicato, date esempi a voce senza dire il numero. L’indovino ascolta e sceglie un numero. Scoprite il numero comune e lo scarto dalla risposta. Tutti indovinano una volta per giro.",
+  rules: "Tutti tranne l’indovino ricevono lo stesso numero da 1 a 10. Partendo dal giocatore indicato, date esempi a voce senza dire il numero. L’indovino ascolta e sceglie un numero. Scoprite il numero comune e lo scarto dalla risposta. Ogni tentativo conclude una partita. Scegliete l’indovino nella lobby: con Gioca ancora passa automaticamente al successivo, in cerchio.",
   SettingsPanel,
   HostDashboard,
   PlayerGamepad,
   initGameState: initWavelengthGame,
   startGame: startWavelengthGame,
-  getDefaultSettings: () => ({ cycles: 1 }),
+  getDefaultSettings: () => ({ guesserUid: null }),
 };
 export default WavelengthPlugin;

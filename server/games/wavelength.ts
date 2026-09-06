@@ -1,3 +1,4 @@
+import {guesserSetting, restoreGuesser, beginGuesserMatch, completeGuesserMatch} from '../guesserRotation';
 import data from "../data/wavelength.json";
 import type { Room } from "../runtime";
 import {
@@ -12,7 +13,7 @@ import {
   publicRoom,
 } from "../gameModule";
 export interface WavelengthSettings {
-  cycles: number;
+  guesserUid?: string | null;
 }
 export interface WavelengthRoundResult {
   roundId: number;
@@ -42,12 +43,12 @@ function next(room: Room): void {
   const s = room.gameState as WavelengthState;
   const ids = participants(room);
   s.roundId = (s.roundId ?? 0) + 1;
-  s.guesserUid = ids[s.turnIndex % ids.length];
+  beginGuesserMatch(room);
   s.turnOrder = ids.filter((id) => id !== s.guesserUid);
   s.heardUids = [];
   s.target = Math.floor(Math.random() * 10) + 1;
   const content = data;
-  s.suggestion = content[s.turnIndex]?.text ?? "";
+  s.suggestion = content[Math.floor(Math.random() * content.length)]?.text ?? "";
   delete s.guess;
   delete s.distance;
   delete s.cancelled;
@@ -59,7 +60,7 @@ export const wavelengthModule: GameModule = {
   maxPlayers: 12,
   validateSettings(input, ids) {
     const s = (input ?? {}) as Partial<WavelengthSettings>;
-    return { cycles: int(s.cycles ?? 1, 1, 3) };
+    return { guesserUid: guesserSetting(s.guesserUid, ids) };
   },
   validateContent(input) {
     check(
@@ -78,6 +79,7 @@ export const wavelengthModule: GameModule = {
   },
   init(room, settings) {
     room.settings = settings;
+    restoreGuesser(room);
     room.gameState = { phase: "idle", roundId: 0, phaseVersion: 0 };
     return room;
   },
@@ -94,6 +96,7 @@ export const wavelengthModule: GameModule = {
     return room;
   },
   end(room, now) {
+    completeGuesserMatch(room);
     room.gameState = { phase: "idle", roundId: 0, phaseVersion: 0 };
     return endGame(room, now);
   },
@@ -135,7 +138,8 @@ export const wavelengthModule: GameModule = {
         distance: s.distance,
         cancelled: false,
       });
-      phase(room, "roundResults");
+      completeGuesserMatch(room);
+      phase(room, "results");
     } else if (action === "cancelRound") {
       hostOnly(room, actor);
       check(["clues", "guessing"].includes(s.phase), "Turno già chiuso");
@@ -148,14 +152,8 @@ export const wavelengthModule: GameModule = {
         distance: null,
         cancelled: true,
       });
-      phase(room, "roundResults");
-    } else if (action === "nextRound") {
-      hostOnly(room, actor);
-      check(s.phase === "roundResults", "Attendi il risultato");
-      s.turnIndex++;
-      if (s.turnIndex >= participants(room).length * room.settings.cycles) {
-        phase(room, "results");
-      } else next(room);
+      completeGuesserMatch(room);
+      phase(room, "results");
     } else throw new Error("Azione non valida");
     room.updatedAt = now;
     return room;

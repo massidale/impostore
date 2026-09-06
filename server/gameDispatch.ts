@@ -28,7 +28,7 @@ export function dispatchModule(
 ): Room {
   let room = cloneState(input);
   check(room.players?.[actor], "Non fai parte della stanza");
-  if (["init", "setContent", "start", "end", "cancelRound"].includes(action))
+  if (["init", "setContent", "start", "replay", "end", "cancelRound"].includes(action))
     hostOnly(room, actor);
   if (action === "init") {
     check(room.status === "lobby", "Partita in corso");
@@ -63,7 +63,12 @@ export function dispatchModule(
           expected.phaseVersion === (gs.phaseVersion ?? 0),
         "Partita aggiornata: riprova",
       );
-      if (action === "start") {
+      if (action === "replay") {
+        check(game.id === "wavelength" || (game.id === "just-one" && room.settings?.mode !== "teams"), "Ripetizione non disponibile");
+        check(room.status === "active" && gs.phase === "results", "Attendi il risultato");
+        room = game.end(room, now);
+      }
+      if (action === "start" || action === "replay") {
         check(room.status === "lobby", "Partita già iniziata");
         // Waiting players become eligible only at the next match start.
         const uids = Object.keys(room.players ?? {});

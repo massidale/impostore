@@ -51,12 +51,12 @@ export default function PlayerGamepad({
   const submitted = (s.submittedUids ?? []).includes(playerId);
   const title =
     state.phase === "results"
-      ? "Just One · Risultato finale"
+      ? "Just One · Esito"
       : s.phase === "results"
         ? `${s.name ?? "Just One"} · Parole completate`
         : teamMode && !state.myTeam
           ? "Just One · Due squadre"
-          : `${s.name ?? "Just One"} · Parola ${(s.roundIndex ?? 0) + 1}/${settings?.rounds ?? 8}`;
+          : teamMode ? `${s.name ?? "Just One"} · Parola ${(s.roundIndex ?? 0) + 1}/${settings?.rounds ?? 8}` : "Just One";
   return (
     <RoundLayout
       roomData={roomData}
@@ -256,7 +256,7 @@ export default function PlayerGamepad({
           )}
         </>
       )}
-      {s.phase === "roundResults" && s.roundResult && (
+      {(s.phase === "roundResults" || (!teamMode && s.phase === "results")) && s.roundResult && (
         <>
           <Text style={[textStyle, { fontSize: 28 }]}>
             La parola era: {s.roundResult.word}
@@ -265,7 +265,7 @@ export default function PlayerGamepad({
             {s.roundResult.correct
               ? "Indovinata!"
               : s.roundResult.reason === "cancelled"
-                ? "Round annullato"
+                ? "Partita annullata"
                 : s.roundResult.reason === "noClues"
                   ? "Nessun indizio valido"
                   : s.roundResult.reason === "passed"
@@ -278,11 +278,11 @@ export default function PlayerGamepad({
             </Button>
           )}
           {!isHost && !(teamMode && guesser) && (
-            <Text style={textStyle}>{teamMode ? "L’indovino o l’host avvia la prossima parola." : "L’host avvia la prossima parola."}</Text>
+            <Text style={textStyle}>{teamMode ? "L’indovino o l’host avvia la prossima parola." : "L’host può avviare una nuova partita."}</Text>
           )}
         </>
       )}
-      {s.phase === "results" && (
+      {teamMode && s.phase === "results" && (
         <>
           {teamMode && state.phase !== "results" && (
             <Text style={textStyle}>La tua squadra ha finito. Attendete l’altra squadra.</Text>

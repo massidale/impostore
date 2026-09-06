@@ -13,3 +13,5 @@ Modifiche richieste dopo la migrazione a Spark:
 Firebase resta sul piano Spark. Nessuna modifica alle regole del database o all'hosting di produzione.
 
 Verifiche: typecheck, 185 test unitari, 10 scenari Firebase con le regole già in uso, build web. Collaudo browser completato con quattro identità separate: catalogo e ingresso con codice/link, avvio e ritorno alla lobby dei nove giochi, voto inline, tastierino a 320/375/390/430 px e due round di squadra Just One concorrenti. Le stanze temporanee sono state eliminate.
+
+La successiva semplificazione di Wavelength e Just One cooperativo è descritta in [Partite singole e indovino](single-match-replay.md).

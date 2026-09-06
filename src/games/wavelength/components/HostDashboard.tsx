@@ -10,7 +10,7 @@ export default function HostDashboard({ roomData }: HostDashboardProps) {
       gameName="Wavelength"
       status={
         <Text style={{ color: colors.textSecondary }}>
-          Turno {(s?.turnIndex ?? 0) + 1}
+          Indovino: {roomData.players?.[s?.guesserUid ?? ""]?.name ?? "—"}
         </Text>
       }
       waitingNames={Object.values(roomData.players ?? {})

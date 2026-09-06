@@ -54,7 +54,7 @@ export default function PlayerGamepad({
       >
         {result
           ? s.cancelled
-            ? "Turno annullato"
+            ? "Partita annullata"
             : `Numero comune: ${s.target}`
           : guesser
             ? "Trova il numero comune"
@@ -71,7 +71,7 @@ export default function PlayerGamepad({
       >
         {result
           ? s.cancelled
-            ? "Il prossimo turno sta per iniziare."
+            ? "Partita annullata. Potete giocare ancora."
             : `${name(s.guesserUid)} ha scelto ${s.guess}. Scarto: ${s.distance}.`
           : guesser
             ? "Fai una domanda a ogni interlocutore. Gli esempi descrivono tutti lo stesso voto da 1 a 10."
@@ -84,7 +84,7 @@ export default function PlayerGamepad({
   return (
     <RoundLayout
       roomData={roomData}
-      title={`Wavelength · turno ${(s.turnIndex ?? 0) + 1}`}
+      title="Wavelength"
       card={card}
       error={error}
     >
@@ -123,17 +123,8 @@ export default function PlayerGamepad({
             {name(s.guesserUid)} sta scegliendo un numero.
           </Text>
         ))}
-      {result &&
-        (s.history ?? []).map((r) => (
-          <Text key={r.roundId} style={{ color: colors.textSecondary }}>
-            Turno {r.roundId} · {name(r.guesserUid)}:{" "}
-            {r.cancelled ? "annullato" : `${r.guess} → ${r.target}`}
-          </Text>
-        ))}
-      {host && s.phase === "roundResults" && (
-        <Button disabled={busy} onPress={() => send("nextRound")}>
-          Continua
-        </Button>
+      {host && s.phase === "results" && (
+        <Button disabled={busy} onPress={() => send("replay")}>Gioca ancora</Button>
       )}
       {host && ["clues", "guessing"].includes(s.phase) && (
         <Button
@@ -141,7 +132,7 @@ export default function PlayerGamepad({
           variant="secondary"
           onPress={() => send("cancelRound")}
         >
-          Annulla questo turno
+          Annulla partita
         </Button>
       )}
       {host && (

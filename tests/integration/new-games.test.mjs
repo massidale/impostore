@@ -142,7 +142,7 @@ test("Wavelength shares one number, hides it from guesser and completes a rotati
   const game = "wavelength";
   const ctx = await setup(game, { cycles: 1 });
   const { users, host, id, late } = ctx;
-  for (let turn = 0; turn < 4; turn++) {
+  for (let turn = 0; turn < 1; turn++) {
     const state = (await view(host, id)).gameState;
     const guesser = users.find((u) => u.uid === state.guesserUid);
     const respondents = users.filter((u) => u.uid !== guesser.uid);
@@ -159,11 +159,11 @@ test("Wavelength shares one number, hides it from guesser and completes a rotati
     ]);
     assert.equal(requests.filter((r) => r.status === "fulfilled").length, 1);
     const result = (await view(host, id)).gameState;
-    assert.equal(result.phase, "roundResults");
+    assert.equal(result.phase, "results");
     assert.equal(result.distance, 0);
     assert.equal(result.guess, target);
     assert.equal(result.scores, undefined);
-    await act(host, id, game, "nextRound");
+
   }
   assert.equal((await view(host, id)).gameState.phase, "results");
   await finish(ctx, game);
@@ -173,7 +173,7 @@ test("Just One removes duplicate clues and completes cooperative rounds privatel
   const game = "just-one";
   const ctx = await setup(game, { rounds: 5 });
   const { users, host, id, late } = ctx;
-  for (let round = 0; round < 5; round++) {
+  for (let round = 0; round < 1; round++) {
     const state = (await view(host, id)).gameState;
     const guesser = users.find((u) => u.uid === state.guesserUid);
     const authors = users.filter((u) => u.uid !== guesser.uid);
@@ -196,7 +196,7 @@ test("Just One removes duplicate clues and completes cooperative rounds privatel
     assert.equal(result.roundResult.correct, true);
     assert.equal(result.roundResult.word, target);
     assert.equal(result.score, undefined);
-    await act(host, id, game, "nextRound");
+
   }
   assert.equal((await view(host, id)).gameState.phase, "results");
   await finish(ctx, game);
@@ -419,3 +419,30 @@ test("Just One teams require at least four participants", async () => {
   assert.equal((await view(host, id)).status, "lobby");
   await call(host, id, "deleteRoom");
 });
+
+for (const game of ["wavelength", "just-one"]) {
+  test(`${game} replays atomically, rotates guessers and admits waiting players`, async () => {
+    const ctx = await setup(game, {});
+    const {host, id, users, late} = ctx;
+    const first = (await view(host,id)).gameState.guesserUid;
+    let previous = first;
+    const order = Object.keys((await view(host,id)).players);
+    for(let i=0;i<order.length+1;i++) {
+      await act(host,id,game,"cancelRound");
+      const ended = await view(host,id);
+      const next = ended.settings.guesserUid;
+      assert.notEqual(next, previous);
+      const token = generation(ended);
+      await assert.rejects(call(users[1],id,game+".replay",{},token), /host/);
+      await call(host,id,game+".replay",{},token);
+      await assert.rejects(call(host,id,game+".replay",{},token), /aggiornat/);
+      const active = await view(host,id);
+      assert.equal(active.gameState.guesserUid,next);
+      assert.equal(active.players[late.uid].waiting,undefined);
+      assert.equal(active.gameState.participantUids.length,5);
+      previous = next;
+      if(i === order.length-1) assert.equal(next,first);
+    }
+    await call(host,id,"deleteRoom");
+  });
+}

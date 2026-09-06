@@ -1,5 +1,6 @@
 export interface JustOneSettings {
   rounds: number;
+  guesserUid?: string | null;
   mode?: "cooperative" | "teams";
 }
 export interface JustOneView {

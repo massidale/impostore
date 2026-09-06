@@ -1,5 +1,5 @@
 export interface WavelengthSettings {
-  cycles: number;
+  guesserUid?: string | null;
 }
 export interface WavelengthRoundResult {
   roundId: number;

@@ -57,12 +57,8 @@ export default function HostDashboard({ roomData }: HostDashboardProps) {
             )}
           </View>
         ))}
-        {s.phase === "roundResults" && (
-          <Button disabled={busy} onPress={() => act("nextRound")}>
-            {(s.roundIndex ?? 0) + 1 >= (settings?.rounds ?? 8)
-              ? "Mostra risultato finale"
-              : "Prossima parola"}
-          </Button>
+        {s.phase === "results" && settings?.mode !== "teams" && (
+          <Button disabled={busy} onPress={() => act("replay")}>Gioca ancora</Button>
         )}
         {["clues", "review", "guessing"].includes(s.phase) && (
           <Button
@@ -70,7 +66,7 @@ export default function HostDashboard({ roomData }: HostDashboardProps) {
             variant="secondary"
             onPress={() => act("cancelRound")}
           >
-            Annulla parola
+            Annulla partita
           </Button>
         )}
         <Button disabled={busy} variant="secondary" onPress={() => act("end")}>

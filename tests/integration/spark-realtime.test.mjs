@@ -18,7 +18,7 @@ test('Spark realtime updates, persisted collections and legacy-room protection',
   await host.transport.command(id,{method:'just-one.init',args:[{rounds:5}]});
   const raw=(await get(ref(host.db,`rooms/${id}`))).val();
   assert.equal(raw.gameData.spark.version,1);assert.equal(typeof raw.gameData.spark.state,'string');
-  const state=JSON.parse(raw.gameData.spark.state);assert.equal(state.settings.rounds,5);
+  const state=JSON.parse(raw.gameData.spark.state);assert.equal(state.settings.rounds,1);
   assert.equal(raw.settings,undefined);assert.equal(raw.matchId,undefined);
   stop();const count=observed.length;await host.transport.command(id,{method:'deleteRoom'});
   assert.equal(await guest.transport.read(id),null);assert.equal(observed.length,count);

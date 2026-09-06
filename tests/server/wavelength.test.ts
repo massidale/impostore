@@ -26,7 +26,7 @@ test("One shared secret, host guesser and late spectator cannot read it", () => 
   assert.ok(!("target" in m.project(r, "z").gameState));
   assert.ok(!JSON.stringify(m.project(r, "a")).includes("gameData"));
 });
-test("Full game rotates everyone and records guesses without scores", () => {
+test("Separate matches rotate everyone and record a single guess without scores", () => {
   const r = room();
   r.players.z = { name: "Z", waiting: true };
   for (const id of ["a", "b", "c"]) {
@@ -44,7 +44,7 @@ test("Full game rotates everyone and records guesses without scores", () => {
     assert.throws(() => m.apply(r, id, "submitGuess", { value: 8 }, 3));
     assert.equal(r.gameState.scores, undefined);
     assert.equal(m.project(r, "z").gameState.target, r.gameState.target);
-    m.apply(r, "a", "nextRound", {}, 4);
+    if (id !== "c") {m.end(r, 4); m.init(r, r.settings, 4); m.start(r, 4);}
   }
   assert.equal(r.gameState.phase, "results");
   assert.equal(r.gameState.winners, undefined);
@@ -63,7 +63,7 @@ test("Guesser can proceed after oral discussion; cancellation and content valida
     m.validateContent(loadServer("server/data/wavelength.json")).length,
     20,
   );
-  assert.throws(() => m.validateSettings({ cycles: 4 }, []));
+  assert.throws(() => m.validateSettings({ guesserUid: 4 }, []));
 });
 test("Heard retry is idempotent and no future hint is serialized", () => {
   const r = room();
@@ -185,14 +185,13 @@ test("Completed-round history persists without future secrets and end clears it"
       cancelled: false,
     },
   ]);
-  m.apply(r, "a", "nextRound", {}, 3);
+  m.end(r, 3); m.init(r, r.settings, 3); m.start(r, 3);
   const view = m.project(r, "b").gameState;
   assert.ok(!("target" in view));
-  assert.equal(view.history.length, 1);
-  assert.equal(view.history[0].target, 8);
+  assert.equal(view.history.length, 0);
   m.apply(r, "a", "cancelRound", {}, 4);
-  assert.equal(r.gameState.history.length, 2);
-  assert.equal(r.gameState.history[1].cancelled, true);
+  assert.equal(r.gameState.history.length, 1);
+  assert.equal(r.gameState.history[0].cancelled, true);
   m.end(r, 5);
   assert.ok(!("history" in r.gameState));
 });
