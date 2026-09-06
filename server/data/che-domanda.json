@@ -1,0 +1,242 @@
+[
+  {
+    "id": "cd-001",
+    "question": "Quante tazze hai in casa?",
+    "alternateQuestion": "Quanti bicchieri hai in casa?",
+    "min": 0,
+    "max": 1000,
+    "decimals": 0
+  },
+  {
+    "id": "cd-002",
+    "question": "Quante volte mangi pasta in un mese?",
+    "alternateQuestion": "Quante volte mangi riso in un mese?",
+    "min": 0,
+    "max": 1000,
+    "decimals": 0
+  },
+  {
+    "id": "cd-003",
+    "question": "Quanti minuti impieghi a fare colazione?",
+    "alternateQuestion": "Quanti minuti impieghi a fare una doccia?",
+    "min": 0,
+    "max": 1000,
+    "decimals": 0
+  },
+  {
+    "id": "cd-004",
+    "question": "Quanti cuscini hai in casa?",
+    "alternateQuestion": "Quante coperte hai in casa?",
+    "min": 0,
+    "max": 1000,
+    "decimals": 0
+  },
+  {
+    "id": "cd-005",
+    "question": "Quante foto scatti in una settimana?",
+    "alternateQuestion": "Quanti messaggi vocali mandi in una settimana?",
+    "min": 0,
+    "max": 1000,
+    "decimals": 0
+  },
+  {
+    "id": "cd-006",
+    "question": "Quanti paesi vorresti visitare?",
+    "alternateQuestion": "Quante città vorresti visitare?",
+    "min": 0,
+    "max": 1000,
+    "decimals": 0
+  },
+  {
+    "id": "cd-007",
+    "question": "Quante magliette hai?",
+    "alternateQuestion": "Quante paia di calze hai?",
+    "min": 0,
+    "max": 1000,
+    "decimals": 0
+  },
+  {
+    "id": "cd-008",
+    "question": "Quante volte vai al cinema in un anno?",
+    "alternateQuestion": "Quante volte vai a teatro in un anno?",
+    "min": 0,
+    "max": 1000,
+    "decimals": 0
+  },
+  {
+    "id": "cd-009",
+    "question": "Quanti minuti aspetteresti per un buon gelato?",
+    "alternateQuestion": "Quanti minuti aspetteresti per un buon caffè?",
+    "min": 0,
+    "max": 1000,
+    "decimals": 0
+  },
+  {
+    "id": "cd-010",
+    "question": "Quanti libri hai letto negli ultimi due anni?",
+    "alternateQuestion": "Quanti film hai visto negli ultimi due mesi?",
+    "min": 0,
+    "max": 1000,
+    "decimals": 0
+  },
+  {
+    "id": "cd-011",
+    "question": "Quante piante hai in casa?",
+    "alternateQuestion": "Quanti quadri hai in casa?",
+    "min": 0,
+    "max": 1000,
+    "decimals": 0
+  },
+  {
+    "id": "cd-012",
+    "question": "Quanti minuti cammini in una giornata normale?",
+    "alternateQuestion": "Quanti minuti leggi in una giornata normale?",
+    "min": 0,
+    "max": 1000,
+    "decimals": 0
+  },
+  {
+    "id": "cd-013",
+    "question": "Quante persone inviteresti a cena a casa?",
+    "alternateQuestion": "Quante persone inviteresti a un picnic?",
+    "min": 0,
+    "max": 1000,
+    "decimals": 0
+  },
+  {
+    "id": "cd-014",
+    "question": "Quanti euro spenderesti per una pizza speciale?",
+    "alternateQuestion": "Quanti euro spenderesti per un dolce speciale?",
+    "min": 0,
+    "max": 1000,
+    "decimals": 0
+  },
+  {
+    "id": "cd-015",
+    "question": "Quante volte ascolti la stessa canzone in una settimana?",
+    "alternateQuestion": "Quante volte rivedresti il tuo film preferito in un anno?",
+    "min": 0,
+    "max": 1000,
+    "decimals": 0
+  },
+  {
+    "id": "cd-016",
+    "question": "Quanti giorni durerrebbe la tua vacanza ideale?",
+    "alternateQuestion": "Quanti giorni durerrebbe il tuo viaggio in treno ideale?",
+    "min": 0,
+    "max": 1000,
+    "decimals": 0
+  },
+  {
+    "id": "cd-017",
+    "question": "Quanti minuti dedichi a scegliere un vestito?",
+    "alternateQuestion": "Quanti minuti dedichi a scegliere un film?",
+    "min": 0,
+    "max": 1000,
+    "decimals": 0
+  },
+  {
+    "id": "cd-018",
+    "question": "Quanti oggetti hai sulla scrivania?",
+    "alternateQuestion": "Quanti oggetti hai sul comodino?",
+    "min": 0,
+    "max": 1000,
+    "decimals": 0
+  },
+  {
+    "id": "cd-019",
+    "question": "Quante finestre ha la tua casa?",
+    "alternateQuestion": "Quante porte ha la tua casa?",
+    "min": 0,
+    "max": 1000,
+    "decimals": 0
+  },
+  {
+    "id": "cd-020",
+    "question": "Quante scarpe porteresti per un viaggio lungo?",
+    "alternateQuestion": "Quante magliette porteresti per un viaggio lungo?",
+    "min": 0,
+    "max": 1000,
+    "decimals": 0
+  },
+  {
+    "id": "cd-021",
+    "question": "Quanti minuti sopporti un ritardo senza avvisare?",
+    "alternateQuestion": "Quanti minuti arriveresti in anticipo a una festa?",
+    "min": 0,
+    "max": 1000,
+    "decimals": 0
+  },
+  {
+    "id": "cd-022",
+    "question": "Quante olive mangeresti come aperitivo?",
+    "alternateQuestion": "Quanti pomodorini mangeresti come aperitivo?",
+    "min": 0,
+    "max": 1000,
+    "decimals": 0
+  },
+  {
+    "id": "cd-023",
+    "question": "Quante volte cucini in una settimana?",
+    "alternateQuestion": "Quante volte lavi i piatti in una settimana?",
+    "min": 0,
+    "max": 1000,
+    "decimals": 0
+  },
+  {
+    "id": "cd-024",
+    "question": "Quanti minuti durerà la tua passeggiata ideale?",
+    "alternateQuestion": "Quanti minuti durerà il tuo riposino ideale?",
+    "min": 0,
+    "max": 1000,
+    "decimals": 0
+  },
+  {
+    "id": "cd-025",
+    "question": "Quanti euro spenderesti per una pianta?",
+    "alternateQuestion": "Quanti euro spenderesti per un vaso?",
+    "min": 0,
+    "max": 1000,
+    "decimals": 0
+  },
+  {
+    "id": "cd-026",
+    "question": "Quanti giochi da tavolo conosci?",
+    "alternateQuestion": "Quanti giochi di carte conosci?",
+    "min": 0,
+    "max": 1000,
+    "decimals": 0
+  },
+  {
+    "id": "cd-027",
+    "question": "Quanti minuti impieghi a preparare un panino elaborato?",
+    "alternateQuestion": "Quanti minuti impieghi a preparare una macedonia?",
+    "min": 0,
+    "max": 1000,
+    "decimals": 0
+  },
+  {
+    "id": "cd-028",
+    "question": "Quante persone saluti in una giornata normale?",
+    "alternateQuestion": "Quante persone chiami in una settimana normale?",
+    "min": 0,
+    "max": 1000,
+    "decimals": 0
+  },
+  {
+    "id": "cd-029",
+    "question": "Quanti adesivi metteresti su una valigia?",
+    "alternateQuestion": "Quante calamite metteresti sul frigorifero?",
+    "min": 0,
+    "max": 1000,
+    "decimals": 0
+  },
+  {
+    "id": "cd-030",
+    "question": "Quanti ingredienti useresti per una buona insalata?",
+    "alternateQuestion": "Quanti ingredienti useresti per una buona pizza?",
+    "min": 0,
+    "max": 1000,
+    "decimals": 0
+  }
+]

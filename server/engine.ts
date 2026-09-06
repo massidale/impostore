@@ -1,3 +1,5 @@
+import {getGameModule} from './gameModules';
+import {dispatchModule} from './gameDispatch';
 import { RoomStore, type Room } from './runtime';
 import { createImpostoreCommands } from './games/impostore';
 import { createIndovinaCommands } from './games/indovina';
@@ -6,7 +8,7 @@ import { createTabooCommands } from './games/taboo';
 export interface Command {
   method: string;
   args?: unknown[];
-  expected?: { matchId?: number; phase?: string; votingEndsAt?: number | null; cardVersion?: number };
+  expected?: { matchId?: number; phase?: string; votingEndsAt?: number | null; cardVersion?: number; roundId?: number; phaseVersion?: number; actionVersion?: number };
 }
 const games = ['impostore', 'indovina', 'taboo'];
 const hostMethods = new Set(['initImpostoreGame','initIndovinaGame','initTabooGame','startImpostoreGame','startIndovinaGame','startTabooGame','endImpostoreGame','endIndovinaGame','endTabooGame','startVoting','closeVotingByTimeout','finalizeCollecting','resetImpostoreUsedWords','resetIndovinaUsedWords','updateImpostoreSettings','setDictionary','resetPlayersToCore']);
@@ -75,6 +77,12 @@ export function applyCommand(input: Room, actor: string, request: Command, now: 
     check(room.status !== 'active' || room.players?.[target]?.waiting, 'Partita in corso: termina il round prima di rimuovere un partecipante');
     delete room.players![target];room.updatedAt=now;return room;
   }
+  if (method.includes('.')) {
+    const [id, action, extra] = method.split('.');
+    const module=getGameModule(id);
+    check(module && action && !extra && args.length<=1,'Comando non disponibile');
+    return dispatchModule(room,actor,action,args[0],request.expected,now,module);
+  }
   if (hostMethods.has(method)) check(actor===room.hostId,'Solo l’host può eseguire questa azione');
   if (method==='resetPlayersToCore') {check(room.status==='lobby','Partita in corso');return room;}
   if (method==='setDictionary') {
@@ -140,6 +148,8 @@ export function previewRoom(room: Room): Room {
   return {id:room.id,status:room.status,hostId:room.hostId,createdAt:room.createdAt,updatedAt:room.updatedAt,currentGameId:room.currentGameId,players:Object.fromEntries(Object.entries(room.players ?? {}).map(([id,p])=>[id,corePlayer(p)]))};
 }
 export function projectRoom(room: Room, actor: string): Room {
+  const module=getGameModule(room.currentGameId);
+  if(module)return module.project(room,actor);
   const view=structuredClone(room);delete view.gameData;
   const gs=view.gameState; const me=room.players?.[actor];
   for(const [id,p] of Object.entries(view.players ?? {})) {

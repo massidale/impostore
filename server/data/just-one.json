@@ -1,0 +1,510 @@
+[
+  {
+    "id": "jo-001",
+    "word": "ombrello",
+    "aliases": []
+  },
+  {
+    "id": "jo-002",
+    "word": "bicicletta",
+    "aliases": [
+      "bici"
+    ]
+  },
+  {
+    "id": "jo-003",
+    "word": "montagna",
+    "aliases": []
+  },
+  {
+    "id": "jo-004",
+    "word": "biblioteca",
+    "aliases": []
+  },
+  {
+    "id": "jo-005",
+    "word": "cuscino",
+    "aliases": []
+  },
+  {
+    "id": "jo-006",
+    "word": "lampadina",
+    "aliases": []
+  },
+  {
+    "id": "jo-007",
+    "word": "finestra",
+    "aliases": []
+  },
+  {
+    "id": "jo-008",
+    "word": "pianoforte",
+    "aliases": []
+  },
+  {
+    "id": "jo-009",
+    "word": "valigia",
+    "aliases": []
+  },
+  {
+    "id": "jo-010",
+    "word": "farfalla",
+    "aliases": []
+  },
+  {
+    "id": "jo-011",
+    "word": "castello",
+    "aliases": []
+  },
+  {
+    "id": "jo-012",
+    "word": "vulcano",
+    "aliases": []
+  },
+  {
+    "id": "jo-013",
+    "word": "ghiacciaio",
+    "aliases": []
+  },
+  {
+    "id": "jo-014",
+    "word": "canguro",
+    "aliases": []
+  },
+  {
+    "id": "jo-015",
+    "word": "pinguino",
+    "aliases": []
+  },
+  {
+    "id": "jo-016",
+    "word": "girasole",
+    "aliases": []
+  },
+  {
+    "id": "jo-017",
+    "word": "astronauta",
+    "aliases": []
+  },
+  {
+    "id": "jo-018",
+    "word": "calamita",
+    "aliases": []
+  },
+  {
+    "id": "jo-019",
+    "word": "arcobaleno",
+    "aliases": []
+  },
+  {
+    "id": "jo-020",
+    "word": "cioccolato",
+    "aliases": []
+  },
+  {
+    "id": "jo-021",
+    "word": "acquario",
+    "aliases": []
+  },
+  {
+    "id": "jo-022",
+    "word": "stazione",
+    "aliases": []
+  },
+  {
+    "id": "jo-023",
+    "word": "giardino",
+    "aliases": []
+  },
+  {
+    "id": "jo-024",
+    "word": "orologio",
+    "aliases": []
+  },
+  {
+    "id": "jo-025",
+    "word": "semaforo",
+    "aliases": []
+  },
+  {
+    "id": "jo-026",
+    "word": "frigorifero",
+    "aliases": [
+      "frigo"
+    ]
+  },
+  {
+    "id": "jo-027",
+    "word": "lavatrice",
+    "aliases": []
+  },
+  {
+    "id": "jo-028",
+    "word": "bussola",
+    "aliases": []
+  },
+  {
+    "id": "jo-029",
+    "word": "telescopio",
+    "aliases": []
+  },
+  {
+    "id": "jo-030",
+    "word": "microscopio",
+    "aliases": []
+  },
+  {
+    "id": "jo-031",
+    "word": "conchiglia",
+    "aliases": []
+  },
+  {
+    "id": "jo-032",
+    "word": "diamante",
+    "aliases": []
+  },
+  {
+    "id": "jo-033",
+    "word": "tamburo",
+    "aliases": []
+  },
+  {
+    "id": "jo-034",
+    "word": "chitarra",
+    "aliases": []
+  },
+  {
+    "id": "jo-035",
+    "word": "violino",
+    "aliases": []
+  },
+  {
+    "id": "jo-036",
+    "word": "poltrona",
+    "aliases": []
+  },
+  {
+    "id": "jo-037",
+    "word": "divano",
+    "aliases": []
+  },
+  {
+    "id": "jo-038",
+    "word": "tappeto",
+    "aliases": []
+  },
+  {
+    "id": "jo-039",
+    "word": "candela",
+    "aliases": []
+  },
+  {
+    "id": "jo-040",
+    "word": "fiammifero",
+    "aliases": []
+  },
+  {
+    "id": "jo-041",
+    "word": "bottiglia",
+    "aliases": []
+  },
+  {
+    "id": "jo-042",
+    "word": "bicchiere",
+    "aliases": []
+  },
+  {
+    "id": "jo-043",
+    "word": "cucchiaio",
+    "aliases": []
+  },
+  {
+    "id": "jo-044",
+    "word": "forchetta",
+    "aliases": []
+  },
+  {
+    "id": "jo-045",
+    "word": "coltello",
+    "aliases": []
+  },
+  {
+    "id": "jo-046",
+    "word": "piatto",
+    "aliases": []
+  },
+  {
+    "id": "jo-047",
+    "word": "pentola",
+    "aliases": []
+  },
+  {
+    "id": "jo-048",
+    "word": "padella",
+    "aliases": []
+  },
+  {
+    "id": "jo-049",
+    "word": "mestolo",
+    "aliases": []
+  },
+  {
+    "id": "jo-050",
+    "word": "scolapasta",
+    "aliases": []
+  },
+  {
+    "id": "jo-051",
+    "word": "pomodoro",
+    "aliases": []
+  },
+  {
+    "id": "jo-052",
+    "word": "melanzana",
+    "aliases": []
+  },
+  {
+    "id": "jo-053",
+    "word": "zucchina",
+    "aliases": []
+  },
+  {
+    "id": "jo-054",
+    "word": "carota",
+    "aliases": []
+  },
+  {
+    "id": "jo-055",
+    "word": "patata",
+    "aliases": []
+  },
+  {
+    "id": "jo-056",
+    "word": "cipolla",
+    "aliases": []
+  },
+  {
+    "id": "jo-057",
+    "word": "aglio",
+    "aliases": []
+  },
+  {
+    "id": "jo-058",
+    "word": "basilico",
+    "aliases": []
+  },
+  {
+    "id": "jo-059",
+    "word": "rosmarino",
+    "aliases": []
+  },
+  {
+    "id": "jo-060",
+    "word": "prezzemolo",
+    "aliases": []
+  },
+  {
+    "id": "jo-061",
+    "word": "fragola",
+    "aliases": []
+  },
+  {
+    "id": "jo-062",
+    "word": "ciliegia",
+    "aliases": []
+  },
+  {
+    "id": "jo-063",
+    "word": "albicocca",
+    "aliases": []
+  },
+  {
+    "id": "jo-064",
+    "word": "pesca",
+    "aliases": []
+  },
+  {
+    "id": "jo-065",
+    "word": "arancia",
+    "aliases": []
+  },
+  {
+    "id": "jo-066",
+    "word": "limone",
+    "aliases": []
+  },
+  {
+    "id": "jo-067",
+    "word": "mandarino",
+    "aliases": []
+  },
+  {
+    "id": "jo-068",
+    "word": "ananas",
+    "aliases": []
+  },
+  {
+    "id": "jo-069",
+    "word": "banana",
+    "aliases": []
+  },
+  {
+    "id": "jo-070",
+    "word": "cocomero",
+    "aliases": [
+      "anguria"
+    ]
+  },
+  {
+    "id": "jo-071",
+    "word": "tartaruga",
+    "aliases": []
+  },
+  {
+    "id": "jo-072",
+    "word": "coccodrillo",
+    "aliases": []
+  },
+  {
+    "id": "jo-073",
+    "word": "elefante",
+    "aliases": []
+  },
+  {
+    "id": "jo-074",
+    "word": "giraffa",
+    "aliases": []
+  },
+  {
+    "id": "jo-075",
+    "word": "rinoceronte",
+    "aliases": []
+  },
+  {
+    "id": "jo-076",
+    "word": "ippopotamo",
+    "aliases": []
+  },
+  {
+    "id": "jo-077",
+    "word": "delfino",
+    "aliases": []
+  },
+  {
+    "id": "jo-078",
+    "word": "balena",
+    "aliases": []
+  },
+  {
+    "id": "jo-079",
+    "word": "squalo",
+    "aliases": []
+  },
+  {
+    "id": "jo-080",
+    "word": "polpo",
+    "aliases": [
+      "piovra"
+    ]
+  },
+  {
+    "id": "jo-081",
+    "word": "medusa",
+    "aliases": []
+  },
+  {
+    "id": "jo-082",
+    "word": "granchio",
+    "aliases": []
+  },
+  {
+    "id": "jo-083",
+    "word": "aragosta",
+    "aliases": []
+  },
+  {
+    "id": "jo-084",
+    "word": "formica",
+    "aliases": []
+  },
+  {
+    "id": "jo-085",
+    "word": "coccinella",
+    "aliases": []
+  },
+  {
+    "id": "jo-086",
+    "word": "libellula",
+    "aliases": []
+  },
+  {
+    "id": "jo-087",
+    "word": "zanzara",
+    "aliases": []
+  },
+  {
+    "id": "jo-088",
+    "word": "scoiattolo",
+    "aliases": []
+  },
+  {
+    "id": "jo-089",
+    "word": "riccio",
+    "aliases": []
+  },
+  {
+    "id": "jo-090",
+    "word": "volpe",
+    "aliases": []
+  },
+  {
+    "id": "jo-091",
+    "word": "lupo",
+    "aliases": []
+  },
+  {
+    "id": "jo-092",
+    "word": "cervo",
+    "aliases": []
+  },
+  {
+    "id": "jo-093",
+    "word": "gufo",
+    "aliases": []
+  },
+  {
+    "id": "jo-094",
+    "word": "aquila",
+    "aliases": []
+  },
+  {
+    "id": "jo-095",
+    "word": "rondine",
+    "aliases": []
+  },
+  {
+    "id": "jo-096",
+    "word": "gabbiano",
+    "aliases": []
+  },
+  {
+    "id": "jo-097",
+    "word": "pellicano",
+    "aliases": []
+  },
+  {
+    "id": "jo-098",
+    "word": "fenicottero",
+    "aliases": []
+  },
+  {
+    "id": "jo-099",
+    "word": "pavone",
+    "aliases": []
+  },
+  {
+    "id": "jo-100",
+    "word": "struzzo",
+    "aliases": []
+  }
+]

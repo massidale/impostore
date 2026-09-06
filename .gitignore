@@ -52,3 +52,6 @@ yarn-error.*
 functions/lib/
 functions/node_modules/
 *-debug.log
+
+# Local/cloud conflict copies of installed dependencies
+/node_modules*/

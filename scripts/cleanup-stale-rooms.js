@@ -5,6 +5,7 @@
 // account with Realtime Database write access.
 
 const admin = require('firebase-admin');
+const {roomTimestamp} = require('./room-timestamp.cjs');
 
 const DATABASE_URL =
   'https://gameshub-6b1ce-default-rtdb.europe-west1.firebasedatabase.app';
@@ -45,14 +46,14 @@ async function main() {
     const candidates = [];
     snap.forEach((child) => {
       total += 1;
-      const room = root === 'roomsV2' ? child.val()?.data : child.val();
-      if (Number(room?.updatedAt ?? room?.createdAt ?? 0) < cutoff) candidates.push(child.key);
+      const timestamp = roomTimestamp(child.val(), root === 'roomsV2');
+      if (timestamp !== null && timestamp < cutoff) candidates.push(child.key);
     });
     for (const id of candidates) {
       const result = await db.ref(`${root}/${id}`).transaction((value) => {
         if (!value) return undefined;
-        const room = root === 'roomsV2' ? value.data : value;
-        return Number(room?.updatedAt ?? room?.createdAt ?? 0) < cutoff ? null : undefined;
+        const timestamp = roomTimestamp(value, root === 'roomsV2');
+        return timestamp !== null && timestamp < cutoff ? null : undefined;
       });
       if (result.committed) stale += 1;
     }

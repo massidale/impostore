@@ -16,7 +16,7 @@
     "deploy:staging": "bash scripts/deploy-staging.sh",
     "deploy:prod": "bash scripts/deploy-prod.sh",
     "build:server": "npm --prefix functions run build",
-    "test:integration": "npm run build:server && firebase emulators:exec --only auth,database,functions --project demo-gameshub \"node --test tests/integration/firebase.test.mjs\""
+    "test:integration": "npm run build:server && firebase emulators:exec --only auth,database,functions --project demo-gameshub \"node --test tests/integration/*.test.mjs\""
   },
   "dependencies": {
     "@expo-google-fonts/bricolage-grotesque": "^0.4.1",

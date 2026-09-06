@@ -1,3 +1,9 @@
+import cheDomandaPlugin from '../games/che-domanda';
+import wavelengthPlugin from '../games/wavelength';
+import justOnePlugin from '../games/just-one';
+import herdMentalityPlugin from '../games/herd-mentality';
+import topTenPlugin from '../games/top-ten';
+import timesUpPlugin from '../games/times-up';
 import { GamePlugin } from './types/gamePlugin';
 import ImpostorePlugin from '../games/impostore';
 import IndovinaPlugin from '../games/indovina';
@@ -16,6 +22,13 @@ import TabooPlugin from '../games/taboo';
 export const NO_GAME_ID = 'none';
 
 const registry: Record<string, GamePlugin> = {
+  [cheDomandaPlugin.id]: cheDomandaPlugin,
+  [wavelengthPlugin.id]: wavelengthPlugin,
+  [justOnePlugin.id]: justOnePlugin,
+  [herdMentalityPlugin.id]: herdMentalityPlugin,
+  [topTenPlugin.id]: topTenPlugin,
+  [timesUpPlugin.id]: timesUpPlugin,
+
   [ImpostorePlugin.id]: ImpostorePlugin,
   [IndovinaPlugin.id]: IndovinaPlugin,
   [TabooPlugin.id]: TabooPlugin,

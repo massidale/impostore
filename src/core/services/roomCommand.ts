@@ -15,6 +15,8 @@ export async function roomCommand(roomId: string | null, method: string, args: u
     phase: room.gameState?.phase ?? null,
     votingEndsAt: room.gameState?.votingEndsAt ?? null,
     cardVersion: room.cardVersion ?? 0,
+    ...(room.gameState?.roundId !== undefined ? {roundId: room.gameState.roundId, phaseVersion: room.gameState.phaseVersion ?? 0} : {}),
+    ...(room.gameState?.actionVersion !== undefined ? {actionVersion: room.gameState.actionVersion} : {}),
   } : undefined;
   try {
     const result = await invoke({roomId, method, args: args.map(v => v === undefined ? null : v), ...(expected ? {expected} : {})});

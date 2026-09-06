@@ -1,21 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createRequire } from 'node:module';
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
-import vm from 'node:vm';
-const require = createRequire(import.meta.url);
-const ts = require('typescript');
-const cache = new Map<string, any>();
-function load(file: string): any {
-  file = path.resolve(file);
-  if (cache.has(file)) return cache.get(file).exports;
-  if (file.endsWith('.json')) return JSON.parse(readFileSync(file, 'utf8'));
-  const module = {exports: {}}; cache.set(file, module);
-  const code = ts.transpileModule(readFileSync(file, 'utf8'), {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true}}).outputText;
-  vm.runInThisContext('(function(require,module,exports){'+code+'\n})')((id: string) => {let f = path.resolve(path.dirname(file), id); if (!path.extname(f)) f += '.ts'; return load(f);}, module, module.exports);
-  return module.exports;
-}
+import {loadServer as load} from '../helpers/serverLoader.ts';
 const {applyCommand, projectRoom, previewRoom} = load('server/engine.ts');
 function room(game = 'indovina'): any {
   return {id:'ABC123', hostId:'a', status:'active', currentGameId:game, createdAt:1, updatedAt:1, matchId:1, cardVersion:0,

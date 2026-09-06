@@ -1,6 +1,8 @@
 # Deploy
 
-Questa versione richiede backend, regole database e client aggiornati insieme.
+Questa versione implementa nove giochi nel catalogo: Impostore, Indovina la parola, Taboo, Che domanda?, Wavelength, Just One, Herd Mentality, Top Ten e Time’s Up. Lupus resta disabilitato. Le modifiche descritte sono nel repository: questo documento non attesta un deploy eseguito.
+
+La pubblicazione richiede backend, regole database e client aggiornati insieme.
 
 1. `npm ci` e `npm ci --prefix functions`.
 2. `npm run typecheck`, `npm test`, `npm run test:integration` (Java 21).
@@ -15,10 +17,25 @@ aver distribuito il backend.
 
 ## Dati e compatibilità
 
-Le nuove stanze risiedono in `roomsV2/{id}`: `data` è accessibile solo al backend,
-`preview` contiene informazioni di ingresso, `views/{authUid}` è leggibile solo
-dal giocatore corrispondente. Stato e viste vengono aggiornati nella stessa
-transazione. I mazzi personalizzati e le impostazioni appartengono alla stanza.
+Le nuove stanze risiedono in `roomsV2/{id}`: `data` è una stringa JSON privata,
+accessibile solo al backend. `server/roomCodec.ts` serializza lo stato per conservare
+array e oggetti vuoti che RTDB eliminerebbe; accetta in lettura anche il precedente
+formato a oggetto. La successiva scrittura salva lo stato nel nuovo formato.
+`preview` e `views/{authUid}` restano oggetti RTDB: la preview contiene le informazioni
+di ingresso, ogni vista è leggibile soltanto dal relativo utente autenticato.
+Stato, preview e viste vengono aggiornati nella stessa transazione. Impostazioni e
+contenuti personalizzati rimangono proprietà dello stato della stanza, dentro il JSON;
+non sono percorsi RTDB interrogabili sotto `data`.
+
+Un eventuale rollback del backend deve conservare il decoder dei due formati:
+le versioni precedenti al codec non leggono le stanze già salvate come stringhe.
+Il codec rifiuta stati privati superiori a 9 MB prima della scrittura.
+
+I sei nuovi giochi sono registrati in `server/gameModules.ts`. I comandi
+`<gameId>.<azione>` passano per `server/gameDispatch.ts`, con controlli di ruolo,
+partecipazione e generazione (`matchId`, `phase`, `roundId`, `phaseVersion`);
+Time’s Up verifica anche `actionVersion` per le azioni sulle carte. I partecipanti
+sono congelati all’avvio: chi entra dopo osserva fino alla prossima partita.
 
 Le vecchie stanze sotto `rooms` diventano inaccessibili al cambio delle regole:
 è necessario crearne di nuove. Non viene migrata automaticamente l'identità
@@ -33,7 +50,9 @@ propria parola sul proprio telefono è stata rimossa per conservarne la segretez
 
 ## Verifica locale
 
-`npm run test:integration` usa esclusivamente il progetto emulator `demo-gameshub`.
+`npm run test:integration` compila il backend ed esegue `tests/integration/*.test.mjs`
+esclusivamente nel progetto emulator `demo-gameshub`. La suite include i sei nuovi
+giochi e le verifiche delle viste private, dei comandi e della persistenza.
 Per aprire l'app contro emulatori avviati localmente, impostare
 `EXPO_PUBLIC_FIREBASE_EMULATOR_HOST=127.0.0.1`. Per testare più giocatori nello
 stesso browser in sviluppo, usare `?cid=p1`, `?cid=p2`: anche Auth è isolata per

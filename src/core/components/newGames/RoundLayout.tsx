@@ -1,0 +1,67 @@
+import React, { ReactNode } from "react";
+import { ScrollView, Text, View } from "react-native";
+import { CoreRoom } from "../../types/room";
+import { MetaRow, ErrorBanner, colors, fonts, spacing } from "../../ui";
+import { FitContent } from "../../ui/FitContent";
+import { wrappingText } from "../../ui/wrappingText";
+
+/** Large card fits the game area; controls remain full-size in a scrollable footer. */
+export function RoundLayout({
+  roomData,
+  title,
+  card,
+  children,
+  error,
+}: {
+  roomData: CoreRoom;
+  title: string;
+  card?: ReactNode;
+  children?: ReactNode;
+  error?: string | null;
+}) {
+  return (
+    <View
+      style={{
+        flex: 1,
+        minHeight: 0,
+        minWidth: 0,
+        padding: spacing.sm,
+        backgroundColor: colors.background,
+        gap: spacing.sm,
+      }}
+    >
+      <MetaRow
+        roomId={roomData.id}
+        players={Object.keys(roomData.players ?? {}).length}
+      />
+      <Text
+        style={[
+          wrappingText,
+          {
+            fontFamily: fonts.displayHeavy,
+            color: colors.textPrimary,
+            fontSize: 20,
+            textAlign: "center",
+          },
+        ]}
+      >
+        {title}
+      </Text>
+      {error && <ErrorBanner message={error} />}
+      {card && <FitContent>{card}</FitContent>}
+      {children && (
+        <ScrollView
+          style={
+            card
+              ? { flexGrow: 0, flexShrink: 1, maxHeight: "45%" }
+              : { flex: 1, minHeight: 0 }
+          }
+          contentContainerStyle={{ gap: spacing.sm, paddingBottom: spacing.sm }}
+          keyboardShouldPersistTaps="handled"
+        >
+          {children}
+        </ScrollView>
+      )}
+    </View>
+  );
+}

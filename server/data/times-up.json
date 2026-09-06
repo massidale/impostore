@@ -1,0 +1,502 @@
+[
+  {
+    "id": "tu-001",
+    "name": "Leonardo da Vinci",
+    "aliases": []
+  },
+  {
+    "id": "tu-002",
+    "name": "Galileo Galilei",
+    "aliases": []
+  },
+  {
+    "id": "tu-003",
+    "name": "Dante Alighieri",
+    "aliases": []
+  },
+  {
+    "id": "tu-004",
+    "name": "Cristoforo Colombo",
+    "aliases": []
+  },
+  {
+    "id": "tu-005",
+    "name": "Marco Polo",
+    "aliases": []
+  },
+  {
+    "id": "tu-006",
+    "name": "Giulio Cesare",
+    "aliases": []
+  },
+  {
+    "id": "tu-007",
+    "name": "Cleopatra",
+    "aliases": []
+  },
+  {
+    "id": "tu-008",
+    "name": "Napoleone Bonaparte",
+    "aliases": []
+  },
+  {
+    "id": "tu-009",
+    "name": "Albert Einstein",
+    "aliases": []
+  },
+  {
+    "id": "tu-010",
+    "name": "Isaac Newton",
+    "aliases": []
+  },
+  {
+    "id": "tu-011",
+    "name": "Marie Curie",
+    "aliases": []
+  },
+  {
+    "id": "tu-012",
+    "name": "Charles Darwin",
+    "aliases": []
+  },
+  {
+    "id": "tu-013",
+    "name": "Ada Lovelace",
+    "aliases": []
+  },
+  {
+    "id": "tu-014",
+    "name": "Alan Turing",
+    "aliases": []
+  },
+  {
+    "id": "tu-015",
+    "name": "Nikola Tesla",
+    "aliases": []
+  },
+  {
+    "id": "tu-016",
+    "name": "Thomas Edison",
+    "aliases": []
+  },
+  {
+    "id": "tu-017",
+    "name": "Frida Kahlo",
+    "aliases": []
+  },
+  {
+    "id": "tu-018",
+    "name": "Pablo Picasso",
+    "aliases": []
+  },
+  {
+    "id": "tu-019",
+    "name": "Vincent van Gogh",
+    "aliases": []
+  },
+  {
+    "id": "tu-020",
+    "name": "Claude Monet",
+    "aliases": []
+  },
+  {
+    "id": "tu-021",
+    "name": "Michelangelo",
+    "aliases": []
+  },
+  {
+    "id": "tu-022",
+    "name": "Raffaello",
+    "aliases": []
+  },
+  {
+    "id": "tu-023",
+    "name": "Salvador Dalí",
+    "aliases": []
+  },
+  {
+    "id": "tu-024",
+    "name": "Ludwig van Beethoven",
+    "aliases": []
+  },
+  {
+    "id": "tu-025",
+    "name": "Wolfgang Amadeus Mozart",
+    "aliases": []
+  },
+  {
+    "id": "tu-026",
+    "name": "Antonio Vivaldi",
+    "aliases": []
+  },
+  {
+    "id": "tu-027",
+    "name": "Giuseppe Verdi",
+    "aliases": []
+  },
+  {
+    "id": "tu-028",
+    "name": "Gioachino Rossini",
+    "aliases": []
+  },
+  {
+    "id": "tu-029",
+    "name": "Johann Sebastian Bach",
+    "aliases": []
+  },
+  {
+    "id": "tu-030",
+    "name": "Frédéric Chopin",
+    "aliases": []
+  },
+  {
+    "id": "tu-031",
+    "name": "William Shakespeare",
+    "aliases": []
+  },
+  {
+    "id": "tu-032",
+    "name": "Jane Austen",
+    "aliases": []
+  },
+  {
+    "id": "tu-033",
+    "name": "Mary Shelley",
+    "aliases": []
+  },
+  {
+    "id": "tu-034",
+    "name": "Agatha Christie",
+    "aliases": []
+  },
+  {
+    "id": "tu-035",
+    "name": "Jules Verne",
+    "aliases": []
+  },
+  {
+    "id": "tu-036",
+    "name": "Charles Dickens",
+    "aliases": []
+  },
+  {
+    "id": "tu-037",
+    "name": "Oscar Wilde",
+    "aliases": []
+  },
+  {
+    "id": "tu-038",
+    "name": "Virginia Woolf",
+    "aliases": []
+  },
+  {
+    "id": "tu-039",
+    "name": "Italo Calvino",
+    "aliases": []
+  },
+  {
+    "id": "tu-040",
+    "name": "Umberto Eco",
+    "aliases": []
+  },
+  {
+    "id": "tu-041",
+    "name": "Pinocchio",
+    "aliases": []
+  },
+  {
+    "id": "tu-042",
+    "name": "Geppetto",
+    "aliases": []
+  },
+  {
+    "id": "tu-043",
+    "name": "Cappuccetto Rosso",
+    "aliases": []
+  },
+  {
+    "id": "tu-044",
+    "name": "Cenerentola",
+    "aliases": []
+  },
+  {
+    "id": "tu-045",
+    "name": "Biancaneve",
+    "aliases": []
+  },
+  {
+    "id": "tu-046",
+    "name": "Rapunzel",
+    "aliases": []
+  },
+  {
+    "id": "tu-047",
+    "name": "Aladino",
+    "aliases": []
+  },
+  {
+    "id": "tu-048",
+    "name": "Peter Pan",
+    "aliases": []
+  },
+  {
+    "id": "tu-049",
+    "name": "Capitan Uncino",
+    "aliases": []
+  },
+  {
+    "id": "tu-050",
+    "name": "Robin Hood",
+    "aliases": []
+  },
+  {
+    "id": "tu-051",
+    "name": "Sherlock Holmes",
+    "aliases": []
+  },
+  {
+    "id": "tu-052",
+    "name": "Dottor Watson",
+    "aliases": []
+  },
+  {
+    "id": "tu-053",
+    "name": "Robinson Crusoe",
+    "aliases": []
+  },
+  {
+    "id": "tu-054",
+    "name": "Don Chisciotte",
+    "aliases": []
+  },
+  {
+    "id": "tu-055",
+    "name": "Sancho Panza",
+    "aliases": []
+  },
+  {
+    "id": "tu-056",
+    "name": "Ulisse",
+    "aliases": []
+  },
+  {
+    "id": "tu-057",
+    "name": "Penelope",
+    "aliases": []
+  },
+  {
+    "id": "tu-058",
+    "name": "Achille",
+    "aliases": []
+  },
+  {
+    "id": "tu-059",
+    "name": "Ercole",
+    "aliases": []
+  },
+  {
+    "id": "tu-060",
+    "name": "Medusa",
+    "aliases": []
+  },
+  {
+    "id": "tu-061",
+    "name": "Zeus",
+    "aliases": []
+  },
+  {
+    "id": "tu-062",
+    "name": "Poseidone",
+    "aliases": []
+  },
+  {
+    "id": "tu-063",
+    "name": "Atena",
+    "aliases": []
+  },
+  {
+    "id": "tu-064",
+    "name": "Apollo",
+    "aliases": []
+  },
+  {
+    "id": "tu-065",
+    "name": "Artemide",
+    "aliases": []
+  },
+  {
+    "id": "tu-066",
+    "name": "Afrodite",
+    "aliases": []
+  },
+  {
+    "id": "tu-067",
+    "name": "Re Artù",
+    "aliases": []
+  },
+  {
+    "id": "tu-068",
+    "name": "Mago Merlino",
+    "aliases": []
+  },
+  {
+    "id": "tu-069",
+    "name": "Lancillotto",
+    "aliases": []
+  },
+  {
+    "id": "tu-070",
+    "name": "Ginevra",
+    "aliases": []
+  },
+  {
+    "id": "tu-071",
+    "name": "Babbo Natale",
+    "aliases": []
+  },
+  {
+    "id": "tu-072",
+    "name": "Befana",
+    "aliases": []
+  },
+  {
+    "id": "tu-073",
+    "name": "Sandokan",
+    "aliases": []
+  },
+  {
+    "id": "tu-074",
+    "name": "Il gatto con gli stivali",
+    "aliases": []
+  },
+  {
+    "id": "tu-075",
+    "name": "La sirenetta",
+    "aliases": []
+  },
+  {
+    "id": "tu-076",
+    "name": "Il brutto anatroccolo",
+    "aliases": []
+  },
+  {
+    "id": "tu-077",
+    "name": "Pollicino",
+    "aliases": []
+  },
+  {
+    "id": "tu-078",
+    "name": "Hansel",
+    "aliases": []
+  },
+  {
+    "id": "tu-079",
+    "name": "Gretel",
+    "aliases": []
+  },
+  {
+    "id": "tu-080",
+    "name": "Il pifferaio magico",
+    "aliases": []
+  },
+  {
+    "id": "tu-081",
+    "name": "Arlecchino",
+    "aliases": []
+  },
+  {
+    "id": "tu-082",
+    "name": "Pulcinella",
+    "aliases": []
+  },
+  {
+    "id": "tu-083",
+    "name": "Colombina",
+    "aliases": []
+  },
+  {
+    "id": "tu-084",
+    "name": "Pantalone",
+    "aliases": []
+  },
+  {
+    "id": "tu-085",
+    "name": "Pierrot",
+    "aliases": []
+  },
+  {
+    "id": "tu-086",
+    "name": "Charlie Chaplin",
+    "aliases": []
+  },
+  {
+    "id": "tu-087",
+    "name": "Buster Keaton",
+    "aliases": []
+  },
+  {
+    "id": "tu-088",
+    "name": "Audrey Hepburn",
+    "aliases": []
+  },
+  {
+    "id": "tu-089",
+    "name": "Marilyn Monroe",
+    "aliases": []
+  },
+  {
+    "id": "tu-090",
+    "name": "Louis Armstrong",
+    "aliases": []
+  },
+  {
+    "id": "tu-091",
+    "name": "Ella Fitzgerald",
+    "aliases": []
+  },
+  {
+    "id": "tu-092",
+    "name": "Elvis Presley",
+    "aliases": []
+  },
+  {
+    "id": "tu-093",
+    "name": "Freddie Mercury",
+    "aliases": []
+  },
+  {
+    "id": "tu-094",
+    "name": "David Bowie",
+    "aliases": []
+  },
+  {
+    "id": "tu-095",
+    "name": "Luciano Pavarotti",
+    "aliases": []
+  },
+  {
+    "id": "tu-096",
+    "name": "Maria Callas",
+    "aliases": []
+  },
+  {
+    "id": "tu-097",
+    "name": "Rita Levi-Montalcini",
+    "aliases": []
+  },
+  {
+    "id": "tu-098",
+    "name": "Margherita Hack",
+    "aliases": []
+  },
+  {
+    "id": "tu-099",
+    "name": "Samantha Cristoforetti",
+    "aliases": []
+  },
+  {
+    "id": "tu-100",
+    "name": "Yuri Gagarin",
+    "aliases": []
+  }
+]

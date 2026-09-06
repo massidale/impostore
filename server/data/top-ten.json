@@ -1,0 +1,182 @@
+[
+  {
+    "id": "tt-001",
+    "prompt": "Inventa una scusa per arrivare tardi",
+    "lowLabel": "quasi credibile",
+    "highLabel": "completamente assurda"
+  },
+  {
+    "id": "tt-002",
+    "prompt": "Saluta un vicino",
+    "lowLabel": "appena sveglio",
+    "highLabel": "entusiasta"
+  },
+  {
+    "id": "tt-003",
+    "prompt": "Presenta un nuovo animale domestico",
+    "lowLabel": "ordinario",
+    "highLabel": "impossibile"
+  },
+  {
+    "id": "tt-004",
+    "prompt": "Reagisci a un regalo",
+    "lowLabel": "deluso",
+    "highLabel": "felicissimo"
+  },
+  {
+    "id": "tt-005",
+    "prompt": "Descrivi una vacanza",
+    "lowLabel": "riposante",
+    "highLabel": "faticosissima"
+  },
+  {
+    "id": "tt-006",
+    "prompt": "Ordina un gelato",
+    "lowLabel": "semplice",
+    "highLabel": "stravagante"
+  },
+  {
+    "id": "tt-007",
+    "prompt": "Fai un annuncio alla stazione",
+    "lowLabel": "banale",
+    "highLabel": "sorprendente"
+  },
+  {
+    "id": "tt-008",
+    "prompt": "Proponi una regola per casa",
+    "lowLabel": "ragionevole",
+    "highLabel": "assurda"
+  },
+  {
+    "id": "tt-009",
+    "prompt": "Descrivi un superpotere",
+    "lowLabel": "poco utile",
+    "highLabel": "invincibile"
+  },
+  {
+    "id": "tt-010",
+    "prompt": "Imita una sveglia",
+    "lowLabel": "delicata",
+    "highLabel": "insopportabile"
+  },
+  {
+    "id": "tt-011",
+    "prompt": "Vendi una sedia",
+    "lowLabel": "economica",
+    "highLabel": "lussuosissima"
+  },
+  {
+    "id": "tt-012",
+    "prompt": "Racconta un incontro nel bosco",
+    "lowLabel": "tranquillo",
+    "highLabel": "incredibile"
+  },
+  {
+    "id": "tt-013",
+    "prompt": "Presenta un piatto inventato",
+    "lowLabel": "appetitoso",
+    "highLabel": "disgustoso"
+  },
+  {
+    "id": "tt-014",
+    "prompt": "Reagisci a un temporale",
+    "lowLabel": "calmo",
+    "highLabel": "terrorizzato"
+  },
+  {
+    "id": "tt-015",
+    "prompt": "Dai un nome a una barca",
+    "lowLabel": "modesto",
+    "highLabel": "pomposo"
+  },
+  {
+    "id": "tt-016",
+    "prompt": "Proponi un passatempo",
+    "lowLabel": "rilassante",
+    "highLabel": "avventuroso"
+  },
+  {
+    "id": "tt-017",
+    "prompt": "Descrivi una valigia",
+    "lowLabel": "leggera",
+    "highLabel": "ingombrante"
+  },
+  {
+    "id": "tt-018",
+    "prompt": "Imita un robot",
+    "lowLabel": "fluido",
+    "highLabel": "arrugginito"
+  },
+  {
+    "id": "tt-019",
+    "prompt": "Convinci qualcuno a ballare",
+    "lowLabel": "timidamente",
+    "highLabel": "con grande energia"
+  },
+  {
+    "id": "tt-020",
+    "prompt": "Inventa un cartello stradale",
+    "lowLabel": "utile",
+    "highLabel": "inutile"
+  },
+  {
+    "id": "tt-021",
+    "prompt": "Fai un complimento a una pianta",
+    "lowLabel": "sobrio",
+    "highLabel": "esagerato"
+  },
+  {
+    "id": "tt-022",
+    "prompt": "Descrivi un castello",
+    "lowLabel": "accogliente",
+    "highLabel": "inquietante"
+  },
+  {
+    "id": "tt-023",
+    "prompt": "Racconta una scoperta",
+    "lowLabel": "banale",
+    "highLabel": "rivoluzionaria"
+  },
+  {
+    "id": "tt-024",
+    "prompt": "Imita una risata",
+    "lowLabel": "sommessa",
+    "highLabel": "fragorosa"
+  },
+  {
+    "id": "tt-025",
+    "prompt": "Proponi un mezzo di trasporto",
+    "lowLabel": "pratico",
+    "highLabel": "fantasioso"
+  },
+  {
+    "id": "tt-026",
+    "prompt": "Descrivi il tuo ufficio ideale",
+    "lowLabel": "essenziale",
+    "highLabel": "sfarzoso"
+  },
+  {
+    "id": "tt-027",
+    "prompt": "Dai istruzioni per una passeggiata",
+    "lowLabel": "semplici",
+    "highLabel": "complicatissime"
+  },
+  {
+    "id": "tt-028",
+    "prompt": "Presenta uno sport inventato",
+    "lowLabel": "facile",
+    "highLabel": "impossibile"
+  },
+  {
+    "id": "tt-029",
+    "prompt": "Descrivi un cappello",
+    "lowLabel": "discreto",
+    "highLabel": "vistoso"
+  },
+  {
+    "id": "tt-030",
+    "prompt": "Reagisci a una vittoria",
+    "lowLabel": "contenuto",
+    "highLabel": "euforico"
+  }
+]

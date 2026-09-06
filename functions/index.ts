@@ -4,9 +4,10 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { randomInt } from 'node:crypto';
 import { applyCommand, createRoom, previewRoom, projectRoom, type Command } from '../server/engine';
 import type { Room } from '../server/runtime';
+import {encodeRoom,decodeRoom} from '../server/roomCodec';
 initializeApp();
 function envelope(room: Room) {
-  return JSON.parse(JSON.stringify({data:room,preview:previewRoom(room),views:Object.fromEntries(Object.keys(room.players ?? {}).map(uid=>[uid,projectRoom(room,uid)]))}));
+  return JSON.parse(JSON.stringify({data:encodeRoom(room),preview:previewRoom(room),views:Object.fromEntries(Object.keys(room.players ?? {}).map(uid=>[uid,projectRoom(room,uid)]))}));
 }
 export const gameCommand = onCall({region:'europe-west1', maxInstances:10}, async request => {
   const actor=request.auth?.uid;
@@ -38,11 +39,12 @@ export const gameCommand = onCall({region:'europe-west1', maxInstances:10}, asyn
       rejected = null;
       try {
       if(!current?.data) return current;
+      const room=decodeRoom(current.data);
       if(command.method==='deleteRoom') {
-        if(current.data.hostId!==actor) throw new Error('Solo l’host può chiudere la stanza');
+        if(room.hostId!==actor) throw new Error('Solo l’host può chiudere la stanza');
         return null;
       }
-      return envelope(applyCommand(current.data,actor,command,now));
+      return envelope(applyCommand(room,actor,command,now));
       } catch (error) {
         // A callback may run asynchronously on an RTDB retry. Abort explicitly:
         // throwing here can escape the SDK callback and leave the promise pending.

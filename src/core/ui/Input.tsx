@@ -1,5 +1,5 @@
 import React from 'react';
-import { TextInput, StyleSheet, StyleProp, TextStyle } from 'react-native';
+import { TextInput, StyleSheet, StyleProp, TextStyle, TextInputProps } from 'react-native';
 import { colors, fonts, fontSize, radius, spacing } from './theme';
 
 interface InputProps {
@@ -9,7 +9,10 @@ interface InputProps {
   maxLength?: number;
   autoFocus?: boolean;
   secureTextEntry?: boolean;
-  keyboardType?: 'default' | 'email-address';
+  keyboardType?: TextInputProps['keyboardType'];
+  multiline?: boolean;
+  numberOfLines?: number;
+  accessibilityLabel?: string;
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   style?: StyleProp<TextStyle>;
 }
@@ -23,6 +26,9 @@ export function Input({
   secureTextEntry,
   keyboardType,
   autoCapitalize,
+  multiline,
+  numberOfLines,
+  accessibilityLabel,
   style,
 }: InputProps) {
   return (
@@ -36,6 +42,9 @@ export function Input({
       autoFocus={autoFocus}
       secureTextEntry={secureTextEntry}
       keyboardType={keyboardType}
+      multiline={multiline}
+      numberOfLines={numberOfLines}
+      accessibilityLabel={accessibilityLabel}
       autoCapitalize={autoCapitalize}
       autoCorrect={false}
       selectionColor={colors.primary}

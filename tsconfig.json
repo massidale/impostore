@@ -11,6 +11,7 @@
     "node_modules",
     ".expo",
     "functions",
-    "server"
+    "server",
+    "node_modules*"
   ]
 }
