@@ -15,7 +15,8 @@
 # Modes:
 #   (default)  Firebase Hosting preview channel "staging".
 #              URL is `https://<project>--staging-*.web.app`. Isolated from
-#              production. DOES NOT deploy database.rules.json.
+#              production hosting; backend/database remain shared.
+#              DOES NOT deploy database.rules.json.
 #
 #   --live     Live Firebase Hosting (production URL) but ONLY hosting —
 #              no database rules. URL is `https://<project>.web.app`,
@@ -56,7 +57,9 @@ echo "[staging] Tests"
 npm test
 
 echo "[staging] Build web bundle"
-./scripts/build-web.sh
+# Public previews must not embed the local Gemini credential. Built-in and
+# custom dictionaries remain available; AI generation requires a server proxy.
+EXPO_NO_DOTENV=1 EXPO_PUBLIC_GEMINI_API_KEY='' ./scripts/build-web.sh --clear
 
 if [[ "$MODE" == "live" ]]; then
   echo

@@ -8,7 +8,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 echo "[build] Expo export (web)"
-npx expo export --platform web
+npx expo export --platform web "$@"
 
 echo "[build] PWA icons"
 sips -z 512 512 assets/icon-square.png --out dist/icon-512-v2.png > /dev/null

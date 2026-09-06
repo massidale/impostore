@@ -60,3 +60,13 @@ istanza. Per telefoni reali, usare l'IP LAN del computer invece di localhost.
 
 I canali Hosting di anteprima condividono il backend del progetto: lo script
 `deploy:staging` pubblica solo Hosting, quindi richiede già il backend compatibile.
+La build di staging disabilita il caricamento dei file `.env`, azzera la chiave
+Gemini e svuota la cache Metro: le credenziali locali non devono entrare nel bundle
+pubblico. La generazione AI non è disponibile nell'anteprima; restano utilizzabili
+i contenuti predefiniti e personalizzati quando il backend è attivo.
+
+Verifica del 6 settembre 2026: nel progetto `gameshub-6b1ce` l'API Cloud Functions
+risulta disabilitata. Un deploy Hosting da solo pubblica l'interfaccia, ma non rende
+giocabile questa versione. Per un collaudo isolato occorre un progetto Firebase di
+staging con Functions, Auth e RTDB; modificare le regole del progetto condiviso
+incide anche sul client live precedente.
