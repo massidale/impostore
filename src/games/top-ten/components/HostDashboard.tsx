@@ -1,4 +1,4 @@
-import { EndActionButton } from '../../../core/components/EndActionButton';
+import { EndActionsRow } from '../../../core/components/EndActionsRow';
 import React, { useState } from "react";
 import { Text, View } from "react-native";
 import type { HostDashboardProps } from "../../../core/types/gamePlugin";
@@ -25,10 +25,7 @@ export default function HostDashboard({ roomData }: HostDashboardProps) {
       gameName="Top Ten"
       actions={
         <View style={{ flex: 1, minWidth: 0, gap: 8 }}>
-          <EndActionButton kind="game" disabled={busy} onConfirm={() => run("end")} />
-          {["performing", "ordering"].includes(s.phase) && (
-            <EndActionButton kind="round" disabled={busy} onConfirm={() => run("cancelRound")} message="La fase in corso verrà annullata e verrà mostrato il suo esito." />
-          )}
+
           {s.phase === "performing" && (
             <Button
               disabled={busy}
@@ -42,6 +39,10 @@ export default function HostDashboard({ roomData }: HostDashboardProps) {
               Continua
             </Button>
           )}
+          <EndActionsRow
+            round={["performing", "ordering"].includes(s.phase) ? { kind: 'round', disabled: busy, onConfirm: () => run('cancelRound') } : undefined}
+            game={{ disabled: busy, onConfirm: () => run('end') }}
+          />
         </View>
       }
     >

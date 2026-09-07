@@ -1,3 +1,4 @@
+import { ButtonLabel } from './ButtonLabel';
 import React, { ReactNode } from 'react';
 import { Text, StyleSheet, TouchableOpacity, ViewStyle, StyleProp } from 'react-native';
 import { colors, fonts, fontSize, radius, spacing } from './theme';
@@ -19,13 +20,15 @@ export function GhostButton({ onPress, icon, children, style }: GhostButtonProps
   return (
     <TouchableOpacity onPress={onPress} style={[styles.button, style]} activeOpacity={0.7}>
       {icon}
-      <Text style={styles.label}>{children}</Text>
+      <ButtonLabel style={styles.label}>{children}</ButtonLabel>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   button: {
+    maxWidth: '100%',
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

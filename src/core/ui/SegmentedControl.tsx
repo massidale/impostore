@@ -1,3 +1,4 @@
+import { ButtonLabel } from './ButtonLabel';
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ViewStyle, StyleProp } from 'react-native';
 import { colors, fonts, fontSize, radius, spacing } from './theme';
@@ -44,7 +45,7 @@ export function SegmentedControl<T extends string>({
               active && styles.segmentActive,
             ]}
           >
-            <Text style={[styles.label, active && styles.labelActive]}>{opt.label}</Text>
+            <ButtonLabel style={[styles.label, active && styles.labelActive]}>{opt.label}</ButtonLabel>
             {opt.description ? (
               <Text style={[styles.description, active && styles.descriptionActive]}>
                 {opt.description}
@@ -64,6 +65,7 @@ const styles = StyleSheet.create({
   },
   segment: {
     flex: 1,
+    minWidth: 0,
     backgroundColor: colors.surfaceAlt,
     borderRadius: radius.sm,
     paddingVertical: spacing.md,
@@ -80,6 +82,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   label: {
+    maxWidth: '100%',
     color: colors.textSecondary,
     fontFamily: fonts.bodySemi,
     fontSize: fontSize.sm,

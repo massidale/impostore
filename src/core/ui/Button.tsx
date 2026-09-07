@@ -1,3 +1,4 @@
+import { ButtonLabel } from './ButtonLabel';
 import React from 'react';
 import {
   TouchableOpacity,
@@ -9,7 +10,6 @@ import {
   TextStyle,
   Platform,
 } from 'react-native';
-import { wrappingText } from './wrappingText';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, fonts, radius, spacing, fontSize } from './theme';
 
@@ -29,6 +29,7 @@ export type ButtonSize = 'sm' | 'md' | 'lg';
 
 interface ButtonProps {
   onPress: () => void;
+  accessibilityLabel?: string;
   disabled?: boolean;
   variant?: ButtonVariant;
   size?: ButtonSize;
@@ -72,6 +73,7 @@ const fontFor: Record<ButtonSize, number> = {
 
 export function Button({
   onPress,
+  accessibilityLabel,
   disabled,
   variant = 'primary',
   size = 'md',
@@ -90,7 +92,7 @@ export function Button({
   const outlineColor = isAccentOutline ? colors.accent : colors.danger;
 
   const label = (
-    <Text
+    <ButtonLabel
       style={[
         styles.text,
         { fontSize: fontFor[size] },
@@ -99,12 +101,13 @@ export function Button({
       ]}
     >
       {children}
-    </Text>
+    </ButtonLabel>
   );
 
   return (
     <TouchableOpacity
       accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
       accessibilityState={{ disabled: !!disabled }}
       onPress={onPress}
       disabled={disabled}
@@ -146,12 +149,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   text: {
-    ...wrappingText,
+    width: '100%',
     textAlign: 'center',
     color: colors.textPrimary,
     fontFamily: fonts.bodySemi,
   },
   iconRow: {
+    width: '100%',
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,

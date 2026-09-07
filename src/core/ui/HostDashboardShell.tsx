@@ -5,7 +5,7 @@ import { NoticeBanner } from './NoticeBanner';
 import { HostActionFooter } from './HostActionFooter';
 
 interface HostDashboardShellProps {
-  /** Game name shown as "Host · {gameName}". */
+  /** Game name shown as "Comandi host · {gameName}". */
   gameName: string;
   /** Right side of the status row (typically a ProgressCounter). */
   status?: ReactNode;
@@ -32,7 +32,7 @@ export function HostDashboardShell({
   return (
     <View style={styles.wrapper}>
       <View style={styles.statusRow}>
-        <Text style={styles.label}>Host · {gameName}</Text>
+        <Text style={styles.label}>Comandi host · {gameName}</Text>
         {status}
       </View>
 

@@ -1,3 +1,4 @@
+import { isRoomHost } from '../core/utils/roomRole';
 import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
@@ -80,7 +81,7 @@ export default function MainScreen() {
   useEffect(() => {
     if (!uid || !identityId || roomId || isWebPlayer) return;
     if (Platform.OS === 'web') {
-      // A ?room URL is the guest path — never hijack it.
+      // A room URL selects that room; authority is resolved from its hostId.
       const params = new URLSearchParams(window.location.search);
       if (params.get('room')) return;
     }
@@ -90,7 +91,7 @@ export default function MainScreen() {
       if (!saved || cancelled) return;
       const room = await fetchRoom(saved).catch(() => null);
       if (cancelled) return;
-      if (room && room.players?.[identityId]?.isHost) {
+      if (isRoomHost(room, identityId)) {
         setRoomId(saved);
       } else {
         sessionStore.clearLastHostedRoom().catch(() => {});
@@ -271,8 +272,9 @@ export default function MainScreen() {
     );
   }
 
-  // Web player flow
-  if (isWebPlayer) {
+  // The current room owner remains host after ending a game, including
+  // when this screen was entered through a QR/link or the join form.
+  if (!isRoomHost(roomData, identityId)) {
     return (
       <Screen style={styles.safeArea}>
         <StatusBar style="light" />

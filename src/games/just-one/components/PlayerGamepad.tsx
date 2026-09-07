@@ -1,7 +1,10 @@
+import { FirstPlayerCard } from '../../../core/components/FirstPlayerCard';
+import { TeamRosterCard } from '../../../core/components/TeamRosterCard';
+import { ParticipantStatusGrid } from '../../../core/components/ParticipantStatusGrid';
 import React, { useEffect, useRef, useState } from "react";
 import { Text, View } from "react-native";
 import { PlayerGamepadProps } from "../../../core/types/gamePlugin";
-import { Button, Input, colors, fonts, spacing } from "../../../core/ui";
+import { Button, Input, WordBox, StatusCard, PhaseCard, PlayerSlot, ProgressCounter, colors, fonts, spacing } from "../../../core/ui";
 import { RoundLayout } from "../../../core/components/newGames/RoundLayout";
 import { sendAction } from "../services/justOneLogic";
 import { JustOneSettings, JustOneView } from "../types";
@@ -63,36 +66,14 @@ export default function PlayerGamepad({
       title={title}
       error={error}
       card={
-        s.target ? (
-          <View
-            style={{
-              padding: spacing.md,
-              backgroundColor: colors.surfaceAlt,
-              borderRadius: 16,
-            }}
-          >
-            <Text style={textStyle}>Parola da far indovinare</Text>
-            <Text
-              selectable
-              style={[
-                textStyle,
-                { fontFamily: fonts.displayHeavy, fontSize: 36, flexShrink: 1 },
-              ]}
-            >
-              {s.target}
-            </Text>
-          </View>
-        ) : undefined
+        (s.phase === 'roundResults' || s.phase === 'results') && s.roundResult
+          ? <WordBox label="La parola era" word={s.roundResult.word} size="md" tone={s.roundResult.correct ? 'success' : 'neutral'} />
+          : s.target ? <WordBox label="Parola da far indovinare" word={s.target} size="md" /> : undefined
       }
     >
       {teamMode && (
         <View style={{ gap: spacing.sm }}>
-          {(state.teams ?? []).map((team) => (
-            <Text key={team.id} style={textStyle}>
-              {team.name}: {team.wordsGuessed} parole indovinate · {team.phase === "results" ? "Terminata" : `Parola ${team.roundIndex + 1}/${settings.rounds}`}
-              {"\n"}{team.participantUids.map(name).join(", ")}
-            </Text>
-          ))}
+
           {s.name && <Text style={textStyle}>Giochi con {s.name}.</Text>}
           {state.phase === "results" && (
             <Text style={[textStyle, { fontSize: 28 }]}>
@@ -104,19 +85,14 @@ export default function PlayerGamepad({
         </View>
       )}
       {!participant && (
-        <Text style={textStyle}>
-          Sei spettatore. Giocherai dalla prossima partita.
-        </Text>
+<StatusCard title="Spettatore" message="Giocherai dalla prossima partita." tone="muted" />
       )}
       {s.guesserUid && (
-        <Text style={textStyle}>Indovino: {name(s.guesserUid)}</Text>
+        <FirstPlayerCard name={name(s.guesserUid)} isMe={guesser} roleLabel="l’indovino" />
       )}
       {s.phase === "clues" && (
         <>
-          <Text style={textStyle}>
-            {s.submittedUids?.length ?? 0}/
-            {Math.max(0, (s.participantUids?.length ?? 0) - 1)} indizi ricevuti
-          </Text>
+          <ParticipantStatusGrid participantUids={(s.participantUids ?? []).filter(uid => uid !== s.guesserUid)} completedUids={s.submittedUids} players={roomData.players ?? {}} completedLabel="Indizio inviato" />
           {participant && !guesser && !submitted && (
             <>
               <Input
@@ -139,9 +115,7 @@ export default function PlayerGamepad({
             </>
           )}
           {submitted && (
-            <Text style={textStyle}>
-              Il tuo indizio: {s.myClue}. Attendi gli altri autori.
-            </Text>
+<WordBox label="Il tuo indizio" word={s.myClue ?? ""} size="md" />
           )}
           {guesser && (
             <Text style={textStyle}>
@@ -152,10 +126,7 @@ export default function PlayerGamepad({
       )}
       {s.phase === "review" && (
         <>
-          <Text style={textStyle}>
-            Revisione · {s.readyUids?.length ?? 0}/
-            {Math.max(0, (s.participantUids?.length ?? 0) - 1)} pronti
-          </Text>
+          <ParticipantStatusGrid participantUids={(s.participantUids ?? []).filter(uid => uid !== s.guesserUid)} completedUids={s.readyUids} players={roomData.players ?? {}} completedLabel="Pronto" />
           {participant && !guesser ? (
             <>
               <Text style={textStyle}>
@@ -164,21 +135,12 @@ export default function PlayerGamepad({
                   : "I duplicati sono annullati automaticamente. Servono due segnalazioni distinte per escludere un indizio. Conferma quando hai finito."}
               </Text>
               {(s.reviewClues ?? []).map((c) => (
-                <View
-                  key={c.authorUid}
-                  style={{
-                    gap: spacing.sm,
-                    padding: spacing.md,
-                    backgroundColor: colors.surfaceAlt,
-                    borderRadius: 12,
-                  }}
-                >
-                  <Text style={textStyle}>
-                    {name(c.authorUid)}: {c.text} ·{" "}
-                    {c.invalid ? "Annullato" : "Valido"}
-                  </Text>
+                <PhaseCard key={c.authorUid} compact>
+                  <View style={{ gap: spacing.sm }}>
+                    <PlayerSlot uid={c.authorUid} name={name(c.authorUid)} compact subtitle={null} />
+                    <WordBox label={c.invalid ? 'Indizio annullato' : 'Indizio valido'} word={c.text} size="md" tone={c.invalid ? 'muted' : 'primary'} />
                   {(s.participantUids?.length ?? 0) > 2 && <>
-                  <Text style={textStyle}>Segnalazioni: {c.flagCount}/2</Text>
+                  <ProgressCounter prefix="Segnalazioni" completed={c.flagCount} total={2} />
                   <Button
                     disabled={
                       busy ||
@@ -201,7 +163,8 @@ export default function PlayerGamepad({
                       Ritira il mio indizio
                     </Button>
                   )}
-                </View>
+                  </View>
+                </PhaseCard>
               ))}
               <Button
                 disabled={busy || ready}
@@ -221,12 +184,7 @@ export default function PlayerGamepad({
         <>
           <Text style={textStyle}>Indizi validi, senza autori</Text>
           {(s.validClues ?? []).map((clue, i) => (
-            <Text
-              key={i}
-              style={[textStyle, { fontSize: 24, fontFamily: fonts.bodySemi }]}
-            >
-              {clue}
-            </Text>
+            <WordBox key={i} word={clue} size="md" />
           ))}
           {guesser && participant ? (
             <>
@@ -258,9 +216,7 @@ export default function PlayerGamepad({
       )}
       {(s.phase === "roundResults" || (!teamMode && s.phase === "results")) && s.roundResult && (
         <>
-          <Text style={[textStyle, { fontSize: 28 }]}>
-            La parola era: {s.roundResult.word}
-          </Text>
+
           <Text style={textStyle}>
             {s.roundResult.correct
               ? "Indovinata!"
@@ -285,15 +241,19 @@ export default function PlayerGamepad({
       {teamMode && s.phase === "results" && (
         <>
           {teamMode && state.phase !== "results" && (
-            <Text style={textStyle}>La tua squadra ha finito. Attendete l’altra squadra.</Text>
+<StatusCard title="Parole completate" message="Attendete l’altra squadra." />
           )}
           {(s.history ?? []).map((h) => (
-            <Text key={h.round} style={textStyle}>
-              {h.round}. {h.word} · {h.correct ? "Indovinata" : "Non indovinata"}
-            </Text>
+<WordBox key={h.round} label={`${h.round} · ${h.correct ? "Indovinata" : "Non indovinata"}`} word={h.word} size="md" tone={h.correct ? "success" : "muted"} />
           ))}
         </>
       )}
+      {teamMode && <View style={{ gap: spacing.sm }}>
+          {(state.teams ?? []).map((team) => (
+            <TeamRosterCard key={team.id} name={team.name} uids={team.participantUids} players={roomData.players ?? {}}
+              detail={`${team.wordsGuessed} parole indovinate · ${team.phase === 'results' ? 'Terminata' : `Parola ${team.roundIndex + 1}/${settings.rounds}`}`} />
+          ))}
+      </View>}
     </RoundLayout>
   );
 }

@@ -1,3 +1,4 @@
+import { TurnTimer } from '../../../core/components/TurnTimer';
 import { FitContent } from '../../../core/ui/FitContent';
 import { wrappingText } from '../../../core/ui/wrappingText';
 import { useGameViewport } from '../../../core/hooks/useGameViewport';
@@ -9,13 +10,10 @@ import { PlayerGamepadProps } from '../../../core/types/gamePlugin';
 import {
   Button,
   ErrorBanner,
-  CountdownBar,
   ForbiddenIcon,
-  GhostButton,
   MetaRow,
   StatusCard,
   TrophyIcon,
-  UndoIcon,
   colors,
   fonts,
   fontSize,
@@ -212,23 +210,8 @@ export default function TabooPlayerGamepad({ roomData, playerId }: PlayerGamepad
     return (
       <View onLayout={onLayout} style={[styles.container, compact && styles.compactContainer]}>
 
-        <View style={styles.timerRow}>
-          <CountdownBar
-            seconds={seconds}
-            total={gameState.turnSeconds}
-            size="sm"
-            style={{ flex: 1 }}
-          />
-          {isDescriber && canUndo ? (
-            <GhostButton
-              onPress={() => runAction(() => undoTabooCard(roomId))}
-              icon={<UndoIcon size={14} color={colors.textPrimary} />}
-              style={styles.undoButton}
-            >
-              Annulla
-            </GhostButton>
-          ) : null}
-        </View>
+        <TurnTimer seconds={seconds} total={gameState.turnSeconds}
+          onUndo={isDescriber && canUndo ? () => runAction(() => undoTabooCard(roomId)) : undefined} />
 
         <FitContent testID="taboo-turn-card" minContentWidth={400}>
           {isDescriber && card ? (
@@ -329,19 +312,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     padding: spacing.lg,
     justifyContent: 'center',
-  },
-
-  // Timer + undo (describer) on one compact row
-  timerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  undoButton: {
-    paddingVertical: spacing.xs + 2,
-    paddingHorizontal: spacing.md,
-    alignSelf: 'auto',
   },
 
   // Ready phase

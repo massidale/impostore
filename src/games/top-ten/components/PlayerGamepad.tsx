@@ -1,9 +1,9 @@
 import { FirstPlayerCard } from '../../../core/components/FirstPlayerCard';
 import React, { useState, useEffect } from "react";
-import { Text, View, Pressable } from "react-native";
+import { Text, View } from "react-native";
 import type { PlayerGamepadProps } from "../../../core/types/gamePlugin";
 import { RoundLayout } from "../../../core/components/newGames/RoundLayout";
-import { Button, colors, fonts } from "../../../core/ui";
+import { Button, WordBox, PhaseCard, StatusCard, PlayerSlot, colors, fonts, spacing } from "../../../core/ui";
 import { sendAction } from "../services/topTenLogic";
 import type { TopTenView, TopTenSettings } from "../types";
 export default function PlayerGamepad({
@@ -38,7 +38,7 @@ export default function PlayerGamepad({
       [b[i], b[i + d]] = [b[i + d], b[i]];
       return b;
     });
-  const label = { color: colors.textPrimary, fontSize: 18 };
+  const label = { color: colors.textSecondary, fontFamily: fonts.body, fontSize: 14 };
   const reveal = ["roundResults", "results"].includes(s.phase);
   return (
     <RoundLayout
@@ -46,41 +46,21 @@ export default function PlayerGamepad({
       title={`Top Ten · tema ${s.roundId}/${(roomData.settings as TopTenSettings)?.rounds ?? 5}`}
       error={error}
       card={
-        <View
-          style={{
-            backgroundColor: colors.surfaceAlt,
-            borderRadius: 20,
-            padding: 24,
-            gap: 14,
-          }}
-        >
-          <Text
-            style={{ ...label, fontFamily: fonts.displayHeavy, fontSize: 26 }}
-          >
-            {s.theme?.prompt ?? "Preparazione del tema"}
-          </Text>
-          <Text style={label}>
-            1 · {s.theme?.lowLabel}
-            {"\n"}10 · {s.theme?.highLabel}
-          </Text>
-          {participant && s.ownNumber !== undefined && !reveal && (
-            <Text style={{ ...label, fontSize: 40, textAlign: "center" }}>
-              Il tuo numero: {s.ownNumber}
-            </Text>
-          )}
-          <Text style={label}>Capitano: {name(s.captainUid)}</Text>
-          {!participant && (
-            <Text style={label}>
-              Spettatore · parteciperai dalla prossima partita
-            </Text>
-          )}
+        <View style={{ gap: spacing.sm }}>
+          <View>
+            <WordBox label="Il tema" word={s.theme?.prompt ?? 'Preparazione del tema'} size="md" style={{ paddingVertical: spacing.sm, paddingHorizontal: spacing.sm }} />
+            <Text style={[label, { marginVertical: spacing.sm }]}>1 · {s.theme?.lowLabel}{'\n'}10 · {s.theme?.highLabel}</Text>
+            {participant && s.ownNumber !== undefined && !reveal && <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.sm }}><Text style={label}>Il tuo numero</Text><Text style={{ color: colors.primaryLight, fontFamily: fonts.displayHeavy, fontSize: 36 }}>{s.ownNumber}</Text></View>}
+          </View>
         </View>
       }
     >
+      <FirstPlayerCard name={name(s.captainUid)} isMe={captain} roleLabel="il capitano" />
+      {s.phase === 'performing' && <FirstPlayerCard name={s.performanceOrder?.[0] ? name(s.performanceOrder[0]) : null} isMe={s.performanceOrder?.[0] === playerId} />}
+      {!participant && <StatusCard title="Spettatore" message="Parteciperai dalla prossima partita." tone="muted" />}
       {s.phase === "performing" && (
         <>
-          <FirstPlayerCard name={s.performanceOrder?.[0] ? name(s.performanceOrder[0]) : null} isMe={s.performanceOrder?.[0] === playerId} />
-          {captain && (
+          {captain && roomData.hostId !== playerId && (
             <Button disabled={busy} onPress={() => run("beginOrdering")}>
               Ordina le interpretazioni
             </Button>
@@ -94,46 +74,12 @@ export default function PlayerGamepad({
               Ordina dal numero più basso al più alto, includendo te.
             </Text>
             {order.map((id, i) => (
-              <View
-                key={id}
-                style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
-              >
-                <Text style={{ ...label, flex: 1 }}>
-                  {i + 1}. {name(id)}
-                </Text>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Sposta ${name(id)} su`}
-                  disabled={busy || i === 0}
-                  onPress={() => move(i, -1)}
-                  style={{
-                    minWidth: 48,
-                    minHeight: 48,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: colors.surfaceAlt,
-                    opacity: busy || i === 0 ? 0.4 : 1,
-                  }}
-                >
-                  <Text style={label}>↑</Text>
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Sposta ${name(id)} giù`}
-                  disabled={busy || i === order.length - 1}
-                  onPress={() => move(i, 1)}
-                  style={{
-                    minWidth: 48,
-                    minHeight: 48,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: colors.surfaceAlt,
-                    opacity: busy || i === order.length - 1 ? 0.4 : 1,
-                  }}
-                >
-                  <Text style={label}>↓</Text>
-                </Pressable>
-              </View>
+              <PlayerSlot key={id} uid={id} name={name(id)} compact outlined subtitle={null}
+                right={<View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+                  <Text style={label}>{i + 1}</Text>
+                  <View style={{ width: 44 }}><Button accessibilityLabel={`Sposta ${name(id)} su`} size="sm" variant="secondary" disabled={busy || i === 0} onPress={() => move(i, -1)}>↑</Button></View>
+                  <View style={{ width: 44 }}><Button accessibilityLabel={`Sposta ${name(id)} giù`} size="sm" variant="secondary" disabled={busy || i === order.length - 1} onPress={() => move(i, 1)}>↓</Button></View>
+                </View>} />
             ))}
             <Button
               disabled={busy}
@@ -143,9 +89,7 @@ export default function PlayerGamepad({
             </Button>
           </>
         ) : (
-          <Text style={label}>
-            Il capitano sta ordinando le interpretazioni.
-          </Text>
+<StatusCard title="Ordinamento in corso" message="Il capitano sta ordinando le interpretazioni." />
         ))}
       {reveal && (
         <>
@@ -154,12 +98,14 @@ export default function PlayerGamepad({
               ? "Tema annullato"
               : s.correctOrder ? "Ordine corretto!" : "Ordine da rivedere"}
           </Text>
-          {s.order?.map((id, i) => (
-            <Text key={id} style={label}>
-              {i + 1}. {name(id)} · {s.numbersByUid?.[id]}
-            </Text>
-          ))}
-          <Text style={label}>Ordine corretto: {Object.entries(s.numbersByUid ?? {}).sort((a, b) => a[1] - b[1]).map(([id, number]) => `${name(id)} (${number})`).join(" → ")}</Text>
+          <PhaseCard title="Il vostro ordine" compact>
+            {s.order?.map((id, i) => <PlayerSlot key={id} uid={id} name={name(id)} compact subtitle={null}
+              right={<Text style={label}>{i + 1} · {s.numbersByUid?.[id]}</Text>} />)}
+          </PhaseCard>
+          {!s.cancelled && <PhaseCard title="Ordine corretto" compact tone="success">
+            {Object.entries(s.numbersByUid ?? {}).sort((a, b) => a[1] - b[1]).map(([id, number]) =>
+              <PlayerSlot key={id} uid={id} name={name(id)} compact subtitle={null} right={<Text style={label}>{number}</Text>} />)}
+          </PhaseCard>}
         </>
       )}
     </RoundLayout>

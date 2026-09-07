@@ -1,21 +1,20 @@
-import React from "react";
-import { Text } from "react-native";
-import { HostDashboardProps } from "../../../core/types/gamePlugin";
-import { HostDashboardShell, colors } from "../../../core/ui";
-import { WavelengthView } from "../types";
+import React, { useState } from 'react';
+import type { HostDashboardProps } from '../../../core/types/gamePlugin';
+import { HostRoundControls } from '../../../core/components/HostRoundControls';
+import { Button, ErrorBanner } from '../../../core/ui';
+import type { WavelengthView } from '../types';
+import { roomCommand } from '../../../core/services/roomCommand';
 export default function HostDashboard({ roomData }: HostDashboardProps) {
-  const s = roomData.gameState as WavelengthView | undefined;
-  return (
-    <HostDashboardShell
-      gameName="Wavelength"
-      status={
-        <Text style={{ color: colors.textSecondary }}>
-          Indovino: {roomData.players?.[s?.guesserUid ?? ""]?.name ?? "—"}
-        </Text>
-      }
-      waitingNames={Object.values(roomData.players ?? {})
-        .filter((p) => p.waiting)
-        .map((p) => p.name ?? "Giocatore")}
-    />
-  );
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const replay = async () => {
+    setBusy(true); setError(null);
+    try { await roomCommand(roomData.id, 'wavelength.replay'); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Riprova'); }
+    finally { setBusy(false); }
+  };
+  return <HostRoundControls roomData={roomData} gameName="Wavelength">
+    {error && <ErrorBanner message={error} />}
+    {(roomData.gameState as WavelengthView | undefined)?.phase === 'results' && <Button disabled={busy} onPress={replay} style={{ marginBottom: 8 }}>Gioca ancora</Button>}
+  </HostRoundControls>;
 }

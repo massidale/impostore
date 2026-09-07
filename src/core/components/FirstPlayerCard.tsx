@@ -5,16 +5,17 @@ import { colors, fonts, fontSize, radius, spacing } from '../ui';
 interface Props {
   name?: string | null;
   isMe?: boolean;
+  roleLabel?: string;
 }
 
 /** Shared announcement for games whose conversation starts with one player. */
-export function FirstPlayerCard({ name, isMe = false }: Props) {
+export function FirstPlayerCard({ name, isMe = false, roleLabel = "il primo giocatore" }: Props) {
   if (!name) return null;
   return (
     <View style={styles.card}>
       <Text style={styles.message}>
         <Text style={styles.name}>{name}{isMe ? ' (tu)' : ''}</Text>
-        {' è il primo giocatore'}
+        {` è ${roleLabel}`}
       </Text>
     </View>
   );

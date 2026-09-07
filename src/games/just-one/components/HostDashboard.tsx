@@ -1,3 +1,4 @@
+import { EndActionsRow } from '../../../core/components/EndActionsRow';
 import { EndActionButton } from '../../../core/components/EndActionButton';
 import React, { useRef, useState } from "react";
 import { Text, View } from "react-native";
@@ -59,10 +60,10 @@ export default function HostDashboard({ roomData }: HostDashboardProps) {
         {s.phase === "results" && settings?.mode !== "teams" && (
           <Button disabled={busy} onPress={() => act("replay")}>Gioca ancora</Button>
         )}
-        {["clues", "review", "guessing"].includes(s.phase) && (
-          <EndActionButton kind="round" disabled={busy} onConfirm={() => act("cancelRound")} message="La fase in corso verrà annullata e verrà mostrato il suo esito." />
-        )}
-        <EndActionButton kind="game" disabled={busy} onConfirm={() => act("end")} />
+        <EndActionsRow
+          round={["clues", "review", "guessing"].includes(s.phase) ? { disabled: busy, onConfirm: () => act("cancelRound"), message: "La fase in corso verrà annullata e verrà mostrato il suo esito." } : undefined}
+          game={{ disabled: busy, onConfirm: () => act("end") }}
+        />
         {Object.values(roomData.players ?? {}).some((p) => p.waiting) && (
           <Text style={{ color: colors.textSecondary }}>
             Gli spettatori entrano nella prossima partita.

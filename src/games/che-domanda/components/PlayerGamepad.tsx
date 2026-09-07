@@ -1,4 +1,5 @@
-import { EndActionButton } from '../../../core/components/EndActionButton';
+import { AnswerCards, AlternativeQuestionCard, RoleBadge } from './AnswerCards';
+import { ParticipantStatusGrid } from '../../../core/components/ParticipantStatusGrid';
 import { FirstPlayerCard } from '../../../core/components/FirstPlayerCard';
 import { VotingPanel } from '../../../core/voting/VotingPanel';
 import React, { useEffect, useState } from "react";
@@ -16,17 +17,11 @@ export default function PlayerGamepad({
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
   useEffect(() => {
     setDraft("");
     setError(null);
   }, [roomData.matchId, s?.roundId, playerId]);
   if (!s) return <Text>Caricamento…</Text>;
-  const host = roomData.hostId === playerId;
   const member = s.participantUids?.includes(playerId);
   const eliminated = s.eliminatedUids?.includes(playerId);
   const name = (id: string) => roomData.players?.[id]?.name ?? "Giocatore";
@@ -53,6 +48,8 @@ export default function PlayerGamepad({
     }
     send("submitAnswer", { value: Number(draft.replace(",", ".")) });
   };
+  const answers = <AnswerCards answers={s.answersByUid ?? {}} players={roomData.players ?? {}}
+    roles={s.roles} eliminatedUids={s.eliminatedUids} />;
   if (s.phase === "voting") return (
     <ScrollView contentContainerStyle={{flexGrow: 1, padding: 16, gap: 12}} keyboardShouldPersistTaps="handled">
       <Text style={{color: colors.textPrimary, fontFamily: fonts.bodySemi, textAlign: "center"}}>{s.question}</Text>
@@ -64,12 +61,8 @@ export default function PlayerGamepad({
         runoff={s.runoff} canVote={!!member && !eliminated}
         onVote={uid => roomCommand(roomData.id, "che-domanda.castVote", [{targetUid: uid}])}
       />
-      {Object.entries(s.answersByUid ?? {}).map(([uid, value]) => (
-        <Text key={uid} style={{color: colors.textSecondary}}>{name(uid)}: {value}</Text>
-      ))}
+      {answers}
       {error && <Text style={{color: colors.textSecondary}}>{error}</Text>}
-      {host && now >= (s.votingEndsAt ?? Infinity) && <Button disabled={busy} onPress={() => send("closeVoting")}>Chiudi voto scaduto</Button>}
-      {host && <EndActionButton kind="game" disabled={busy} onConfirm={() => send("end")} />}
     </ScrollView>
   );
   const card = (
@@ -114,6 +107,32 @@ export default function PlayerGamepad({
       </Text>
     </View>
   );
+  // Once answers are revealed, the question, first speaker and answer
+  // grid form one full-width group, centred when space permits.
+  if (s.phase !== 'answering') return <RoundLayout roomData={roomData} title="Che domanda?" error={error} centerContent>
+    <View style={{ width: '100%', gap: 8 }}>
+      {card}
+      {s.phase === "discussion" && (
+        <>
+          <FirstPlayerCard name={s.speakerOrder?.[0] ? name(s.speakerOrder[0]) : null} isMe={s.speakerOrder?.[0] === playerId} />
+        </>
+      )}
+      {answers}
+      {s.phase === "elimination" && (
+        <>
+          <View style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.borderMuted, borderRadius: 14, padding: 12, gap: 8, alignItems: 'center' }}>
+            <Text style={{ color: colors.textMuted, fontSize: 12 }}>{s.elimination ? 'Giocatore espulso' : 'Nessuno espulso'}</Text>
+            {s.elimination && <>
+              <Text numberOfLines={1} ellipsizeMode="tail" style={{ maxWidth: '100%', color: colors.textPrimary, fontFamily: fonts.bodyMedium }}>{name(s.elimination.uid)}</Text>
+              <RoleBadge role={s.elimination.role} />
+            </>}
+          </View>
+
+        </>
+      )}
+      {s.phase === "results" && <AlternativeQuestionCard question={s.alternateQuestion} />}
+    </View>
+  </RoundLayout>;
   return (
     <RoundLayout
       roomData={roomData}
@@ -158,57 +177,10 @@ export default function PlayerGamepad({
                 </Button>
               </>
             ))}
-          {s.participantUids?.map((uid) => (
-            <Text key={uid} style={{ color: colors.textPrimary }}>
-              {name(uid)}:{" "}
-              {s.answeredUids?.includes(uid) ? "ha risposto" : "in attesa"}
-            </Text>
-          ))}
+          <ParticipantStatusGrid participantUids={s.participantUids ?? []} completedUids={s.answeredUids} players={roomData.players ?? {}} />
         </>
       )}
-      {s.answersByUid &&
-        Object.entries(s.answersByUid).map(([uid, value]) => (
-          <Text key={uid} style={{ color: colors.textPrimary, fontSize: 18 }}>
-            {name(uid)}: {value}
-            {s.eliminatedUids?.includes(uid) ? " · eliminato" : ""}
-            {s.roles?.[uid] ? ` · ${s.roles[uid]}` : ""}
-          </Text>
-        ))}
-      {s.phase === "discussion" && (
-        <>
-          <FirstPlayerCard name={s.speakerOrder?.[0] ? name(s.speakerOrder[0]) : null} isMe={s.speakerOrder?.[0] === playerId} />
-          {host && <Button disabled={busy} onPress={() => send("startVoting")}>
-            Apri voto (60 secondi)
-          </Button>}
-        </>
-      )}
-      {s.phase === "elimination" && (
-        <>
-          <Text style={{ color: colors.textPrimary, fontSize: 20 }}>
-            {s.elimination
-              ? `${name(s.elimination.uid)} era ${s.elimination.role}.`
-              : "Nessuno espulso."}
-          </Text>
-          {host && (
-            <Button disabled={busy} onPress={() => send("continueRound")}>
-              {s.winner
-                ? "Mostra risultati finali"
-                : "Nuovo giro di discussione"}
-            </Button>
-          )}
-        </>
-      )}
-      {s.phase === "results" && (
-        <Text style={{ color: colors.textSecondary }}>
-          Domanda alternativa: {s.alternateQuestion}
-        </Text>
-      )}
-      {host && !["idle", "results"].includes(s.phase) && (
-        <EndActionButton kind="round" disabled={busy} onConfirm={() => send("cancelRound")} message="La fase in corso verrà annullata e verrà mostrato il suo esito." />
-      )}
-      {host && (
-        <EndActionButton kind="game" disabled={busy} onConfirm={() => send("end")} />
-      )}
+
     </RoundLayout>
   );
 }

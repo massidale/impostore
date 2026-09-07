@@ -12,12 +12,15 @@ export function RoundLayout({
   card,
   children,
   error,
+  centerContent = false,
 }: {
   roomData: CoreRoom;
   title: string;
   card?: ReactNode;
   children?: ReactNode;
   error?: string | null;
+  /** Centre a scrollable group when it fits; keep its full width otherwise. */
+  centerContent?: boolean;
 }) {
   return (
     <View
@@ -56,7 +59,7 @@ export function RoundLayout({
               ? { flexGrow: 0, flexShrink: 1, maxHeight: "45%" }
               : { flex: 1, minHeight: 0 }
           }
-          contentContainerStyle={{ gap: spacing.sm, paddingBottom: spacing.sm }}
+          contentContainerStyle={[{ gap: spacing.sm, paddingBottom: spacing.sm }, centerContent && !card && { flexGrow: 1, justifyContent: 'center' }]}
           keyboardShouldPersistTaps="handled"
         >
           {children}
