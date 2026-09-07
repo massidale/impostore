@@ -1,3 +1,4 @@
+import { EndActionButton } from '../../../core/components/EndActionButton';
 import React, { useState } from "react";
 import { Text, View } from "react-native";
 import type { HostDashboardProps } from "../../../core/types/gamePlugin";
@@ -24,35 +25,18 @@ export default function HostDashboard({ roomData }: HostDashboardProps) {
       gameName="Time’s Up"
       actions={
         <View style={{ flex: 1, minWidth: 0, gap: 8 }}>
-          <Button
-            disabled={busy}
-            variant="secondary"
-            onPress={() => run("end")}
-          >
-            Termina partita
-          </Button>
+          <EndActionButton kind="game" disabled={busy} onConfirm={() => run("end")} />
           {["ready", "turnResults"].includes(s.phase) && (
             <Button disabled={busy} onPress={() => run("beginTurn")}>
               Avvia turno
             </Button>
           )}
           {s.phase === "turn" && (
-            <Button disabled={busy} onPress={() => run("endTurn")}>
-              Chiudi turno
-            </Button>
+            <EndActionButton kind="turn" disabled={busy} onConfirm={() => run("endTurn")} />
           )}
           {s.phase === "roundResults" && (
             <Button disabled={busy} onPress={() => run("nextRound")}>
               Prossimo round
-            </Button>
-          )}
-          {s.phase === "turn" && (
-            <Button
-              disabled={busy}
-              variant="secondary"
-              onPress={() => run("cancelRound")}
-            >
-              Annulla turno
             </Button>
           )}
         </View>

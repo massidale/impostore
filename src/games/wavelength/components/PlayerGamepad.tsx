@@ -1,3 +1,5 @@
+import { EndActionButton } from '../../../core/components/EndActionButton';
+import { FirstPlayerCard } from '../../../core/components/FirstPlayerCard';
 import React, { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import { PlayerGamepadProps } from "../../../core/types/gamePlugin";
@@ -99,7 +101,7 @@ export default function PlayerGamepad({
               Suggerimento facoltativo: {s.suggestion}
             </Text>
           )}
-          <Text style={{ color: colors.textPrimary }}>Inizia {name(s.turnOrder?.[0] ?? "")}. Proseguite a voce.</Text>
+          <FirstPlayerCard name={s.turnOrder?.[0] ? name(s.turnOrder[0]) : null} isMe={s.turnOrder?.[0] === playerId} />
           {guesser && (
             <Button disabled={busy} onPress={() => send("beginGuess")}>
               Scegli il numero
@@ -127,18 +129,10 @@ export default function PlayerGamepad({
         <Button disabled={busy} onPress={() => send("replay")}>Gioca ancora</Button>
       )}
       {host && ["clues", "guessing"].includes(s.phase) && (
-        <Button
-          disabled={busy}
-          variant="secondary"
-          onPress={() => send("cancelRound")}
-        >
-          Annulla partita
-        </Button>
+        <EndActionButton kind="round" disabled={busy} onConfirm={() => send("cancelRound")} message="La fase in corso verrà annullata e verrà mostrato il suo esito." />
       )}
       {host && (
-        <Button disabled={busy} variant="secondary" onPress={() => send("end")}>
-          {s.phase === "results" ? "Torna alla lobby" : "Termina partita"}
-        </Button>
+        <EndActionButton kind="game" disabled={busy} onConfirm={() => send("end")} />
       )}
     </RoundLayout>
   );

@@ -1,3 +1,4 @@
+import { EndActionButton } from '../../../core/components/EndActionButton';
 import { retryAction } from '../../../core/services/retryAction';
 import React, { useEffect, useRef } from 'react';
 import { HostDashboardProps } from '../../../core/types/gamePlugin';
@@ -40,16 +41,7 @@ export default function ImpostoreHostDashboard({ roomData }: HostDashboardProps)
     if (ok) startVoting(roomId);
   };
 
-  const handleEndGame = async () => {
-    const ok = await confirmDialog({
-      title: 'Terminare la partita?',
-      message:
-        'La partita verrà chiusa per tutti i giocatori. Questa azione non può essere annullata.',
-      confirmLabel: 'Termina',
-      destructive: true,
-    });
-    if (ok) endImpostoreGame(roomId);
-  };
+
 
   const allPlayers = roomData.players || {};
   const waitingUids = getWaitingPlayerUids(roomData);
@@ -81,9 +73,7 @@ export default function ImpostoreHostDashboard({ roomData }: HostDashboardProps)
               Vai al Voto
             </Button>
           )}
-          <Button onPress={handleEndGame} variant="dangerMuted" style={{ flex: 1 }}>
-            Termina
-          </Button>
+          <EndActionButton kind="game" onConfirm={() => endImpostoreGame(roomId)} style={{ flex: 1 }} />
         </>
       }
     />

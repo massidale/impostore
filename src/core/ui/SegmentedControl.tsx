@@ -14,6 +14,7 @@ interface SegmentedControlProps<T extends string> {
   value: T;
   onChange: (value: T) => void;
   style?: StyleProp<ViewStyle>;
+  compact?: boolean;
 }
 
 /**
@@ -25,6 +26,7 @@ export function SegmentedControl<T extends string>({
   value,
   onChange,
   style,
+  compact = false,
 }: SegmentedControlProps<T>) {
   return (
     <View style={[styles.row, style]}>
@@ -38,6 +40,7 @@ export function SegmentedControl<T extends string>({
             style={[
               styles.segment,
               !opt.description && styles.segmentCompact,
+              compact && { paddingVertical: spacing.xs, paddingHorizontal: spacing.sm },
               active && styles.segmentActive,
             ]}
           >

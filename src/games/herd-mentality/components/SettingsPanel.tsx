@@ -1,7 +1,7 @@
 import React from "react";
-import { View, Text } from "react-native";
+import { View } from "react-native";
 import { SettingsPanelProps } from "../../../core/types/gamePlugin";
-import { NumberSelector, colors, spacing } from "../../../core/ui";
+import { NumberSelector, spacing } from "../../../core/ui";
 import { HerdMentalitySettings } from "../types";
 export default function SettingsPanel({
   settings,
@@ -17,9 +17,6 @@ export default function SettingsPanel({
         value={s?.rounds ?? 8}
         onChange={(rounds) => onSettingsChange({ rounds })}
       />
-      <Text style={{ color: colors.textSecondary }}>
-        3–12 giocatori · Cerca la risposta più popolare. Confrontate le risposte e scoprite chi ha pensato come il gruppo.
-      </Text>
     </View>
   );
 }

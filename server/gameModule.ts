@@ -4,6 +4,7 @@ import type { Room } from "./runtime";
 export interface GameModule {
   id: string;
   minPlayers: number;
+  /** Zero means no game-specific maximum. */
   maxPlayers: number;
   validateSettings(input: unknown, participantUids: string[]): any;
   validateContent(input: unknown): any;

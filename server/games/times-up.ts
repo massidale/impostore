@@ -73,18 +73,18 @@ function closeTurn(room: Room) {
 export const timesUpModule: GameModule = {
   id: "times-up",
   minPlayers: 4,
-  maxPlayers: 12,
+  maxPlayers: 0,
   validateSettings(input: any, u) {
     const s = {
       turnSeconds: int(input?.turnSeconds ?? 45, 30, 90),
       deckSize: int(input?.deckSize ?? 30, 10, 60),
       teamMode: input?.teamMode ?? "auto",
       manualTeams: input?.manualTeams ?? null,
-      contentSource: "default",
+      contentSource: input?.contentSource ?? "default",
     };
     check(["auto", "manual"].includes(s.teamMode), "Squadre non valide");
     check(
-      ["default", "custom", "players"].includes(s.contentSource),
+      ["default", "players"].includes(s.contentSource),
       "Fonte non valida",
     );
     s.manualTeams = Object.fromEntries(u.filter(id => ['blue', 'red'].includes(s.manualTeams?.[id])).map(id => [id, s.manualTeams[id]]));
@@ -125,7 +125,10 @@ export const timesUpModule: GameModule = {
         undo: null,
       },
     });
-    prepare(room, this.validateContent(data));
+    if (room.settings.contentSource === 'players') {
+      s.private.submissions = [];
+      phase(room, 'collecting');
+    } else prepare(room, this.validateContent(data));
     return room;
   },
   end: endGame,
@@ -136,7 +139,21 @@ export const timesUpModule: GameModule = {
       participants(room).includes(actor) || actor === room.hostId,
       "Non partecipi a questa partita",
     );
-    if (action === "beginTurn") {
+    if (action === 'submitWord') {
+      check(s.phase === 'collecting' && participants(room).includes(actor), 'Non puoi aggiungere parole ora');
+      const word = text(payload?.word, 60);
+      const key = normalize(word);
+      check(/\p{L}|\p{N}/u.test(key), 'Inserisci una parola o un nome');
+      const existing = p.submissions.find((entry: any) => normalize(entry.name) === key);
+      if (existing?.author === actor) return room;
+      check(!existing, 'Questa parola è già nel mazzo: scegline un’altra');
+      check(p.submissions.length < room.settings.deckSize, 'Il mazzo è completo');
+      p.submissions.push({id: `player-${p.submissions.length}`, name: word, aliases: [], author: actor});
+      if (p.submissions.length === room.settings.deckSize) {
+        prepare(room, p.submissions.map(({author, ...card}: any) => card));
+        delete p.submissions;
+      }
+    } else if (action === "beginTurn") {
       check(
         s.phase === "ready" || s.phase === "turnResults",
         "Fase non valida",
@@ -210,6 +227,10 @@ export const timesUpModule: GameModule = {
     const s = room.gameState ?? {},
       p = s.private ?? {};
     return publicRoom(room, {
+      ...(s.phase === 'collecting' ? {
+        collectedCount: p.submissions?.length ?? 0,
+        myWords: (p.submissions ?? []).filter((entry: any) => entry.author === viewer).map((entry: any) => entry.name),
+      } : {}),
       roundNumber: s.roundNumber ?? 1,
       teams: s.teams ?? { blue: [], red: [] },
       team: s.team ?? "blue",

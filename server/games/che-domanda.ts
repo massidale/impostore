@@ -64,8 +64,7 @@ function alive(room: Room): string[] {
 function discussion(room: Room) {
   const s = room.gameState as CheDomandaState;
   const ids = alive(room);
-  const offset = ((room.matchId ?? 1) - 1) % ids.length;
-  s.speakerOrder = [...ids.slice(offset), ...ids.slice(0, offset)];
+  s.speakerOrder = shuffled(ids);
   s.speakerIndex = 0;
   s.votesByUid = {};
   s.runoff = false;
@@ -106,7 +105,7 @@ function close(room: Room, now: number) {
 export const cheDomandaModule: GameModule = {
   id: "che-domanda",
   minPlayers: 3,
-  maxPlayers: 12,
+  maxPlayers: 0,
   validateSettings(input, ids) {
     const s = (input ?? {}) as any;
     return {
@@ -178,7 +177,7 @@ export const cheDomandaModule: GameModule = {
   },
   start(room) {
     const ids = participants(room);
-    check(ids.length >= 3 && ids.length <= 12, "Servono 3–12 partecipanti");
+    check(ids.length >= 3, "Servono almeno 3 partecipanti");
     room.settings = this.validateSettings(room.settings, ids);
     const content = data;
     const pair = shuffled(content)[0];

@@ -415,7 +415,7 @@ test("Just One teams require at least four participants", async () => {
   const { roomId: id } = await call(host, null, "createRoom", "Host");
   for (let i = 1; i < users.length; i++) await call(users[i], id, "join", `Player ${i}`);
   await call(host, id, "just-one.init", { rounds: 5, mode: "teams" });
-  await assert.rejects(act(host, id, "just-one", "start"), /4.*10/);
+  await assert.rejects(act(host, id, "just-one", "start"), /almeno 4 giocatori/);
   assert.equal((await view(host, id)).status, "lobby");
   await call(host, id, "deleteRoom");
 });

@@ -1,3 +1,4 @@
+import { EndActionButton } from '../../../core/components/EndActionButton';
 import React, { useRef, useState } from "react";
 import { Text, View } from "react-native";
 import { HostDashboardProps } from "../../../core/types/gamePlugin";
@@ -51,9 +52,7 @@ export default function HostDashboard({ roomData }: HostDashboardProps) {
               </Button>
             )}
             {["clues", "review", "guessing"].includes(team.phase) && (
-              <Button disabled={busy} variant="secondary" onPress={() => act("cancelRound", team)}>
-                Annulla parola · {team.name}
-              </Button>
+              <EndActionButton kind="round" disabled={busy} onConfirm={() => act("cancelRound", team)} label={`Termina round · ${team.name}`} message={`La parola in corso di ${team.name} verrà annullata.`} />
             )}
           </View>
         ))}
@@ -61,17 +60,9 @@ export default function HostDashboard({ roomData }: HostDashboardProps) {
           <Button disabled={busy} onPress={() => act("replay")}>Gioca ancora</Button>
         )}
         {["clues", "review", "guessing"].includes(s.phase) && (
-          <Button
-            disabled={busy}
-            variant="secondary"
-            onPress={() => act("cancelRound")}
-          >
-            Annulla partita
-          </Button>
+          <EndActionButton kind="round" disabled={busy} onConfirm={() => act("cancelRound")} message="La fase in corso verrà annullata e verrà mostrato il suo esito." />
         )}
-        <Button disabled={busy} variant="secondary" onPress={() => act("end")}>
-          {s.phase === "results" ? "Torna alla lobby" : "Termina partita"}
-        </Button>
+        <EndActionButton kind="game" disabled={busy} onConfirm={() => act("end")} />
         {Object.values(roomData.players ?? {}).some((p) => p.waiting) && (
           <Text style={{ color: colors.textSecondary }}>
             Gli spettatori entrano nella prossima partita.

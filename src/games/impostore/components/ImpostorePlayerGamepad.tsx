@@ -1,3 +1,4 @@
+import { FirstPlayerCard } from '../../../core/components/FirstPlayerCard';
 import { VotingPanel } from '../../../core/voting/VotingPanel';
 import { FitContent } from '../../../core/ui/FitContent';
 import { wrappingText } from '../../../core/ui/wrappingText';
@@ -255,12 +256,7 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
               </View>
             </View>
 
-            {firstPlayerName ? (
-              <Text style={styles.firstPlayerLine}>
-                <Text style={styles.firstPlayerName}>{firstPlayerName}</Text>
-                {' è il primo giocatore'}
-              </Text>
-            ) : null}
+            <FirstPlayerCard name={firstPlayerName} isMe={firstPlayerId === playerId} />
 
             <ProgressCounter completed={readyCount} total={playerCount} suffix="pronti" style={{marginTop: spacing.sm}} />
           </>
@@ -319,12 +315,7 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
               </View>
             </View>
 
-            {firstPlayerName ? (
-              <Text style={styles.firstPlayerLine}>
-                <Text style={styles.firstPlayerName}>{firstPlayerName}</Text>
-                {' è il primo giocatore'}
-              </Text>
-            ) : null}
+            <FirstPlayerCard name={firstPlayerName} isMe={firstPlayerId === playerId} />
 
             <GhostButton
               onPress={() => setShowRole(false)}
@@ -559,18 +550,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     padding: spacing.xl,
     position: 'relative',
-  },
-  firstPlayerLine: {
-    marginTop: spacing.md,
-    color: colors.textSecondary,
-    fontFamily: fonts.body,
-    fontSize: fontSize.sm,
-    textAlign: 'center',
-    paddingHorizontal: spacing.lg,
-  },
-  firstPlayerName: {
-    color: colors.textPrimary,
-    fontFamily: fonts.displayHeavy,
   },
   eliminationBanner: {
     backgroundColor: colors.surfaceAlt,

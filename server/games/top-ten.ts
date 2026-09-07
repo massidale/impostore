@@ -21,10 +21,7 @@ function next(room: Room) {
   s.roundId++;
   s.captainUid = u[(s.roundId - 1) % u.length];
   s.theme = s.private.themes[s.roundId - 1];
-  s.performanceOrder = [
-    ...u.slice((s.roundId - 1) % u.length),
-    ...u.slice(0, (s.roundId - 1) % u.length),
-  ];
+  s.performanceOrder = shuffled(u);
   s.performed = [];
   s.private.numbersByUid = Object.fromEntries(
     u.map((id, i) => [id, shuffledNumbers[i]]),

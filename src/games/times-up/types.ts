@@ -3,10 +3,12 @@ export interface TimesUpSettings {
   deckSize: number;
   teamMode: "auto" | "manual";
   manualTeams: Record<string, "blue" | "red"> | null;
-  contentSource: "default";
+  contentSource: "default" | "players";
 }
 export interface TimesUpView {
   phase: string;
+  collectedCount?: number;
+  myWords?: string[];
   roundId: number;
   roundNumber: number;
   participantUids: string[];

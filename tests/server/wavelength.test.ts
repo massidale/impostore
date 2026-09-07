@@ -52,7 +52,7 @@ test("Separate matches rotate everyone and record a single guess without scores"
 test("Guesser can proceed after oral discussion; cancellation and content validation", () => {
   const r = room();
   assert.throws(() => m.apply(r, "b", "markHeard", { targetUid: "c" }, 1));
-  assert.throws(() => m.apply(r, "a", "markHeard", { targetUid: "c" }, 1));
+  assert.throws(() => m.apply(r, "a", "markHeard", { targetUid: r.gameState.turnOrder[1] }, 1));
   m.apply(r, "a", "beginGuess", {}, 1);
   assert.equal(r.gameState.phase, "guessing");
   m.apply(r, "a", "cancelRound", {}, 1);
@@ -67,9 +67,10 @@ test("Guesser can proceed after oral discussion; cancellation and content valida
 });
 test("Heard retry is idempotent and no future hint is serialized", () => {
   const r = room();
-  m.apply(r, "a", "markHeard", { targetUid: "b" }, 1);
-  m.apply(r, "a", "markHeard", { targetUid: "b" }, 1);
-  assert.deepEqual(r.gameState.heardUids, ["b"]);
+  const first = r.gameState.turnOrder[0];
+  m.apply(r, "a", "markHeard", { targetUid: first }, 1);
+  m.apply(r, "a", "markHeard", { targetUid: first }, 1);
+  assert.deepEqual(r.gameState.heardUids, [first]);
   assert.ok(!JSON.stringify(m.project(r, "a")).includes("piccantezza"));
 });
 test("Engine rejects stale tokens and spectators without mutating input", () => {
@@ -171,7 +172,7 @@ test("Completed-round history persists without future secrets and end clears it"
   const r = room();
   r.gameState.target = 8;
   assert.deepEqual(m.project(r, "a").gameState.history, []);
-  for (const targetUid of ["b", "c"])
+  for (const targetUid of r.gameState.turnOrder)
     m.apply(r, "a", "markHeard", { targetUid }, 1);
   m.apply(r, "a", "beginGuess", {}, 1);
   m.apply(r, "a", "submitGuess", { value: 7 }, 2);

@@ -10,7 +10,7 @@ const plugin: GamePlugin = {
   description: "Pensa come il gruppo e scopri la risposta più popolare.",
   rules: "Tutti rispondono privatamente alla stessa domanda. Quando tutti hanno inviato, si mostrano le risposte raggruppate. L’host può unire risposte equivalenti e annullare le fusioni, poi conferma. Scoprite la risposta più popolare e chi ha pensato come il gruppo.",
   minPlayers: 3,
-  maxPlayers: 12,
+  maxPlayers: 0,
   SettingsPanel,
   HostDashboard,
   PlayerGamepad,

@@ -10,9 +10,9 @@ export function GuesserSelector({roomData, value, onChange}: {
   const selected = players.some(([uid]) => uid === value) ? value : players[0]?.[0];
   return <View>
     <SectionHeader label="Chi indovina?" hint="Alla fine della partita passa automaticamente al giocatore successivo." />
-    {players.map(([uid, player]) => <PlayerSlot key={uid} uid={uid} name={player.name ?? 'Giocatore'} subtitle={null}
+    {players.map(([uid, player]) => <PlayerSlot compact outlined key={uid} uid={uid} name={player.name ?? 'Giocatore'} subtitle={null}
       variant={uid === selected ? 'selected' : 'default'}
-      right={uid === selected ? <CheckIcon color={colors.primaryLight} size={20} /> : undefined}
+      right={uid === selected ? <View style={{marginRight: 4}}><CheckIcon color={colors.primaryLight} size={18} /></View> : undefined}
       onPress={() => onChange(uid)} />)}
   </View>;
 }

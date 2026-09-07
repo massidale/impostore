@@ -11,6 +11,8 @@ import { colors, fonts, fontSize, radius, spacing } from './theme';
 import { avatarColor, avatarInitial } from './avatarColor';
 
 interface PlayerSlotProps {
+  compact?: boolean;
+  outlined?: boolean;
   name: string;
   uid: string;
   isHost?: boolean;
@@ -32,6 +34,8 @@ interface PlayerSlotProps {
 }
 
 export function PlayerSlot({
+  compact = false,
+  outlined = false,
   name,
   uid,
   isHost,
@@ -65,11 +69,13 @@ export function PlayerSlot({
     <View
       style={[
         styles.row,
+        compact && styles.rowCompact,
+        outlined && styles.rowOutlined,
         variant === 'selected' && styles.rowSelected,
         variant === 'dimmed' && styles.rowDimmed,
       ]}
     >
-      <View style={[styles.avatar, { backgroundColor: bg }]}>
+      <View style={[styles.avatar, compact && styles.avatarCompact, { backgroundColor: bg }]}>
         <Text style={styles.avatarText}>{initial}</Text>
       </View>
       <View style={styles.body}>
@@ -149,6 +155,17 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     borderRadius: radius.md,
   },
+  rowCompact: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    marginBottom: spacing.xs,
+    gap: spacing.sm,
+  },
+  rowOutlined: {
+    borderWidth: 1,
+    borderColor: colors.borderMuted,
+  },
+  avatarCompact: { width: 30, height: 30, borderRadius: 15 },
   rowSelected: {
     backgroundColor: colors.primaryTint,
   },
@@ -175,6 +192,7 @@ const styles = StyleSheet.create({
   },
   body: {
     flex: 1,
+    minWidth: 0,
   },
   name: {
     color: colors.textPrimary,

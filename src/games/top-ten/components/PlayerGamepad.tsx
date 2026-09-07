@@ -1,3 +1,4 @@
+import { FirstPlayerCard } from '../../../core/components/FirstPlayerCard';
 import React, { useState, useEffect } from "react";
 import { Text, View, Pressable } from "react-native";
 import type { PlayerGamepadProps } from "../../../core/types/gamePlugin";
@@ -78,7 +79,7 @@ export default function PlayerGamepad({
     >
       {s.phase === "performing" && (
         <>
-          <Text style={label}>Inizia {name(s.performanceOrder?.[0] ?? "")}. Interpretate il tema a voce, poi il capitano ordina le risposte.</Text>
+          <FirstPlayerCard name={s.performanceOrder?.[0] ? name(s.performanceOrder[0]) : null} isMe={s.performanceOrder?.[0] === playerId} />
           {captain && (
             <Button disabled={busy} onPress={() => run("beginOrdering")}>
               Ordina le interpretazioni

@@ -1,10 +1,12 @@
+import { WordCollectionCard } from '../../../core/components/WordCollectionCard';
+import { EndActionButton } from '../../../core/components/EndActionButton';
 import React, { useState, useEffect } from "react";
 import { Text, View } from "react-native";
 import type { PlayerGamepadProps } from "../../../core/types/gamePlugin";
 import { RoundLayout } from "../../../core/components/newGames/RoundLayout";
 import { Button, colors, fonts } from "../../../core/ui";
 import { sendAction } from "../services/timesUpLogic";
-import type { TimesUpView } from "../types";
+import type { TimesUpView, TimesUpSettings } from "../types";
 const rules = [
   "Descrivi liberamente",
   "Una sola parola",
@@ -43,6 +45,10 @@ export default function PlayerGamepad({
     ? Math.max(0, Math.ceil((s.deadline - now) / 1000))
     : 0;
   const name = (id: string) => roomData.players?.[id]?.name ?? id;
+  if (s.phase === 'collecting') return <WordCollectionCard key={roomData.matchId}
+    collected={s.collectedCount ?? 0} total={(roomData.settings as TimesUpSettings).deckSize}
+    myWords={s.myWords ?? []} canSubmit={!!participant}
+    onSubmit={word => sendAction(roomData.id, 'submitWord', {word})} />;
   const content = (
     <View
       style={{
@@ -149,9 +155,7 @@ export default function PlayerGamepad({
         </>
       )}
       {s.phase === "turn" && remaining === 0 && participant && (
-        <Button disabled={busy} onPress={() => run("endTurn")}>
-          Tempo scaduto · chiudi turno
-        </Button>
+        <EndActionButton kind="turn" disabled={busy} onConfirm={() => run("endTurn")} />
       )}
       {s.phase === "turnResults" && (
         <Text style={label}>Turno concluso. Ora tocca all’altra squadra.</Text>

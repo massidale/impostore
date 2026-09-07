@@ -59,7 +59,7 @@ function finish(room: Room, cancelled = false) {
 export const herdMentalityModule: GameModule = {
   id: "herd-mentality",
   minPlayers: 3,
-  maxPlayers: 12,
+  maxPlayers: 0,
   validateSettings(input: any) {
     return { rounds: int(input?.rounds ?? 8, 5, 20) };
   },

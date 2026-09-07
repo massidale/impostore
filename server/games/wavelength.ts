@@ -7,6 +7,7 @@ import {
   int,
   text,
   participants,
+  shuffled,
   phase,
   hostOnly,
   endGame,
@@ -44,7 +45,7 @@ function next(room: Room): void {
   const ids = participants(room);
   s.roundId = (s.roundId ?? 0) + 1;
   beginGuesserMatch(room);
-  s.turnOrder = ids.filter((id) => id !== s.guesserUid);
+  s.turnOrder = shuffled(ids.filter((id) => id !== s.guesserUid));
   s.heardUids = [];
   s.target = Math.floor(Math.random() * 10) + 1;
   const content = data;
@@ -57,7 +58,7 @@ function next(room: Room): void {
 export const wavelengthModule: GameModule = {
   id: "wavelength",
   minPlayers: 3,
-  maxPlayers: 12,
+  maxPlayers: 0,
   validateSettings(input, ids) {
     const s = (input ?? {}) as Partial<WavelengthSettings>;
     return { guesserUid: guesserSetting(s.guesserUid, ids) };
@@ -85,7 +86,7 @@ export const wavelengthModule: GameModule = {
   },
   start(room) {
     const ids = participants(room);
-    check(ids.length >= 3 && ids.length <= 12, "Servono 3–12 partecipanti");
+    check(ids.length >= 3, "Servono almeno 3 partecipanti");
     room.gameState = {
       ...room.gameState,
       participantUids: ids,

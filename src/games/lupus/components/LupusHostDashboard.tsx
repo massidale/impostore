@@ -1,3 +1,4 @@
+import { EndActionButton } from '../../../core/components/EndActionButton';
 import React, { useEffect, useRef } from 'react';
 import { HostDashboardProps } from '../../../core/types/gamePlugin';
 import {
@@ -71,15 +72,7 @@ export default function LupusHostDashboard({ roomData }: HostDashboardProps) {
     if (ok) startLupusNight(roomId);
   };
 
-  const handleEndGame = async () => {
-    const ok = await confirmDialog({
-      title: 'Terminare la partita?',
-      message: 'La partita verrà chiusa per tutti i giocatori.',
-      confirmLabel: 'Termina',
-      destructive: true,
-    });
-    if (ok) endLupusGame(roomId);
-  };
+
 
   return (
     <HostDashboardShell
@@ -100,9 +93,7 @@ export default function LupusHostDashboard({ roomData }: HostDashboardProps) {
               Avvia notte
             </Button>
           )}
-          <Button onPress={handleEndGame} variant="dangerMuted" style={{ flex: 1 }}>
-            Termina
-          </Button>
+          <EndActionButton kind="game" onConfirm={() => endLupusGame(roomId)} style={{ flex: 1 }} />
         </>
       }
     />

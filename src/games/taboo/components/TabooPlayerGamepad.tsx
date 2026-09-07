@@ -143,11 +143,11 @@ export default function TabooPlayerGamepad({ roomData, playerId }: PlayerGamepad
           {last ? (
             <View style={styles.lastTurnBanner}>
               <Text style={styles.lastTurnText}>
-                Turno precedente ({TEAM_LABEL[last.team]}):{' '}
+                Turno precedente ({TEAM_LABEL[last.team]}):{'\n'}
                 <Text style={styles.lastTurnStat}>{last.correct} indovinate</Text>
-                {' · '}
+                {'\n'}
                 <Text style={styles.lastTurnStat}>{last.taboo} tabù</Text>
-                {' · '}
+                {'\n'}
                 <Text style={styles.lastTurnStat}>{last.skipped} passate</Text>
               </Text>
             </View>

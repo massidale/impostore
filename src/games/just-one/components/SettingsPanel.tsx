@@ -1,9 +1,9 @@
 import { TeamSettings } from '../../../core/components/TeamSettings';
 import {GuesserSelector} from '../../../core/components/GuesserSelector';
 import React from "react";
-import { View, Text } from "react-native";
+import { View } from "react-native";
 import { SettingsPanelProps } from "../../../core/types/gamePlugin";
-import { NumberSelector, SegmentedControl, colors, spacing } from "../../../core/ui";
+import { NumberSelector, SegmentedControl, spacing } from "../../../core/ui";
 import { JustOneSettings } from "../types";
 export default function SettingsPanel({
   settings,
@@ -16,8 +16,8 @@ export default function SettingsPanel({
       <SegmentedControl
         value={s?.mode ?? "cooperative"}
         options={[
-          { value: "cooperative", label: "Tutti insieme", description: "3–10 giocatori" },
-          { value: "teams", label: "Due squadre", description: "4–10 giocatori" },
+          { value: "cooperative", label: "Tutti insieme", description: "Almeno 3 giocatori" },
+          { value: "teams", label: "Due squadre", description: "Almeno 4 giocatori" },
         ]}
         onChange={(mode) => onSettingsChange({ ...s, mode, rounds: mode === "teams" ? 8 : 1 })}
       />
@@ -29,14 +29,6 @@ export default function SettingsPanel({
         onChange={(rounds) => onSettingsChange({ ...s, rounds })}
       /> : <GuesserSelector roomData={roomData} value={s?.guesserUid} onChange={guesserUid => onSettingsChange({...s, guesserUid})} />}
       {s?.mode === "teams" && <TeamSettings players={roomData?.players} teamMode={s.teamMode} manualTeams={s.manualTeams} onChange={value => onSettingsChange({...s, ...value})} />}
-      <Text style={{ color: colors.textSecondary }}>
-        {s?.mode === "teams"
-          ? "Due squadre giocano contemporaneamente, ognuna con le proprie parole e un indovino a rotazione. Vince chi indovina più parole; è possibile pareggiare."
-          : "Una parola per indizio. Tutti i duplicati vengono cancellati. Una parola da indovinare per partita; con Gioca ancora cambia l’indovino."}
-      </Text>
-      <Text style={{ color: colors.textSecondary }}>
-        Si usano le parole incluse nel gioco. Nelle squadre di due persone basta un indizio valido.
-      </Text>
     </View>
   );
 }

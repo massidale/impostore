@@ -73,8 +73,8 @@ export function dispatchModule(
         // Waiting players become eligible only at the next match start.
         const uids = Object.keys(room.players ?? {});
         check(
-          uids.length >= game.minPlayers && uids.length <= game.maxPlayers,
-          `Servono da ${game.minPlayers} a ${game.maxPlayers} giocatori`,
+          uids.length >= game.minPlayers && (game.maxPlayers === 0 || uids.length <= game.maxPlayers),
+          game.maxPlayers ? `Servono da ${game.minPlayers} a ${game.maxPlayers} giocatori` : `Servono almeno ${game.minPlayers} giocatori`,
         );
         for (const uid of uids)
           room.players![uid] = corePlayer(room.players![uid]);

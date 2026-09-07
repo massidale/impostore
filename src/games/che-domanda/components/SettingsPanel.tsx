@@ -1,7 +1,7 @@
 import React from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { SettingsPanelProps } from "../../../core/types/gamePlugin";
-import { NumberSelector, colors } from "../../../core/ui";
+import { NumberSelector } from "../../../core/ui";
 import { CheDomandaSettings } from "../types";
 export default function SettingsPanel({
   settings,
@@ -24,10 +24,6 @@ export default function SettingsPanel({
     <View style={{ gap: 12 }}>
       <NumberSelector label="Numero di Impostori" value={s.numImpostors} min={1} max={max}
         onChange={numImpostors => onSettingsChange({...s, numImpostors})} />
-      <Text style={{ color: colors.textSecondary }}>
-        Rispondete con un numero. Alcuni ricevono una domanda simile: scopriteli
-        discutendo le risposte. Voto: 60 secondi; ballottaggio: 30 secondi.
-      </Text>
 
     </View>
   );

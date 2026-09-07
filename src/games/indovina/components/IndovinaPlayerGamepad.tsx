@@ -1,3 +1,4 @@
+import { FirstPlayerCard } from '../../../core/components/FirstPlayerCard';
 import { FitContent } from '../../../core/ui/FitContent';
 import { wrappingText } from '../../../core/ui/wrappingText';
 import { useGameViewport } from '../../../core/hooks/useGameViewport';
@@ -30,7 +31,7 @@ type DisplayMode = 'blurred' | 'visible';
 const BLURRED_PLACEHOLDER = '██████';
 
 export default function IndovinaPlayerGamepad({ roomData, playerId }: PlayerGamepadProps) {
-  const {onLayout, compact} = useGameViewport();
+  const {onLayout} = useGameViewport();
   const gameState = roomData.gameState as IndovinaGameState;
   const playerState = roomData.players?.[playerId] as IndovinaPlayerState | undefined;
   const roomId = roomData.id;
@@ -70,19 +71,14 @@ export default function IndovinaPlayerGamepad({ roomData, playerId }: PlayerGame
 
 
   return (
-    <View onLayout={onLayout} style={[styles.container, compact && {padding: spacing.sm}]}>
+    <View onLayout={onLayout} style={styles.container}>
       <MetaRow roomId={roomId} players={playerCount} />
 
       <FitContent testID="indovina-cards">
-        <View style={[styles.card, compact && {padding: spacing.md}]}>
+        <View style={styles.card}>
           <Text style={styles.title}>PAROLE DEGLI ALTRI</Text>
-          <Text style={styles.subtitle}>
-            {displayMode === 'blurred'
-              ? 'Fai domande sì/no per indovinare la tua. Tieni premuto su un giocatore per vedere la sua parola.'
-              : 'Fai domande sì/no per indovinare la tua.'}
-          </Text>
-
           <SegmentedControl<DisplayMode>
+            compact
             value={displayMode}
             onChange={(mode) => {
               setDisplayMode(mode);
@@ -92,7 +88,7 @@ export default function IndovinaPlayerGamepad({ roomData, playerId }: PlayerGame
               { value: 'blurred', label: 'Nascoste' },
               { value: 'visible', label: 'Visibili' },
             ]}
-            style={{ marginBottom: spacing.lg }}
+            style={{ marginBottom: spacing.sm }}
           />
 
           <View style={styles.list}>
@@ -116,16 +112,17 @@ export default function IndovinaPlayerGamepad({ roomData, playerId }: PlayerGame
                     key={uid}
                     style={({ pressed }) => [
                       styles.row,
-                      compact && {paddingVertical: spacing.sm, paddingHorizontal: spacing.sm},
                       displayMode === 'blurred' && (pressed || revealedUid === uid) && styles.rowPressed,
                     ]}
                     {...pressableProps}
                   >
-                    <View style={[styles.avatar, { backgroundColor: avatarColor(uid) }]}>
-                      <Text style={styles.avatarText}>{avatarInitial(name)}</Text>
+                    <View style={styles.playerIdentity}>
+                      <View style={[styles.avatar, { backgroundColor: avatarColor(uid) }]}>
+                        <Text style={styles.avatarText}>{avatarInitial(name)}</Text>
+                      </View>
+                      <Text style={styles.rowName} numberOfLines={1} ellipsizeMode="tail">{name}</Text>
                     </View>
                     <View style={styles.rowContent}>
-                      <Text style={styles.rowName}>{name}</Text>
                       {shouldReveal && word ? (
                         <Text style={styles.rowWord}>{capitalize(word)}</Text>
                       ) : (
@@ -142,12 +139,7 @@ export default function IndovinaPlayerGamepad({ roomData, playerId }: PlayerGame
         </View>
 
         {firstPlayerName && otherPlayers.length > 0 && (
-          <Text style={styles.startsLine}>
-            <Text style={styles.startsName}>
-              {firstIsMe ? `${firstPlayerName} (tu)` : firstPlayerName}
-            </Text>
-            {' è il primo giocatore'}
-          </Text>
+          <FirstPlayerCard name={firstPlayerName} isMe={firstIsMe} />
         )}
       </FitContent>
 
@@ -168,7 +160,8 @@ const styles = StyleSheet.create({
     minWidth: 0,
     flex: 1,
     backgroundColor: colors.background,
-    padding: spacing.lg,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
   },
   centered: {
     flex: 1,
@@ -188,7 +181,8 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
-    padding: spacing.xl,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
   },
   title: {
     color: colors.textPrimary,
@@ -196,7 +190,7 @@ const styles = StyleSheet.create({
     fontSize: fontSize.lg,
     textAlign: 'center',
     letterSpacing: 1.5,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
   },
   subtitle: {
     color: colors.textSecondary,
@@ -209,19 +203,6 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: spacing.sm + 2,
-  },
-  startsLine: {
-    color: colors.textMuted,
-    fontFamily: fonts.body,
-    fontSize: fontSize.xs,
-    textAlign: 'center',
-    marginTop: spacing.lg,
-    letterSpacing: 0.5,
-  },
-  startsName: {
-    color: colors.textPrimary,
-    fontFamily: fonts.displayHeavy,
-    letterSpacing: 0.5,
   },
   empty: {
     color: colors.textMuted,
@@ -238,8 +219,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
     ...Platform.select({
       web: {
         userSelect: 'none' as const,
@@ -251,18 +232,23 @@ const styles = StyleSheet.create({
     borderColor: colors.textSecondary,
     backgroundColor: colors.surfaceAlt,
   },
+  playerIdentity: {
+    width: 64,
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginRight: spacing.sm,
+  },
   avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: spacing.md,
   },
   avatarText: {
     color: '#ffffff',
     fontFamily: fonts.displayHeavy,
-    fontSize: fontSize.md,
+    fontSize: fontSize.sm,
   },
   rowContent: {
     flex: 1,
@@ -276,16 +262,9 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontFamily: fonts.bodySemi,
     fontSize: fontSize.xs,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 2,
-    ...Platform.select({
-      web: {
-        whiteSpace: 'normal' as const,
-        wordBreak: 'break-word' as const,
-        overflowWrap: 'anywhere' as const,
-      },
-    }),
+    textAlign: 'center',
+    width: '100%',
+    letterSpacing: 0.2,
   },
   rowWord: {
     color: colors.textPrimary,

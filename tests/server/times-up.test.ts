@@ -105,9 +105,9 @@ test("deadline preserves unresolved card; expired card cannot be marked correct"
   assert.deepEqual(s.private.pendingCardIds, ids);
   assert.equal(s.scores, undefined);
 });
-test("bundled deck ignores legacy personalized settings and rejects contributions", () => {
+test("bundled deck remains available and rejects contributions during play", () => {
   const m = loadServer("server/games/times-up.ts").timesUpModule, r: any = room();
-  r.settings.contentSource = "players";
+  r.settings.contentSource = "default";
   m.start(r, 0);
   assert.equal(r.gameState.phase, "ready");
   assert.equal(r.gameState.private.originalDeck.length, 10);
@@ -168,4 +168,23 @@ test("bundled deck ignores custom content; validation enforces unique IDs", () =
   m.start(r, 0);
   assert.equal(r.gameState.private.originalDeck.length, 10);
   assert.equal(JSON.stringify(m.project(r, "late")).includes("Nome 0"), false);
+});
+test('player words build a private shared deck for all three rounds', () => {
+  const m = loadServer('server/games/times-up.ts').timesUpModule;
+  const r:any = room();
+  r.settings=m.validateSettings({...r.settings,contentSource:'players',deckSize:10},['a','b','c','d']);
+  m.start(r,0); assert.equal(r.gameState.phase,'collecting');
+  m.apply(r,'a','submitWord',{word:'Cleopatra'},0);
+  m.apply(r,'a','submitWord',{word:'Cleopatra'},0);
+  assert.equal(m.project(r,'b').gameState.collectedCount,1);
+  assert.deepEqual(m.project(r,'b').gameState.myWords,[]);
+  assert.deepEqual(m.project(r,'a').gameState.myWords,['Cleopatra']);
+  assert.throws(()=>m.apply(r,'b','submitWord',{word:'cléopatra'},0));
+  assert.throws(()=>m.apply(r,'guest','submitWord',{word:'Pizza'},0));
+  assert.throws(()=>m.apply(r,'a','submitWord',{word:' '.repeat(5)},0));
+  for(let i=0;i<9;i++)m.apply(r,['a','b','c','d'][i%4],'submitWord',{word:`Nome ${i}`},0);
+  assert.equal(r.gameState.phase,'ready');
+  assert.equal(r.gameState.private.originalDeck.length,10);
+  assert.ok(r.gameState.private.originalDeck.some((c:any)=>c.name==='Cleopatra'));
+  assert.throws(()=>m.apply(r,'a','submitWord',{word:'Troppo tardi'},0));
 });

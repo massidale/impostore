@@ -72,7 +72,7 @@ function finish(room: Room, reason: string, guess = "") {
 const cooperativeModule: GameModule = {
   id: "just-one",
   minPlayers: 3,
-  maxPlayers: 10,
+  maxPlayers: 0,
   validateSettings(input: any) {
     return { rounds: int(input?.rounds ?? 8, 5, 20) };
   },
@@ -270,7 +270,7 @@ export const justOneModule: GameModule = {
   start(room, now) {
     if (room.settings.mode !== "teams") return cooperativeModule.start(room, now);
     const uids = shuffled(participants(room));
-    check(uids.length >= 4 && uids.length <= 10, "Servono da 4 a 10 giocatori per due squadre");
+    check(uids.length >= 4, "Servono almeno 4 giocatori per due squadre");
     const {turnOrder} = buildTeams(uids, room.settings.teamMode === 'manual' ? room.settings.manualTeams : null);
     check(turnOrder.blue.length >= 2 && turnOrder.red.length >= 2, 'Ogni squadra deve avere almeno 2 giocatori');
     // Disjoint decks prevent one team's revealed word from helping the other team.

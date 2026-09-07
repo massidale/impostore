@@ -1,10 +1,9 @@
+import { EndActionButton } from '../../../core/components/EndActionButton';
 import React from 'react';
 import { HostDashboardProps } from '../../../core/types/gamePlugin';
 import {
-  Button,
   HostDashboardShell,
   ProgressCounter,
-  confirmDialog,
 } from '../../../core/ui';
 import { endIndovinaGame } from '../services/indovinaLogic';
 import { getWaitingPlayerUids } from '../../../core/services/playerSelection';
@@ -23,15 +22,7 @@ export default function IndovinaHostDashboard({ roomData }: HostDashboardProps) 
     .map((uid) => (allPlayers[uid] as CorePlayer | undefined)?.name)
     .filter((n): n is string => !!n && n.length > 0);
 
-  const handleEndGame = async () => {
-    const ok = await confirmDialog({
-      title: 'Terminare la partita?',
-      message: 'La partita verrà chiusa per tutti i giocatori.',
-      confirmLabel: 'Termina',
-      destructive: true,
-    });
-    if (ok) endIndovinaGame(roomId);
-  };
+
 
   return (
     <HostDashboardShell
@@ -46,9 +37,7 @@ export default function IndovinaHostDashboard({ roomData }: HostDashboardProps) 
       }
       waitingNames={waitingNames}
       actions={
-        <Button onPress={handleEndGame} variant="dangerMuted" style={{ flex: 1 }}>
-          Termina
-        </Button>
+        <EndActionButton kind="game" onConfirm={() => endIndovinaGame(roomId)} style={{ flex: 1 }} />
       }
     />
   );

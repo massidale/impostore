@@ -1,10 +1,9 @@
+import { EndActionButton } from '../../../core/components/EndActionButton';
 import React from 'react';
 import { HostDashboardProps } from '../../../core/types/gamePlugin';
 import {
-  Button,
   HostDashboardShell,
   ProgressCounter,
-  confirmDialog,
 } from '../../../core/ui';
 import { TabooGameState } from '../types';
 import { endTabooGame, endTabooTurn } from '../services/tabooLogic';
@@ -24,24 +23,9 @@ export default function TabooHostDashboard({ roomData }: HostDashboardProps) {
     .map((uid) => (allPlayers[uid] as CorePlayer | undefined)?.name)
     .filter((n): n is string => !!n && n.length > 0);
 
-  const handleEndTurn = async () => {
-    const ok = await confirmDialog({
-      title: 'Terminare il turno?',
-      message: 'Il turno in corso verrà chiuso e si passerà alla squadra successiva.',
-      confirmLabel: 'Termina turno',
-    });
-    if (ok) endTabooTurn(roomId);
-  };
 
-  const handleEndGame = async () => {
-    const ok = await confirmDialog({
-      title: 'Terminare la partita?',
-      message: 'La partita verrà chiusa per tutti i giocatori.',
-      confirmLabel: 'Termina',
-      destructive: true,
-    });
-    if (ok) endTabooGame(roomId);
-  };
+
+
 
   return (
     <HostDashboardShell
@@ -58,13 +42,9 @@ export default function TabooHostDashboard({ roomData }: HostDashboardProps) {
       actions={
         <>
           {gameState.phase === 'turn' && (
-            <Button onPress={handleEndTurn} variant="warningMuted" style={{ flex: 1 }}>
-              Termina turno
-            </Button>
+            <EndActionButton kind="turn" message="Il turno in corso verrà chiuso e si passerà alla squadra successiva." onConfirm={() => endTabooTurn(roomId)} style={{ flex: 1 }} />
           )}
-          <Button onPress={handleEndGame} variant="dangerMuted" style={{ flex: 1 }}>
-            Termina
-          </Button>
+          <EndActionButton kind="game" onConfirm={() => endTabooGame(roomId)} style={{ flex: 1 }} />
         </>
       }
     />

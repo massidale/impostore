@@ -1,3 +1,5 @@
+import { EndActionButton } from '../../../core/components/EndActionButton';
+import { FirstPlayerCard } from '../../../core/components/FirstPlayerCard';
 import { VotingPanel } from '../../../core/voting/VotingPanel';
 import React, { useEffect, useState } from "react";
 import { Text, View, TextInput, ScrollView } from "react-native";
@@ -67,7 +69,7 @@ export default function PlayerGamepad({
       ))}
       {error && <Text style={{color: colors.textSecondary}}>{error}</Text>}
       {host && now >= (s.votingEndsAt ?? Infinity) && <Button disabled={busy} onPress={() => send("closeVoting")}>Chiudi voto scaduto</Button>}
-      {host && <Button disabled={busy} variant="secondary" onPress={() => send("end")}>Termina partita</Button>}
+      {host && <EndActionButton kind="game" disabled={busy} onConfirm={() => send("end")} />}
     </ScrollView>
   );
   const card = (
@@ -174,9 +176,7 @@ export default function PlayerGamepad({
         ))}
       {s.phase === "discussion" && (
         <>
-          <Text style={{ color: colors.textPrimary }}>
-            Inizia {name(s.speakerOrder[0])}. Proseguite a voce, poi aprite il voto.
-          </Text>
+          <FirstPlayerCard name={s.speakerOrder?.[0] ? name(s.speakerOrder[0]) : null} isMe={s.speakerOrder?.[0] === playerId} />
           {host && <Button disabled={busy} onPress={() => send("startVoting")}>
             Apri voto (60 secondi)
           </Button>}
@@ -204,18 +204,10 @@ export default function PlayerGamepad({
         </Text>
       )}
       {host && !["idle", "results"].includes(s.phase) && (
-        <Button
-          disabled={busy}
-          variant="secondary"
-          onPress={() => send("cancelRound")}
-        >
-          Annulla la partita senza vincitori
-        </Button>
+        <EndActionButton kind="round" disabled={busy} onConfirm={() => send("cancelRound")} message="La fase in corso verrà annullata e verrà mostrato il suo esito." />
       )}
       {host && (
-        <Button disabled={busy} variant="secondary" onPress={() => send("end")}>
-          {s.phase === "results" ? "Torna alla lobby" : "Termina partita"}
-        </Button>
+        <EndActionButton kind="game" disabled={busy} onConfirm={() => send("end")} />
       )}
     </RoundLayout>
   );
