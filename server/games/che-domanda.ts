@@ -18,10 +18,15 @@ export interface Domain {
   max: number;
   decimals: number;
 }
-export interface QuestionPair extends Domain {
+export interface QuestionPair {
   id: string;
   question: string;
   alternateQuestion: string;
+  /** Se true, la risposta è testuale (campo textAnswer); altrimenti numerica con dominio. */
+  textAnswer?: boolean;
+  min?: number;
+  max?: number;
+  decimals?: number;
 }
 export interface CheDomandaState {
   phase: string;
@@ -30,7 +35,7 @@ export interface CheDomandaState {
   participantUids: string[];
   questionPair: QuestionPair;
   impostorUids: string[];
-  answersByUid: Record<string, number>;
+  answersByUid: Record<string, number | string>;
   eliminatedUids: string[];
   speakerOrder: string[];
   speakerIndex: number;
@@ -55,6 +60,13 @@ export function parseNumericAnswer(input: string, domain: Domain): number {
     "Numero fuori intervallo",
   );
   return value;
+}
+export function parseTextAnswer(input: string): string {
+  check(
+    typeof input === "string" && input.trim().length > 0 && input.trim().length <= 60,
+    "Inserisci una risposta di 1–60 caratteri",
+  );
+  return input.trim();
 }
 function alive(room: Room): string[] {
   return participants(room).filter(
@@ -87,19 +99,35 @@ function close(room: Room, now: number) {
   if (tied.length === 1) {
     const uid = tied[0];
     s.eliminatedUids.push(uid);
+    const isImpostor = s.impostorUids.includes(uid);
     s.elimination = {
       uid,
-      role: s.impostorUids.includes(uid) ? "impostore" : "civile",
+      role: isImpostor ? "impostore" : "civile",
     };
+    // Logica come in impostore:
+    // - Civile eliminato → vincono gli impostori, partita finisce
+    // - Impostore eliminato → se era l'ultimo vincono i civili,
+    //   altrimenti continua (elimination → nuovo giro)
+    if (!isImpostor) {
+      s.winner = "impostori";
+      phase(room, "results");
+      return;
+    }
+    const remainingImpostors = alive(room).filter((id) =>
+      s.impostorUids.includes(id),
+    ).length;
+    if (remainingImpostors === 0) {
+      s.winner = "civili";
+      phase(room, "results");
+      return;
+    }
+    // Altri impostori rimasti: continua
+    s.winner = null;
+    phase(room, "elimination");
+    return;
   }
-  const remaining = alive(room);
-  const imps = remaining.filter((id) => s.impostorUids.includes(id)).length;
-  s.winner =
-    imps === 0
-      ? "civili"
-      : imps >= remaining.length - imps
-        ? "impostori"
-        : null;
+  // Nessuno espulso (pareggio): continua
+  s.winner = null;
   phase(room, "elimination");
 }
 export const cheDomandaModule: GameModule = {
@@ -124,6 +152,15 @@ export const cheDomandaModule: GameModule = {
     );
     const result = input.map((v: any) => {
       check(v && typeof v === "object", "Coppia non valida");
+      const textAnswer = v.textAnswer === true;
+      if (textAnswer) {
+        return {
+          id: text(v.id, 60),
+          question: text(v.question, 120),
+          alternateQuestion: text(v.alternateQuestion, 120),
+          textAnswer: true,
+        };
+      }
       check(
         typeof v.min === "number" &&
           Number.isFinite(v.min) &&
@@ -207,11 +244,21 @@ export const cheDomandaModule: GameModule = {
     check(participants(room).includes(actor), "Spettatore");
     if (action === "submitAnswer") {
       check(s.phase === "answering", "Risposte chiuse");
-      check(
-        typeof payload?.value === "number" && Number.isFinite(payload.value),
-        "Numero non valido",
-      );
-      const answer = parseNumericAnswer(String(payload.value), s.questionPair);
+      const qp = s.questionPair;
+      let answer: number | string;
+      if (qp.textAnswer) {
+        check(
+          typeof payload?.text === "string",
+          "Risposta testuale non valida",
+        );
+        answer = parseTextAnswer(payload.text);
+      } else {
+        check(
+          typeof payload?.value === "number" && Number.isFinite(payload.value),
+          "Numero non valido",
+        );
+        answer = parseNumericAnswer(String(payload.value), qp as Domain);
+      }
       if (actor in s.answersByUid) {
         check(s.answersByUid[actor] === answer, "Risposta già inviata");
         return room;
@@ -259,8 +306,9 @@ export const cheDomandaModule: GameModule = {
     } else if (action === "continueRound") {
       hostOnly(room, actor);
       check(s.phase === "elimination", "Attendi l’esito");
-      if (s.winner) phase(room, "results");
-      else discussion(room);
+      // Se siamo in elimination (nessun vincitore, più impostori):
+      // nuovo giro di discussione.
+      discussion(room);
     } else if (action === "cancelRound") {
       hostOnly(room, actor);
       check(!["idle", "results"].includes(s.phase), "Partita già chiusa");
@@ -291,16 +339,24 @@ export const cheDomandaModule: GameModule = {
             ownQuestion: s.impostorUids.includes(viewer)
               ? s.questionPair.alternateQuestion
               : s.questionPair.question,
-            domain: {
-              min: s.questionPair.min,
-              max: s.questionPair.max,
-              decimals: s.questionPair.decimals,
-            },
+            ...(s.questionPair.textAnswer
+              ? { textAnswer: true }
+              : {
+                  domain: {
+                    min: s.questionPair.min,
+                    max: s.questionPair.max,
+                    decimals: s.questionPair.decimals,
+                  },
+                }),
             ownAnswer: s.answersByUid[viewer] ?? null,
           }
         : {}),
       ...(revealed
-        ? { question: s.questionPair.question, answersByUid: s.answersByUid }
+        ? {
+            question: s.questionPair.question,
+            answersByUid: s.answersByUid,
+            ...(s.questionPair.textAnswer ? { textAnswer: true } : {}),
+          }
         : {}),
       ...(s.phase === "voting"
         ? {

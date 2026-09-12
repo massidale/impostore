@@ -24,6 +24,15 @@ function room(n = 3, imps = 1) {
   m.init(r, { numImpostors: imps, votingSeconds: 60 }, 0);
   m.start(r, 0);
   r.gameState.impostorUids = ids.slice(-imps);
+  // Force a numeric question pair so existing helpers (answer/sendValue) work
+  r.gameState.questionPair = {
+    id: "test-num",
+    question: "Quanti?",
+    alternateQuestion: "Quante?",
+    min: 0,
+    max: 100,
+    decimals: 0,
+  };
   return r;
 }
 function answer(r: any) {
@@ -79,10 +88,9 @@ test("Full game civilians win after expelling last impostor", () => {
   assert.equal(m.project(r, "a").gameState.ownVote, "c");
   assert.ok(!("votesByUid" in m.project(r, "a").gameState));
   m.apply(r, "c", "castVote", { targetUid: "a" }, 4);
-  assert.equal(r.gameState.phase, "elimination");
-  assert.equal(r.gameState.winner, "civili");
-  m.apply(r, "a", "continueRound", {}, 5);
+  // Auto-transizione: con un vincitore va direttamente a results
   assert.equal(r.gameState.phase, "results");
+  assert.equal(r.gameState.winner, "civili");
   assert.equal(m.project(r, "b").gameState.roles.c, "impostore");
   assert.equal(
     m.project(r, "b").gameState.alternateQuestion,
@@ -99,28 +107,37 @@ test("Civilian elimination at parity produces impostor win", () => {
   assert.equal(r.gameState.winner, "impostori");
 });
 test("Single runoff, second tie expels nobody; timeout abstains and role checks", () => {
-  const r = room();
+  const r = room(5, 2);
   answer(r);
   assert.throws(() => m.apply(r, "b", "startVoting", {}, 2));
   voting(r);
   assert.throws(() => m.apply(r, "a", "castVote", { targetUid: "a" }, 4));
+  // 5-player tie: a,b,c each get 1 vote → 3-way tie, d and e split 0
   for (const [id, target] of [
     ["a", "b"],
     ["b", "c"],
     ["c", "a"],
+    ["d", "e"],
+    ["e", "d"],
   ])
     m.apply(r, id, "castVote", { targetUid: target }, 4);
+  // a, b, c tied with 1 each → runoff
   assert.equal(r.gameState.runoff, true);
   assert.equal(r.gameState.votingEndsAt, 30004);
+  // Runoff: only candidates a,b,c can be voted; tie again
   for (const [id, target] of [
     ["a", "b"],
     ["b", "c"],
     ["c", "a"],
+    ["d", "a"],
+    ["e", "b"],
   ])
     m.apply(r, id, "castVote", { targetUid: target }, 5);
   assert.equal(r.gameState.phase, "elimination");
   assert.equal(r.gameState.elimination, null);
+  // With 2 impostors, continueRound goes to new discussion
   m.apply(r, "a", "continueRound", {}, 6);
+  assert.equal(r.gameState.phase, "discussion");
   voting(r);
   assert.throws(() => m.apply(r, "a", "closeVoting", {}, 60002));
   m.apply(r, "a", "closeVoting", {}, 60003);
@@ -130,7 +147,7 @@ test("Single runoff, second tie expels nobody; timeout abstains and role checks"
 test("Content domain precision and settings validated", () => {
   assert.equal(
     m.validateContent(loadServer("server/data/che-domanda.json")).length,
-    30,
+    40,
   );
   assert.throws(() => m.validateSettings({ numImpostors: 2 }, ["a", "b", "c"]));
   assert.throws(() =>
@@ -148,6 +165,43 @@ test("Content domain precision and settings validated", () => {
   const r = room();
   for (const value of [NaN, Infinity, "1", -1, 1001, 0.5])
     assert.throws(() => m.apply(r, "a", "submitAnswer", { value }, 0));
+});
+test("Single impostor game ends after first elimination round", () => {
+  const r = room(5, 1);
+  // Impostor is 'e' (last of ids)
+  answer(r);
+  voting(r);
+  // 5 voters: eliminate 'a' with 3 votes, b gets 2 → a eliminated
+  m.apply(r, "b", "castVote", { targetUid: "a" }, 4);
+  m.apply(r, "c", "castVote", { targetUid: "a" }, 4);
+  m.apply(r, "d", "castVote", { targetUid: "a" }, 4);
+  m.apply(r, "e", "castVote", { targetUid: "b" }, 4);
+  m.apply(r, "a", "castVote", { targetUid: "b" }, 4);
+  // Con 1 impostore: auto-transizione a results dopo l'eliminazione
+  assert.equal(r.gameState.phase, "results");
+  assert.equal(r.gameState.eliminatedUids.includes("a"), true);
+});
+test("Text answer questions accept text and reject numeric payload", () => {
+  const r = room();
+  // Force a text-answer question pair
+  r.gameState.questionPair = {
+    id: "test-text",
+    question: "Qual è il tuo colore preferito?",
+    alternateQuestion: "Qual è il tuo cibo preferito?",
+    textAnswer: true,
+  };
+  // Numeric payload should be rejected
+  assert.throws(() => m.apply(r, "a", "submitAnswer", { value: 42 }, 1));
+  // Text payload should be accepted
+  m.apply(r, "a", "submitAnswer", { text: "Blu" }, 1);
+  assert.equal(r.gameState.answersByUid.a, "Blu");
+  m.apply(r, "b", "submitAnswer", { text: "Rosso" }, 1);
+  m.apply(r, "c", "submitAnswer", { text: "Verde" }, 1);
+  assert.equal(r.gameState.phase, "discussion");
+  // Projection includes textAnswer flag
+  const view = m.project(r, "a").gameState;
+  assert.equal(view.textAnswer, true);
+  assert.equal(typeof view.answersByUid.a, "string");
 });
 test("Retry same answer is harmless, host cannot advance twice with the same speaker index", () => {
   const r = room();
@@ -178,8 +232,8 @@ test("Several impostors remain in play after an impostor elimination, eliminated
   for (const id of ["a", "b", "c"])
     m.apply(r, id, "castVote", { targetUid: "d" }, 6);
   m.apply(r, "d", "castVote", { targetUid: "a" }, 6);
+  // Con 1 impostore rimasto (d era l'ultimo), auto-transizione a results
   assert.equal(r.gameState.winner, "civili");
-  m.apply(r, "a", "continueRound", {}, 7);
   assert.equal(r.gameState.phase, "results");
 });
 test("Engine freezes participants and rejects prior match or phase; answers atomic", () => {
@@ -200,6 +254,15 @@ test("Engine freezes participants and rejects prior match or phase; answers atom
     { method: "che-domanda.start", expected: expected(r) },
     1,
   );
+  // Force a numeric question pair (start may pick a text one randomly)
+  r.gameState.questionPair = {
+    id: "test-num",
+    question: "Quanti?",
+    alternateQuestion: "Quante?",
+    min: 0,
+    max: 100,
+    decimals: 0,
+  };
   const token = expected(r);
   r = applyCommand(r, "z", { method: "join", args: ["Z"] }, 1);
   assert.throws(() =>

@@ -57,7 +57,7 @@ export default function PlayerGamepad({
   return (
     <RoundLayout
       roomData={roomData}
-      title="Wavelength"
+      gameName="Wavelength"
       card={card}
       error={error}
     >

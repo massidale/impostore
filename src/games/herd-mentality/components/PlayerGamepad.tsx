@@ -46,10 +46,11 @@ export default function PlayerGamepad({
   return (
     <RoundLayout
       roomData={roomData}
+      gameName="Herd Mentality"
       title={
         s.phase === "results"
-          ? "Herd Mentality · Partita conclusa"
-          : `Herd Mentality · Domanda ${(s.roundIndex ?? 0) + 1}/${settings?.rounds ?? 8}`
+          ? "Partita conclusa"
+          : `Domanda ${(s.roundIndex ?? 0) + 1}/${settings?.rounds ?? 8}`
       }
       error={error}
       card={

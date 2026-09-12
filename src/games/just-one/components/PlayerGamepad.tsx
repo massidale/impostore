@@ -52,18 +52,19 @@ export default function PlayerGamepad({
   const guesser = s.guesserUid === playerId;
   const ready = (s.readyUids ?? []).includes(playerId);
   const submitted = (s.submittedUids ?? []).includes(playerId);
-  const title =
+  const subtitle =
     state.phase === "results"
-      ? "Just One · Esito"
+      ? "Esito"
       : s.phase === "results"
-        ? `${s.name ?? "Just One"} · Parole completate`
+        ? "Parole completate"
         : teamMode && !state.myTeam
-          ? "Just One · Due squadre"
-          : teamMode ? `${s.name ?? "Just One"} · Parola ${(s.roundIndex ?? 0) + 1}/${settings?.rounds ?? 8}` : "Just One";
+          ? "Due squadre"
+          : teamMode ? `Parola ${(s.roundIndex ?? 0) + 1}/${settings?.rounds ?? 8}` : undefined;
   return (
     <RoundLayout
       roomData={roomData}
-      title={title}
+      gameName={s.name ?? "Just One"}
+      title={subtitle}
       error={error}
       card={
         (s.phase === 'roundResults' || s.phase === 'results') && s.roundResult

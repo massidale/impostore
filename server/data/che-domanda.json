@@ -238,5 +238,65 @@
     "min": 0,
     "max": 1000,
     "decimals": 0
+  },
+  {
+    "id": "cd-031",
+    "question": "Qual è il tuo colore preferito?",
+    "alternateQuestion": "Qual è il tuo cibo preferito?",
+    "textAnswer": true
+  },
+  {
+    "id": "cd-032",
+    "question": "Quale animale terrestre sceglieresti come animale domestico?",
+    "alternateQuestion": "Quale animale marino sceglieresti come animale domestico?",
+    "textAnswer": true
+  },
+  {
+    "id": "cd-033",
+    "question": "Qual è la tua città preferita in Italia?",
+    "alternateQuestion": "Qual è la tua regione preferita in Italia?",
+    "textAnswer": true
+  },
+  {
+    "id": "cd-034",
+    "question": "Quale frutta mangeresti ogni giorno?",
+    "alternateQuestion": "Quale verdura mangeresti ogni giorno?",
+    "textAnswer": true
+  },
+  {
+    "id": "cd-035",
+    "question": "Qual è il tuo mezzo di trasporto preferito?",
+    "alternateQuestion": "Qual è il tuo sport preferito?",
+    "textAnswer": true
+  },
+  {
+    "id": "cd-036",
+    "question": "Quale stagione dell'anno preferisci?",
+    "alternateQuestion": "Quale momento della giornata preferisci?",
+    "textAnswer": true
+  },
+  {
+    "id": "cd-037",
+    "question": "Qual è il tuo dolce preferito?",
+    "alternateQuestion": "Qual è il tuo salato preferito?",
+    "textAnswer": true
+  },
+  {
+    "id": "cd-038",
+    "question": "Quale materia scolastica ti piaceva di più?",
+    "alternateQuestion": "Quale materia scolastica ti piaceva di meno?",
+    "textAnswer": true
+  },
+  {
+    "id": "cd-039",
+    "question": "Qual è il tuo genere musicale preferito?",
+    "alternateQuestion": "Qual è il tuo genere cinematografico preferito?",
+    "textAnswer": true
+  },
+  {
+    "id": "cd-040",
+    "question": "Quale bevanda calda preferisci?",
+    "alternateQuestion": "Quale bevanda fredda preferisci?",
+    "textAnswer": true
   }
 ]

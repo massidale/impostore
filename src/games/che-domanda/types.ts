@@ -8,11 +8,12 @@ export interface CheDomandaView {
   roundId: number;
   participantUids: string[];
   ownQuestion?: string;
-  ownAnswer?: number | null;
+  ownAnswer?: number | string | null;
+  textAnswer?: boolean;
   domain?: { min: number; max: number; decimals: number };
   question?: string;
   alternateQuestion?: string;
-  answersByUid?: Record<string, number>;
+  answersByUid?: Record<string, number | string>;
   answeredUids: string[];
   eliminatedUids: string[];
   speakerOrder: string[];

@@ -7,12 +7,13 @@ import {
   NameTakenError,
 } from '../services/roomService';
 import { sessionStore } from '../services/sessionStorage';
-import { getGame } from '../gameRegistry';
+import { getGame, NO_GAME_ID } from '../gameRegistry';
 import {
   Button,
   Card,
   ErrorBanner,
   Input,
+  MetaRow,
   PlayerSlot,
   PlayerSlotEmpty,
   SectionHeader,
@@ -206,12 +207,17 @@ export default function WebPlayerScreen({
   if (roomData.status === 'lobby') {
     const players = Object.entries(roomData.players || {});
     const me = roomData.players?.[clientId];
+    const gamePlugin = roomData.currentGameId && roomData.currentGameId !== NO_GAME_ID ? getGame(roomData.currentGameId) : null;
     return (
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
-        <Card style={styles.card}>
-          <Text style={styles.label}>Stanza</Text>
-          <Text style={styles.roomCode}>{roomId}</Text>
-          <Text style={styles.waitingTitle}>In attesa dell'host</Text>
+      <View style={styles.lobbyContainer}>
+        <MetaRow
+          roomId={roomId}
+          players={players.length}
+          gameName={gamePlugin?.name}
+        />
+        <ScrollView style={styles.scroll} contentContainerStyle={styles.lobbyScrollContent}>
+          <Card style={styles.card}>
+            <Text style={styles.waitingTitle}>In attesa dell'host</Text>
           <Text style={styles.waitingSubtitle}>
             La partita partirà da un momento all'altro.
           </Text>
@@ -244,6 +250,7 @@ export default function WebPlayerScreen({
           {leaveButton}
         </Card>
       </ScrollView>
+      </View>
     );
   }
 
@@ -320,6 +327,15 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     padding: spacing.xl,
+    justifyContent: 'center',
+  },
+  lobbyContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+    padding: spacing.sm,
+  },
+  lobbyScrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
   },
   activeContainer: {

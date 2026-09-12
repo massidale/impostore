@@ -95,8 +95,7 @@ const styles = StyleSheet.create({
     lineHeight: fontSize.lg + 2,
   },
   valueContainer: {
-    minWidth: 36,
-    paddingHorizontal: spacing.sm,
+    width: 48,
     alignItems: 'center',
     justifyContent: 'center',
   },

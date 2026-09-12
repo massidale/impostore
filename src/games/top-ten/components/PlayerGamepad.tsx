@@ -40,12 +40,7 @@ export default function PlayerGamepad({
     });
   const label = { color: colors.textSecondary, fontFamily: fonts.body, fontSize: 14 };
   const reveal = ["roundResults", "results"].includes(s.phase);
-  return (
-    <RoundLayout
-      roomData={roomData}
-      title={`Top Ten · tema ${s.roundId}/${(roomData.settings as TopTenSettings)?.rounds ?? 5}`}
-      error={error}
-      card={
+  const themeCard = (
         <View style={{ gap: spacing.sm }}>
           <View>
             <WordBox label="Il tema" word={s.theme?.prompt ?? 'Preparazione del tema'} size="md" style={{ paddingVertical: spacing.sm, paddingHorizontal: spacing.sm }} />
@@ -53,8 +48,16 @@ export default function PlayerGamepad({
             {participant && s.ownNumber !== undefined && !reveal && <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.sm }}><Text style={label}>Il tuo numero</Text><Text style={{ color: colors.primaryLight, fontFamily: fonts.displayHeavy, fontSize: 36 }}>{s.ownNumber}</Text></View>}
           </View>
         </View>
-      }
+  );
+  return (
+    <RoundLayout
+      roomData={roomData}
+      gameName="Top Ten"
+      title={`Tema ${s.roundId}/${(roomData.settings as TopTenSettings)?.rounds ?? 5}`}
+      error={error}
+      card={reveal ? undefined : themeCard}
     >
+      {reveal && themeCard}
       <FirstPlayerCard name={name(s.captainUid)} isMe={captain} roleLabel="il capitano" />
       {s.phase === 'performing' && <FirstPlayerCard name={s.performanceOrder?.[0] ? name(s.performanceOrder[0]) : null} isMe={s.performanceOrder?.[0] === playerId} />}
       {!participant && <StatusCard title="Spettatore" message="Parteciperai dalla prossima partita." tone="muted" />}

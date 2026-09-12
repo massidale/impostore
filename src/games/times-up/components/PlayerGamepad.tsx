@@ -79,7 +79,8 @@ export default function PlayerGamepad({
   return (
     <RoundLayout
       roomData={roomData}
-      title={`Time’s Up · round ${s.roundNumber}/3`}
+      gameName="Time’s Up"
+      title={`Round ${s.roundNumber}/3`}
       card={content}
       error={error}
     >

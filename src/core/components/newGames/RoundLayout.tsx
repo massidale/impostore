@@ -9,13 +9,17 @@ import { wrappingText } from "../../ui/wrappingText";
 export function RoundLayout({
   roomData,
   title,
+  gameName,
   card,
   children,
   error,
   centerContent = false,
 }: {
   roomData: CoreRoom;
-  title: string;
+  /** Sottotitolo opzionale (es. "Domanda 2/8") mostrato sotto MetaRow. */
+  title?: string;
+  /** Nome del gioco, centrato dentro MetaRow. */
+  gameName?: string;
   card?: ReactNode;
   children?: ReactNode;
   error?: string | null;
@@ -36,20 +40,23 @@ export function RoundLayout({
       <MetaRow
         roomId={roomData.id}
         players={Object.keys(roomData.players ?? {}).length}
+        gameName={gameName}
       />
-      <Text
-        style={[
-          wrappingText,
-          {
-            fontFamily: fonts.displayHeavy,
-            color: colors.textPrimary,
-            fontSize: 20,
-            textAlign: "center",
-          },
-        ]}
-      >
-        {title}
-      </Text>
+      {title ? (
+        <Text
+          style={[
+            wrappingText,
+            {
+              fontFamily: fonts.bodyMedium,
+              color: colors.textSecondary,
+              fontSize: 14,
+              textAlign: "center",
+            },
+          ]}
+        >
+          {title}
+        </Text>
+      ) : null}
       {error && <ErrorBanner message={error} />}
       {card && <FitContent>{card}</FitContent>}
       {children && (

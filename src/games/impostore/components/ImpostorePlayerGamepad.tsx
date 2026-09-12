@@ -9,6 +9,7 @@ import Svg, { Path, Circle, Ellipse } from 'react-native-svg';
 import { PlayerGamepadProps } from '../../../core/types/gamePlugin';
 import {
   Button,
+  EliminatedPlayerCard,
   EyeOffIcon,
   GhostButton,
   MetaRow,
@@ -398,19 +399,13 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
     const eliminatedRole = gameState.eliminatedRole;
     const isEliminatedMe = eliminatedUid === playerId;
 
-    return (
-      <FittedGameScreen>
-        <StatusCard
-          title={isEliminatedMe ? 'Sei stato eliminato.' : `${eliminatedName} eliminato.`}
-          tone="neutral"
-        >
-          <Text style={[styles.eliminationRole, { color: roleColor(eliminatedRole || null) }]}>
-            Era un {roleLabel(eliminatedRole || null).toLowerCase()}.
-          </Text>
-
-          {isEliminatedMe ? (
+    if (isEliminatedMe) {
+      // L'impostore eliminato: form per indovinare dentro una box con bordo
+      return (
+        <FittedGameScreen>
+          <View style={[styles.guessBox, { borderColor: colors.border }]}>
+            <Text style={[styles.guessBoxTitle, { color: colors.textPrimary }]}>Indovina la parola</Text>
             <View style={styles.guessContainer}>
-              <Text style={styles.guessLabel}>Prova a indovinare la parola:</Text>
               <TextInput
                 style={styles.guessInput}
                 value={guessText}
@@ -427,12 +422,23 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
                 Indovina
               </Button>
             </View>
-          ) : (
-            <Text style={styles.waitingText}>
-              L'impostore sta tentando di indovinare la parola...
-            </Text>
-          )}
-        </StatusCard>
+          </View>
+        </FittedGameScreen>
+      );
+    }
+
+    // Gli altri giocatori: EliminatedPlayerCard con messaggio
+    return (
+      <FittedGameScreen>
+        {eliminatedUid && eliminatedRole && (
+          <EliminatedPlayerCard
+            name={eliminatedName}
+            role={eliminatedRole}
+            roleLabel={roleLabel(eliminatedRole)}
+            roleColor={roleColor(eliminatedRole)}
+            message="L'impostore sta tentando di indovinare la parola..."
+          />
+        )}
       </FittedGameScreen>
     );
   }
@@ -508,6 +514,13 @@ export default function ImpostorePlayerGamepad({ roomData, playerId }: PlayerGam
             />
           </View>
         </View>
+        {/* Banner piccolo con il tentativo dell'impostore, solo se ha sbagliato */}
+        {winner === 'civilians' && gameState.impostorGuess ? (
+          <View style={styles.guessRecapBox}>
+            <Text style={styles.guessRecapLabel}>Tentativo dell'impostore:</Text>
+            <Text style={styles.guessRecapWord}>{gameState.impostorGuess}</Text>
+          </View>
+        ) : null}
       </FittedGameScreen>
     );
   }
@@ -603,6 +616,28 @@ const styles = StyleSheet.create({
   wordSpacingTop: {
     marginTop: spacing.lg,
   },
+  guessRecapBox: {
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderMuted,
+    borderRadius: radius.md,
+    marginTop: spacing.md,
+  },
+  guessRecapLabel: {
+    color: colors.textMuted,
+    fontFamily: fonts.body,
+    fontSize: fontSize.xs,
+  },
+  guessRecapWord: {
+    color: colors.textPrimary,
+    fontFamily: fonts.bodySemi,
+    fontSize: fontSize.md,
+    textAlign: 'center',
+  },
   description: {
     color: colors.textSecondary,
     fontFamily: fonts.body,
@@ -675,10 +710,25 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     textAlign: 'center',
   },
+  guessBox: {
+    alignItems: 'center',
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    gap: spacing.sm,
+  },
+  guessBoxTitle: {
+    color: colors.textPrimary,
+    fontFamily: fonts.displayHeavy,
+    fontSize: fontSize.lg,
+    textAlign: 'center',
+  },
   guessContainer: {
     alignItems: 'stretch',
     width: '100%',
-    marginTop: spacing.md,
   },
   guessLabel: {
     color: colors.textSecondary,

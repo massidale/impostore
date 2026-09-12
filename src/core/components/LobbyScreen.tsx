@@ -26,6 +26,7 @@ import {
   ErrorBanner,
   GameCard,
   GameRules,
+  MetaRow,
   Pill,
   PlayerSlot,
   PlayerSlotEmpty,
@@ -251,27 +252,38 @@ export default function LobbyScreen({
   };
 
   const canStart = !loading && !savingSettings && hasGame && playerCount >= minPlayers;
+  const isHost = hostId === roomData.hostId;
 
   return (
     <View style={styles.root}>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-        <View style={styles.roomHeader}>
-          <View style={{ flex: 1, marginRight: spacing.md }}>
-            <Text style={styles.roomLabel}>Stanza</Text>
-            <Text style={styles.roomId}>{roomId}</Text>
+        {!isHost ? (
+          // Guest: MetaRow con codice stanza, nome gioco, numero giocatori
+          <MetaRow
+            roomId={roomId}
+            players={playerCount}
+            gameName={hasGame ? gamePlugin!.name : undefined}
+          />
+        ) : (
+          // Host: header originale con codice stanza grande + icone
+          <View style={styles.roomHeader}>
+            <View style={{ flex: 1, marginRight: spacing.md }}>
+              <Text style={styles.roomLabel}>Stanza</Text>
+              <Text style={styles.roomId}>{roomId}</Text>
+            </View>
+            <View style={styles.iconActions}>
+              <IconButton onPress={handleCopyLink} label="Copia link stanza">
+                <CopyIcon />
+              </IconButton>
+              <IconButton onPress={handleShareLink} label="Condividi link stanza">
+                <ShareIcon />
+              </IconButton>
+              <IconButton onPress={() => setOpenSheet('qr')} label="Mostra QR code">
+                <QrIcon />
+              </IconButton>
+            </View>
           </View>
-          <View style={styles.iconActions}>
-            <IconButton onPress={handleCopyLink} label="Copia link stanza">
-              <CopyIcon />
-            </IconButton>
-            <IconButton onPress={handleShareLink} label="Condividi link stanza">
-              <ShareIcon />
-            </IconButton>
-            <IconButton onPress={() => setOpenSheet('qr')} label="Mostra QR code">
-              <QrIcon />
-            </IconButton>
-          </View>
-        </View>
+        )}
 
         <View style={styles.statusRow}>
           <Pill label="In attesa" variant="cyan" />
